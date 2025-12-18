@@ -87,3 +87,8 @@
 - [x] 建立學員開通 API
 - [x] 未開通學員顯示等待開通頁面
 - [x] 管理員可開通/停用學員帳號
+
+
+## Bug 修復
+- [x] 修復 ipProfile.get 返回 undefined 問題
+- [x] 修復所有 list/get API 確保返回空陣列或 null 而非 undefined

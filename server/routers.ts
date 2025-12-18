@@ -32,7 +32,8 @@ export const appRouter = router({
   // ==================== IP 地基模組 ====================
   ipProfile: router({
     get: protectedProcedure.query(async ({ ctx }) => {
-      return db.getIpProfileByUserId(ctx.user.id);
+      const profile = await db.getIpProfileByUserId(ctx.user.id);
+      return profile ?? null;
     }),
     
     upsert: protectedProcedure
@@ -63,7 +64,8 @@ export const appRouter = router({
   // ==================== 受眾分析 ====================
   audience: router({
     list: protectedProcedure.query(async ({ ctx }) => {
-      return db.getAudienceSegmentsByUserId(ctx.user.id);
+      const segments = await db.getAudienceSegmentsByUserId(ctx.user.id);
+      return segments ?? [];
     }),
     
     create: protectedProcedure
@@ -102,7 +104,8 @@ export const appRouter = router({
   // ==================== 內容支柱 ====================
   contentPillar: router({
     list: protectedProcedure.query(async ({ ctx }) => {
-      return db.getContentPillarsByUserId(ctx.user.id);
+      const pillars = await db.getContentPillarsByUserId(ctx.user.id);
+      return pillars ?? [];
     }),
     
     create: protectedProcedure
@@ -138,7 +141,8 @@ export const appRouter = router({
   // ==================== 草稿管理 ====================
   draft: router({
     list: protectedProcedure.query(async ({ ctx }) => {
-      return db.getDraftsByUserId(ctx.user.id);
+      const drafts = await db.getDraftsByUserId(ctx.user.id);
+      return drafts ?? [];
     }),
     
     get: protectedProcedure
@@ -452,11 +456,13 @@ ${input.context ? `貼文內容是關於：${input.context}` : ''}
   // ==================== 互動任務 ====================
   task: router({
     list: protectedProcedure.query(async ({ ctx }) => {
-      return db.getInteractionTasksByUserId(ctx.user.id);
+      const tasks = await db.getInteractionTasksByUserId(ctx.user.id);
+      return tasks ?? [];
     }),
     
     today: protectedProcedure.query(async ({ ctx }) => {
-      return db.getTodayTasks(ctx.user.id);
+      const tasks = await db.getTodayTasks(ctx.user.id);
+      return tasks ?? [];
     }),
     
     create: protectedProcedure
@@ -506,7 +512,8 @@ ${input.context ? `貼文內容是關於：${input.context}` : ''}
   // ==================== 貼文與戰報 ====================
   post: router({
     list: protectedProcedure.query(async ({ ctx }) => {
-      return db.getPostsByUserId(ctx.user.id);
+      const posts = await db.getPostsByUserId(ctx.user.id);
+      return posts ?? [];
     }),
     
     create: protectedProcedure
@@ -561,20 +568,23 @@ ${input.context ? `貼文內容是關於：${input.context}` : ''}
       }),
     
     weeklyReport: protectedProcedure.query(async ({ ctx }) => {
-      return db.getWeeklyReport(ctx.user.id);
+      const report = await db.getWeeklyReport(ctx.user.id);
+      return report ?? { posts: [], metrics: [], summary: { totalReach: 0, totalLikes: 0, totalComments: 0, totalSaves: 0 } };
     }),
   }),
 
   // ==================== 商品管理 ====================
   product: router({
     list: publicProcedure.query(async () => {
-      return db.getAllProducts();
+      const products = await db.getAllProducts();
+      return products ?? [];
     }),
     
     get: publicProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
-        return db.getProductById(input.id);
+        const product = await db.getProductById(input.id);
+        return product ?? null;
       }),
     
     create: adminProcedure
