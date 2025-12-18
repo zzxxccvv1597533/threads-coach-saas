@@ -1,5 +1,20 @@
 {
   "version": "7",
   "dialect": "mysql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1766043325071,
+      "tag": "0000_stormy_turbo",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1766043500628,
+      "tag": "0001_bright_wallop",
+      "breakpoints": true
+    }
+  ]
 }
