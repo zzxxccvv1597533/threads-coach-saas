@@ -33,7 +33,6 @@ import {
   BarChart3,
   FileText,
   Settings,
-  Sparkles,
   Crown,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -84,11 +83,13 @@ export default function DashboardLayout({
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background via-secondary/20 to-background">
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
           <div className="flex flex-col items-center gap-6">
-            {/* Logo */}
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/20">
-              <Sparkles className="w-8 h-8 text-primary-foreground" />
-            </div>
-            <h1 className="text-2xl font-semibold tracking-tight text-center">
+            {/* 幕創 Logo */}
+            <img 
+              src="/images/logo-square.png" 
+              alt="幕創行銷" 
+              className="w-20 h-20 object-contain"
+            />
+            <h1 className="text-2xl font-bold tracking-tight text-center text-[#0F345B]">
               歡迎回來
             </h1>
             <p className="text-sm text-muted-foreground text-center max-w-sm">
@@ -100,13 +101,21 @@ export default function DashboardLayout({
               window.location.href = getLoginUrl();
             }}
             size="lg"
-            className="w-full shadow-lg hover:shadow-xl transition-all bg-primary hover:bg-primary/90"
+            className="w-full shadow-lg hover:shadow-xl transition-all bg-[#0F345B] hover:bg-[#0F345B]/90"
           >
             立即登入
           </Button>
         </div>
       </div>
     );
+  }
+
+  // 檢查學員開通狀態 - 管理員不需要檢查
+  const userWithActivation = user as typeof user & { activationStatus?: string };
+  if (userWithActivation.role !== 'admin' && userWithActivation.activationStatus !== 'activated') {
+    // 重導到待開通頁面
+    window.location.href = '/pending';
+    return <DashboardLayoutSkeleton />;
   }
 
   return (
@@ -184,26 +193,28 @@ function DashboardLayoutContent({
       <div className="relative" ref={sidebarRef}>
         <Sidebar
           collapsible="icon"
-          className="border-r border-border/50"
+          className="border-r-0"
+          style={{ 
+            background: 'linear-gradient(180deg, #0F345B 0%, #0a2540 100%)',
+          }}
           disableTransition={isResizing}
         >
-          <SidebarHeader className="h-16 justify-center border-b border-border/50">
+          <SidebarHeader className="h-16 justify-center border-b border-white/10">
             <div className="flex items-center gap-3 px-2 transition-all w-full">
               <button
                 onClick={toggleSidebar}
-                className="h-9 w-9 flex items-center justify-center hover:bg-secondary rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
+                className="h-9 w-9 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FCC80E] shrink-0"
                 aria-label="Toggle navigation"
               >
-                <PanelLeft className="h-4 w-4 text-muted-foreground" />
+                <PanelLeft className="h-4 w-4 text-white/70" />
               </button>
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
-                    <Sparkles className="w-4 h-4 text-primary-foreground" />
-                  </div>
-                  <span className="font-semibold tracking-tight truncate elegant-gradient-text">
-                    Threads AI 教練
-                  </span>
+                  <img 
+                    src="/images/logo-horizontal-white.png" 
+                    alt="幕創行銷" 
+                    className="h-8 object-contain"
+                  />
                 </div>
               ) : null}
             </div>
@@ -221,14 +232,14 @@ function DashboardLayoutContent({
                       tooltip={item.label}
                       className={`h-11 transition-all font-normal rounded-lg mb-1 ${
                         isActive 
-                          ? "bg-primary/10 text-primary hover:bg-primary/15" 
-                          : "hover:bg-secondary"
+                          ? "bg-[#FCC80E] text-[#0F345B] hover:bg-[#FCC80E]/90" 
+                          : "text-white/80 hover:bg-white/10 hover:text-white"
                       }`}
                     >
                       <item.icon
-                        className={`h-4 w-4 ${isActive ? "text-primary" : "text-muted-foreground"}`}
+                        className={`h-4 w-4 ${isActive ? "text-[#0F345B]" : "text-white/70"}`}
                       />
-                      <span className={isActive ? "font-medium" : ""}>{item.label}</span>
+                      <span className={isActive ? "font-semibold" : ""}>{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -237,7 +248,7 @@ function DashboardLayoutContent({
 
             {isAdmin && (
               <>
-                <div className="my-4 mx-2 h-px bg-border/50" />
+                <div className="my-4 mx-2 h-px bg-white/10" />
                 <SidebarMenu>
                   {adminMenuItems.map(item => {
                     const isActive = location.startsWith(item.path);
@@ -249,14 +260,14 @@ function DashboardLayoutContent({
                           tooltip={item.label}
                           className={`h-11 transition-all font-normal rounded-lg mb-1 ${
                             isActive 
-                              ? "bg-accent/20 text-accent-foreground hover:bg-accent/30" 
-                              : "hover:bg-secondary"
+                              ? "bg-[#F08316] text-white hover:bg-[#F08316]/90" 
+                              : "text-[#FCC80E] hover:bg-white/10"
                           }`}
                         >
                           <item.icon
-                            className={`h-4 w-4 ${isActive ? "text-accent" : "text-muted-foreground"}`}
+                            className={`h-4 w-4 ${isActive ? "text-white" : "text-[#FCC80E]"}`}
                           />
-                          <span className={isActive ? "font-medium" : ""}>{item.label}</span>
+                          <span className={isActive ? "font-semibold" : ""}>{item.label}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     );
@@ -266,20 +277,20 @@ function DashboardLayoutContent({
             )}
           </SidebarContent>
 
-          <SidebarFooter className="p-3 border-t border-border/50">
+          <SidebarFooter className="p-3 border-t border-white/10">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-secondary transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <Avatar className="h-9 w-9 border-2 border-primary/20 shrink-0">
-                    <AvatarFallback className="text-xs font-medium bg-primary/10 text-primary">
+                <button className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-white/10 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FCC80E]">
+                  <Avatar className="h-9 w-9 border-2 border-[#FCC80E]/30 shrink-0">
+                    <AvatarFallback className="text-xs font-medium bg-[#FCC80E] text-[#0F345B]">
                       {user?.name?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-medium truncate leading-none">
+                    <p className="text-sm font-medium truncate leading-none text-white">
                       {user?.name || "-"}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate mt-1.5">
+                    <p className="text-xs text-white/60 truncate mt-1.5">
                       {user?.role === 'admin' ? '管理員' : '學員'}
                     </p>
                   </div>
@@ -311,7 +322,7 @@ function DashboardLayoutContent({
           </SidebarFooter>
         </Sidebar>
         <div
-          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
+          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-[#FCC80E]/30 transition-colors ${isCollapsed ? "hidden" : ""}`}
           onMouseDown={() => {
             if (isCollapsed) return;
             setIsResizing(true);

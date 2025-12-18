@@ -10,6 +10,12 @@ export const users = mysqlTable("users", {
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   status: mysqlEnum("status", ["active", "suspended"]).default("active").notNull(),
+  // 學員開通狀態: pending=待開通, activated=已開通, expired=已過期
+  activationStatus: mysqlEnum("activationStatus", ["pending", "activated", "expired"]).default("pending").notNull(),
+  activatedAt: timestamp("activatedAt"),
+  activatedBy: int("activatedBy"),
+  expiresAt: timestamp("expiresAt"),
+  activationNote: text("activationNote"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),

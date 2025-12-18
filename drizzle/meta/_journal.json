@@ -15,6 +15,13 @@
       "when": 1766043500628,
       "tag": "0001_bright_wallop",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1766045307333,
+      "tag": "0002_opposite_starhawk",
+      "breakpoints": true
     }
   ]
 }

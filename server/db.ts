@@ -124,6 +124,83 @@ export async function getAllUsers() {
   return db.select().from(users).orderBy(desc(users.createdAt));
 }
 
+// 學員開通相關函數
+export async function activateUser(userId: number, activatedBy: number, expiresAt?: Date, note?: string) {
+  const db = await getDb();
+  if (!db) return;
+  
+  await db.update(users)
+    .set({
+      activationStatus: 'activated',
+      activatedAt: new Date(),
+      activatedBy,
+      expiresAt: expiresAt || null,
+      activationNote: note || null,
+    })
+    .where(eq(users.id, userId));
+}
+
+export async function deactivateUser(userId: number, note?: string) {
+  const db = await getDb();
+  if (!db) return;
+  
+  await db.update(users)
+    .set({
+      activationStatus: 'expired',
+      activationNote: note || null,
+    })
+    .where(eq(users.id, userId));
+}
+
+export async function extendUserExpiry(userId: number, newExpiresAt: Date) {
+  const db = await getDb();
+  if (!db) return;
+  
+  await db.update(users)
+    .set({ expiresAt: newExpiresAt })
+    .where(eq(users.id, userId));
+}
+
+export async function getPendingUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(users)
+    .where(eq(users.activationStatus, 'pending'))
+    .orderBy(desc(users.createdAt));
+}
+
+export async function getActivatedUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(users)
+    .where(eq(users.activationStatus, 'activated'))
+    .orderBy(desc(users.activatedAt));
+}
+
+export async function checkUserActivation(userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!result[0]) return false;
+  
+  const user = result[0];
+  
+  // 檢查是否已開通
+  if (user.activationStatus !== 'activated') return false;
+  
+  // 檢查是否過期
+  if (user.expiresAt && new Date(user.expiresAt) < new Date()) {
+    // 自動更新狀態為過期
+    await db.update(users)
+      .set({ activationStatus: 'expired' })
+      .where(eq(users.id, userId));
+    return false;
+  }
+  
+  return true;
+}
+
 // ==================== IP 地基相關 ====================
 
 export async function getIpProfileByUserId(userId: number): Promise<IpProfile | undefined> {

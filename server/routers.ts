@@ -648,6 +648,50 @@ ${input.context ? `貼文內容是關於：${input.context}` : ''}
       .query(async ({ input }) => {
         return db.getApiUsageByUserId(input.userId);
       }),
+    
+    // 學員開通 API
+    activateUser: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        expiresAt: z.date().optional(),
+        note: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await db.activateUser(input.userId, ctx.user.id, input.expiresAt, input.note);
+        return { success: true };
+      }),
+    
+    // 停用學員
+    deactivateUser: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        note: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.deactivateUser(input.userId, input.note);
+        return { success: true };
+      }),
+    
+    // 延長學員有效期
+    extendUserExpiry: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        newExpiresAt: z.date(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.extendUserExpiry(input.userId, input.newExpiresAt);
+        return { success: true };
+      }),
+    
+    // 取得待開通學員列表
+    pendingUsers: adminProcedure.query(async () => {
+      return db.getPendingUsers();
+    }),
+    
+    // 取得已開通學員列表
+    activatedUsers: adminProcedure.query(async () => {
+      return db.getActivatedUsers();
+    }),
   }),
 
   // ==================== 知識庫 ====================

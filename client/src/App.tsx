@@ -13,6 +13,7 @@ import Tasks from "./pages/Tasks";
 import Drafts from "./pages/Drafts";
 import Reports from "./pages/Reports";
 import Admin from "./pages/Admin";
+import PendingActivation from "./pages/PendingActivation";
 
 function Router() {
   return (
@@ -26,6 +27,7 @@ function Router() {
       <Route path={"/drafts"} component={Drafts} />
       <Route path={"/reports"} component={Reports} />
       <Route path={"/admin"} component={Admin} />
+      <Route path={"/pending"} component={PendingActivation} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
