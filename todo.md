@@ -114,3 +114,4 @@
 
 ## Bug 修復 (2024-12-19)
 - [x] 修復 draft_posts 表的 contentType 欄位不支援新的變現內容類型
+- [x] 修復 draft_posts 表的 contentType 欄位缺少 lead_magnet 和 free_value 類型

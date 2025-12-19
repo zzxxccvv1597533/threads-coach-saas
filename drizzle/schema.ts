@@ -132,7 +132,7 @@ export const draftPosts = mysqlTable("draft_posts", {
     "knowledge", "summary", "story", "viewpoint", "contrast",
     "casual", "dialogue", "question", "poll", "quote",
     // 變現內容類型
-    "profile_intro", "service_intro", "lead_promo", "success_story", "limited_offer", "plus_one"
+    "profile_intro", "service_intro", "lead_promo", "success_story", "limited_offer", "plus_one", "lead_magnet", "free_value"
   ]).default("story"),
   title: varchar("title", { length: 120 }),
   body: text("body"),

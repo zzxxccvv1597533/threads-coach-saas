@@ -1,0 +1,1 @@
+ALTER TABLE `draft_posts` MODIFY COLUMN `contentType` enum('knowledge','summary','story','viewpoint','contrast','casual','dialogue','question','poll','quote','profile_intro','service_intro','lead_promo','success_story','limited_offer','plus_one','lead_magnet','free_value') DEFAULT 'story';
