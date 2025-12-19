@@ -1,9 +1,35 @@
+import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Clock, Mail, MessageCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Clock, Mail, MessageCircle, Ticket, CheckCircle, Loader2 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 export default function PendingActivation() {
   const { user, logout } = useAuth();
+  const [invitationCode, setInvitationCode] = useState("");
+  const [showCodeInput, setShowCodeInput] = useState(false);
+
+  const applyCodeMutation = trpc.auth.applyInvitationCode.useMutation({
+    onSuccess: () => {
+      toast.success("帳號已成功開通！");
+      // 重新載入頁面以更新狀態
+      window.location.reload();
+    },
+    onError: (error) => {
+      toast.error(error.message || "邀請碼無效");
+    },
+  });
+
+  const handleApplyCode = () => {
+    if (!invitationCode.trim()) {
+      toast.error("請輸入邀請碼");
+      return;
+    }
+    applyCodeMutation.mutate({ code: invitationCode.trim().toUpperCase() });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0F345B] via-[#0F345B] to-[#0a2540] flex items-center justify-center p-4">
@@ -33,21 +59,67 @@ export default function PendingActivation() {
               您好，{user?.name || '學員'}！您的帳號已成功註冊，目前正在等待管理員開通。
             </p>
 
+            {/* 邀請碼輸入區塊 */}
+            {showCodeInput ? (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Ticket className="w-5 h-5 text-emerald-600" />
+                  <h3 className="font-semibold text-emerald-800">輸入邀請碼</h3>
+                </div>
+                <div className="space-y-3">
+                  <Input
+                    placeholder="請輸入邀請碼"
+                    value={invitationCode}
+                    onChange={(e) => setInvitationCode(e.target.value.toUpperCase())}
+                    className="text-center font-mono text-lg tracking-wider"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleApplyCode}
+                      disabled={applyCodeMutation.isPending || !invitationCode.trim()}
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      {applyCodeMutation.isPending ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />驗證中...</>
+                      ) : (
+                        <><CheckCircle className="w-4 h-4 mr-2" />確認開通</>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowCodeInput(false)}
+                    >
+                      取消
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                onClick={() => setShowCodeInput(true)}
+                className="w-full mb-6 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+              >
+                <Ticket className="w-4 h-4 mr-2" />
+                我有邀請碼
+              </Button>
+            )}
+
             {/* Info Box */}
             <div className="bg-[#F8F9FA] rounded-xl p-4 mb-6 text-left">
               <h3 className="font-semibold text-[#0F345B] mb-2">開通流程說明</h3>
               <ul className="text-sm text-gray-600 space-y-2">
                 <li className="flex items-start gap-2">
                   <span className="text-[#FCC80E] font-bold">1.</span>
-                  確認您已完成課程付款
+                  如果您有邀請碼，點擊上方「我有邀請碼」按鈕輸入即可立即開通
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#FCC80E] font-bold">2.</span>
-                  聯繫幕創行銷客服提供您的註冊 Email
+                  沒有邀請碼？請聯繫幕創行銷客服取得
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#FCC80E] font-bold">3.</span>
-                  管理員將在 24 小時內為您開通帳號
+                  或等待管理員在 24 小時內為您開通帳號
                 </li>
               </ul>
             </div>

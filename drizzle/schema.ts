@@ -4,10 +4,11 @@ import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, json } f
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
-  openId: varchar("openId", { length: 64 }).notNull().unique(),
+  openId: varchar("openId", { length: 64 }).unique(), // 保留但不再必填
   name: text("name"),
-  email: varchar("email", { length: 320 }),
-  loginMethod: varchar("loginMethod", { length: 64 }),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  password: varchar("password", { length: 255 }), // bcrypt 加密後的密碼
+  loginMethod: varchar("loginMethod", { length: 64 }).default("password"),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   status: mysqlEnum("status", ["active", "suspended"]).default("active").notNull(),
   // 學員開通狀態: pending=待開通, activated=已開通, expired=已過期

@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { getLoginUrl } from "@/const";
+// import { getLoginUrl } from "@/const";
 import { 
   PenTool, 
   Target, 
@@ -63,7 +63,7 @@ export default function Home() {
               />
             </div>
             <Button 
-              onClick={() => window.location.href = getLoginUrl()}
+              onClick={() => setLocation('/login')}
               className="bg-[#FCC80E] text-[#0F345B] hover:bg-[#FCC80E]/90 font-semibold shadow-lg shadow-black/20"
             >
               學員登入
@@ -95,7 +95,7 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
                 size="lg" 
-                onClick={() => window.location.href = getLoginUrl()}
+                onClick={() => setLocation('/login')}
                 className="text-lg px-8 bg-[#FCC80E] text-[#0F345B] hover:bg-[#FCC80E]/90 font-semibold shadow-lg shadow-black/20 hover:shadow-xl transition-all"
               >
                 學員登入
@@ -104,9 +104,10 @@ export default function Home() {
               <Button 
                 size="lg" 
                 variant="outline"
+                onClick={() => setLocation('/register')}
                 className="text-lg px-8 border-white/30 text-white hover:bg-white/10 bg-transparent"
               >
-                了解課程
+                立即註冊
               </Button>
             </div>
 
@@ -207,14 +208,14 @@ export default function Home() {
             </p>
             <Button 
               size="lg" 
-              onClick={() => window.location.href = getLoginUrl()}
+              onClick={() => setLocation('/register')}
               className="text-lg px-10 bg-[#0F345B] hover:bg-[#0F345B]/90 shadow-lg shadow-[#0F345B]/20"
             >
-              學員登入
+              立即註冊
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
             <p className="mt-6 text-sm text-muted-foreground">
-              尚未成為學員？<a href="#" className="text-[#0F345B] font-medium hover:underline">了解幕創課程</a>
+              已有帳號？<a onClick={() => setLocation('/login')} className="text-[#0F345B] font-medium hover:underline cursor-pointer">學員登入</a>
             </p>
           </div>
         </div>

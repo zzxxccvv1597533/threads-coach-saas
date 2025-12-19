@@ -28,10 +28,11 @@ export function registerOAuthRoutes(app: Express) {
         return;
       }
 
+      const userEmail = userInfo.email || `${userInfo.openId}@oauth.local`;
       await db.upsertUser({
         openId: userInfo.openId,
         name: userInfo.name || null,
-        email: userInfo.email ?? null,
+        email: userEmail,
         loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
         lastSignedIn: new Date(),
       });

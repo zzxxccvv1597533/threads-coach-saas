@@ -16,11 +16,15 @@ import Admin from "./pages/Admin";
 import PendingActivation from "./pages/PendingActivation";
 import Apply from "./pages/Apply";
 import DraftDetail from "./pages/DraftDetail";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 
 function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/login"} component={Login} />
+      <Route path={"/register"} component={Register} />
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/ip-profile"} component={IpProfile} />
       <Route path={"/writing-studio"} component={WritingStudio} />
@@ -31,7 +35,6 @@ function Router() {
       <Route path={"/admin"} component={Admin} />
       <Route path={"/pending"} component={PendingActivation} />
       <Route path={"/apply"} component={Apply} />
-      <Route path={"/register"} component={Apply} />
       <Route path={"/drafts/:id"} component={DraftDetail} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}

@@ -613,7 +613,7 @@ function InvitationManagement() {
 
   // 複製註冊連結
   const copyRegisterLink = (code: string) => {
-    const link = `${baseUrl}/apply?code=${code}`;
+    const link = `${baseUrl}/register?code=${code}`;
     navigator.clipboard.writeText(link);
     toast.success("已複製學員註冊連結");
   };

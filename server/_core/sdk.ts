@@ -178,6 +178,26 @@ class SDKServer {
     );
   }
 
+  /**
+   * Create a session token for email-based authentication
+   * @example
+   * const sessionToken = await sdk.createSessionTokenForEmail(user.email);
+   */
+  async createSessionTokenForEmail(
+    email: string,
+    options: { expiresInMs?: number; name?: string } = {}
+  ): Promise<string> {
+    // 使用 email 作為 openId 的替代
+    return this.signSession(
+      {
+        openId: `email:${email}`,
+        appId: ENV.appId,
+        name: options.name || "",
+      },
+      options
+    );
+  }
+
   async signSession(
     payload: SessionPayload,
     options: { expiresInMs?: number } = {}
@@ -268,16 +288,25 @@ class SDKServer {
 
     const sessionUserId = session.openId;
     const signedInAt = new Date();
-    let user = await db.getUserByOpenId(sessionUserId);
+    let user;
 
-    // If user not in DB, sync from OAuth server automatically
-    if (!user) {
+    // 檢查是否是 email 登入
+    if (sessionUserId.startsWith('email:')) {
+      const email = sessionUserId.replace('email:', '');
+      user = await db.getUserByEmail(email);
+    } else {
+      user = await db.getUserByOpenId(sessionUserId);
+    }
+
+    // If user not in DB and using OAuth, sync from OAuth server automatically
+    if (!user && !sessionUserId.startsWith('email:')) {
       try {
         const userInfo = await this.getUserInfoWithJwt(sessionCookie ?? "");
+        const userEmail = userInfo.email || `${userInfo.openId}@oauth.local`;
         await db.upsertUser({
           openId: userInfo.openId,
           name: userInfo.name || null,
-          email: userInfo.email ?? null,
+          email: userEmail,
           loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
           lastSignedIn: signedInAt,
         });
@@ -292,8 +321,10 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
+    // 更新最後登入時間
     await db.upsertUser({
-      openId: user.openId,
+      email: user.email,
+      openId: user.openId || null,
       lastSignedIn: signedInAt,
     });
 
