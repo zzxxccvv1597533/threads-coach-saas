@@ -115,3 +115,8 @@
 ## Bug 修復 (2024-12-19)
 - [x] 修復 draft_posts 表的 contentType 欄位不支援新的變現內容類型
 - [x] 修復 draft_posts 表的 contentType 欄位缺少 lead_magnet 和 free_value 類型
+
+## 變現內容優化 (2024-12-19)
+- [x] 變現內容 AI 生成整合知識庫的 Hook 策略（鏡像、反差、解法）
+- [x] 變現內容 AI 生成整合「說人話」原則
+- [x] 變現內容 AI 生成不顯示提示詞，直接給結果
