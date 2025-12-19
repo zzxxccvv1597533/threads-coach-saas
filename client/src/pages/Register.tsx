@@ -73,11 +73,9 @@ export default function Register() {
     <div className="min-h-screen bg-gradient-to-br from-[#0F345B] via-[#0F345B] to-[#0a2540] flex flex-col">
       {/* 返回首頁連結 */}
       <div className="container py-6">
-        <Link href="/">
-          <a className="inline-flex items-center gap-2 text-white/70 hover:text-white transition-colors">
+        <Link href="/" className="inline-flex items-center gap-2 text-white/70 hover:text-white transition-colors">
             <ArrowLeft className="w-4 h-4" />
             返回首頁
-          </a>
         </Link>
       </div>
 
@@ -206,10 +204,8 @@ export default function Register() {
 
             <div className="mt-6 text-center text-sm">
               <span className="text-muted-foreground">已經有帳號？</span>{" "}
-              <Link href="/login">
-                <a className="text-[#0F345B] font-medium hover:underline">
+              <Link href="/login" className="text-[#0F345B] font-medium hover:underline">
                   立即登入
-                </a>
               </Link>
             </div>
           </CardContent>
