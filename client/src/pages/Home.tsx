@@ -14,15 +14,33 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { useEffect } from "react";
 
 export default function Home() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
 
   // 如果已登入，重定向到 dashboard
-  if (user && !loading) {
-    setLocation('/dashboard');
-    return null;
+  useEffect(() => {
+    if (user && !loading) {
+      setLocation('/dashboard');
+    }
+  }, [user, loading, setLocation]);
+
+  // 如果正在載入或已登入，顯示載入狀態
+  if (loading || user) {
+    return (
+      <div className="min-h-screen bg-[#0F345B] flex items-center justify-center">
+        <div className="text-center">
+          <img 
+            src="/images/logo-horizontal-white.png" 
+            alt="幕創行銷" 
+            className="h-12 object-contain mx-auto mb-4 animate-pulse"
+          />
+          <p className="text-white/70">載入中...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
