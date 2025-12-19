@@ -122,25 +122,8 @@ export default function WritingStudio() {
     return score;
   })();
 
-  if (ipProgress < 50) {
-    return (
-      <DashboardLayout>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
-            <Info className="w-8 h-8 text-primary" />
-          </div>
-          <h2 className="text-2xl font-bold mb-2">請先完善 IP 地基</h2>
-          <p className="text-muted-foreground mb-6 max-w-md">
-            為了讓 AI 產出更符合你風格的內容，請先完成至少 50% 的 IP 地基設定
-          </p>
-          <Button onClick={() => window.location.href = '/ip-profile'}>
-            前往設定 IP 地基
-            <ChevronRight className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  // Show warning banner instead of blocking
+  const showIpWarning = ipProgress < 50;
 
   return (
     <DashboardLayout>
@@ -160,6 +143,23 @@ export default function WritingStudio() {
             </Button>
           )}
         </div>
+
+        {/* IP Warning Banner */}
+        {showIpWarning && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Info className="w-5 h-5 text-amber-600" />
+              <div>
+                <p className="font-medium text-amber-800">建議先完善 IP 地基</p>
+                <p className="text-sm text-amber-700">設定你的人設三支柱，讓 AI 產出更符合你風格的內容</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => window.location.href = '/ip-profile'}>
+              前往設定
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+        )}
 
         {/* Mode Selection */}
         <Tabs value={mode} onValueChange={(v) => setMode(v as any)} className="space-y-6">

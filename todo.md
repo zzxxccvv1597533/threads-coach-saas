@@ -92,3 +92,6 @@
 ## Bug 修復
 - [x] 修復 ipProfile.get 返回 undefined 問題
 - [x] 修復所有 list/get API 確保返回空陣列或 null 而非 undefined
+
+- [ ] 修復發文工作室路由 404 問題
+- [x] 移除發文工作室強制 IP 地基檢查，改為提示但不阻擋
