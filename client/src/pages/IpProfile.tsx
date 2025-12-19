@@ -101,6 +101,16 @@ export default function IpProfile() {
     personaExpertise: "",
     personaEmotion: "",
     personaViewpoint: "",
+    // 英雄旅程四階段
+    heroJourneyOrigin: "",
+    heroJourneyProcess: "",
+    heroJourneyHero: "",
+    heroJourneyMission: "",
+    // 身份標籤
+    identityTags: [] as string[],
+    // 九宮格內容矩陣
+    contentMatrixAudiences: { core: "", potential: "", opportunity: "" },
+    contentMatrixThemes: [] as string[],
   });
 
   const [newAudience, setNewAudience] = useState({
@@ -129,7 +139,9 @@ export default function IpProfile() {
 
   const [showProductForm, setShowProductForm] = useState(false);
   const [showStoryForm, setShowStoryForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<"basic" | "pillars" | "audience" | "products">("basic");
+  const [activeTab, setActiveTab] = useState<"basic" | "pillars" | "audience" | "products" | "story" | "matrix">("basic");
+  const [newIdentityTag, setNewIdentityTag] = useState("");
+  const [newTheme, setNewTheme] = useState("");
 
   useEffect(() => {
     if (profile) {
@@ -141,6 +153,16 @@ export default function IpProfile() {
         personaExpertise: profile.personaExpertise || "",
         personaEmotion: profile.personaEmotion || "",
         personaViewpoint: profile.personaViewpoint || "",
+        // 英雄旅程
+        heroJourneyOrigin: profile.heroJourneyOrigin || "",
+        heroJourneyProcess: profile.heroJourneyProcess || "",
+        heroJourneyHero: profile.heroJourneyHero || "",
+        heroJourneyMission: profile.heroJourneyMission || "",
+        // 身份標籤
+        identityTags: (profile.identityTags as string[]) || [],
+        // 九宮格內容矩陣
+        contentMatrixAudiences: (profile.contentMatrixAudiences as { core: string; potential: string; opportunity: string }) || { core: "", potential: "", opportunity: "" },
+        contentMatrixThemes: (profile.contentMatrixThemes as string[]) || [],
       });
     }
   }, [profile]);
@@ -253,7 +275,7 @@ export default function IpProfile() {
         </Card>
 
         <div className="space-y-6">
-          <div className="bg-muted p-1 rounded-lg grid grid-cols-4 gap-1">
+          <div className="bg-muted p-1 rounded-lg grid grid-cols-6 gap-1">
             <button
               onClick={() => setActiveTab("basic")}
               className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
@@ -296,6 +318,26 @@ export default function IpProfile() {
               {!hasCoreProduct && (
                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-500 rounded-full" />
               )}
+            </button>
+            <button
+              onClick={() => setActiveTab("story")}
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeTab === "story"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              我的故事
+            </button>
+            <button
+              onClick={() => setActiveTab("matrix")}
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeTab === "matrix"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              內容矩陣
             </button>
           </div>
 
@@ -934,6 +976,415 @@ export default function IpProfile() {
                 )}
               </CardContent>
             </Card>
+          </div>
+          )}
+
+          {/* Story Tab - 英雄旅程 */}
+          {activeTab === "story" && (
+          <div className="space-y-6">
+            {/* 英雄旅程說明 */}
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="pt-6">
+                <div className="flex gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <BookOpen className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-1">英雄旅程：你的品牌故事</h3>
+                    <p className="text-sm text-muted-foreground">
+                      透過四個階段說出你的故事，讓受眾認識你、信任你、記住你。
+                      這些素材會自動注入到 AI 生成的內容中。
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 英雄旅程四階段 */}
+            <Card className="elegant-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-primary" />
+                  英雄旅程四階段
+                </CardTitle>
+                <CardDescription>
+                  從「緣起」到「使命」，完整說出你的品牌故事
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* 緣起 */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-600 font-bold text-sm">1</div>
+                    <Label className="text-base font-semibold">緣起：你為什麼開始做這件事？</Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground ml-10 mb-2">
+                    你的起點是什麼？是什麼事件或經歷讓你走上這條路？
+                  </p>
+                  <Textarea
+                    placeholder="例如：我曾經是一個在職場中迷失的人，每天都在懷疑自己的價值..."
+                    value={formData.heroJourneyOrigin}
+                    onChange={(e) => setFormData({ ...formData, heroJourneyOrigin: e.target.value })}
+                    rows={3}
+                    className="ml-10"
+                  />
+                </div>
+
+                {/* 過程 */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-600 font-bold text-sm">2</div>
+                    <Label className="text-base font-semibold">過程：你經歷了什麼挑戰？</Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground ml-10 mb-2">
+                    你遇到了什麼困難？嘗試過什麼方法？有什麼失敗經驗？
+                  </p>
+                  <Textarea
+                    placeholder="例如：我嘗試過很多方法，讀了無數本書，上過很多課程，但總是覺得少了什麼..."
+                    value={formData.heroJourneyProcess}
+                    onChange={(e) => setFormData({ ...formData, heroJourneyProcess: e.target.value })}
+                    rows={3}
+                    className="ml-10"
+                  />
+                </div>
+
+                {/* 英雄登場 */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 font-bold text-sm">3</div>
+                    <Label className="text-base font-semibold">英雄登場：轉折點是什麼？</Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground ml-10 mb-2">
+                    是什麼讓你找到答案？是什麼人、事、物改變了你？
+                  </p>
+                  <Textarea
+                    placeholder="例如：直到我遇到了一位老師，他讓我看到了不同的可能性..."
+                    value={formData.heroJourneyHero}
+                    onChange={(e) => setFormData({ ...formData, heroJourneyHero: e.target.value })}
+                    rows={3}
+                    className="ml-10"
+                  />
+                </div>
+
+                {/* 結局與使命 */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-600 font-bold text-sm">4</div>
+                    <Label className="text-base font-semibold">結局與使命：你現在的使命是什麼？</Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground ml-10 mb-2">
+                    你現在想幫助什麼樣的人？你的使命是什麼？
+                  </p>
+                  <Textarea
+                    placeholder="例如：現在我想幫助那些和我一樣曾經迷失的人，讓他們知道..."
+                    value={formData.heroJourneyMission}
+                    onChange={(e) => setFormData({ ...formData, heroJourneyMission: e.target.value })}
+                    rows={3}
+                    className="ml-10"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 身份標籤 */}
+            <Card className="elegant-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  身份標籤
+                </CardTitle>
+                <CardDescription>
+                  選擇與你目標客群相關的身份標籤，讓受眾更容易產生共鳴
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* 常見標籤選項 */}
+                <div className="space-y-2">
+                  <Label>常見標籤（點擊新增）</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {["媽媽", "創業者", "高敏人", "ADHD", "內向者", "斜槓族", "自由工作者", "全職媽媽", "職場女性", "單親"].map((tag) => (
+                      <Badge
+                        key={tag}
+                        variant={formData.identityTags.includes(tag) ? "default" : "outline"}
+                        className="cursor-pointer hover:bg-primary/10"
+                        onClick={() => {
+                          if (formData.identityTags.includes(tag)) {
+                            setFormData({ ...formData, identityTags: formData.identityTags.filter(t => t !== tag) });
+                          } else {
+                            setFormData({ ...formData, identityTags: [...formData.identityTags, tag] });
+                          }
+                        }}
+                      >
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 自訂標籤 */}
+                <div className="space-y-2">
+                  <Label>自訂標籤</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="輸入自訂標籤"
+                      value={newIdentityTag}
+                      onChange={(e) => setNewIdentityTag(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newIdentityTag.trim()) {
+                          setFormData({ ...formData, identityTags: [...formData.identityTags, newIdentityTag.trim()] });
+                          setNewIdentityTag("");
+                        }
+                      }}
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        if (newIdentityTag.trim()) {
+                          setFormData({ ...formData, identityTags: [...formData.identityTags, newIdentityTag.trim()] });
+                          setNewIdentityTag("");
+                        }
+                      }}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* 已選標籤 */}
+                {formData.identityTags.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>已選標籤</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.identityTags.map((tag) => (
+                        <Badge key={tag} variant="secondary" className="gap-1">
+                          {tag}
+                          <button
+                            onClick={() => setFormData({ ...formData, identityTags: formData.identityTags.filter(t => t !== tag) })}
+                            className="ml-1 hover:text-destructive"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          )}
+
+          {/* Matrix Tab - 九宮格內容矩陣 */}
+          {activeTab === "matrix" && (
+          <div className="space-y-6">
+            {/* 九宮格說明 */}
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="pt-6">
+                <div className="flex gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-1">九宮格內容矩陣</h3>
+                    <p className="text-sm text-muted-foreground">
+                      三層受眾 × 三大主題 = 九個內容方向，解決「不知道寫什麼」的問題。
+                      設定完成後，發文工作室會自動提供這九個方向的選題建議。
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 三層受眾 */}
+            <Card className="elegant-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  三層受眾
+                </CardTitle>
+                <CardDescription>
+                  定義你的三層目標受眾，從核心到機會
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                    核心受眾（最想幫助的人）
+                  </Label>
+                  <Input
+                    placeholder="例如：想轉型的職場媽媽"
+                    value={formData.contentMatrixAudiences.core}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      contentMatrixAudiences: { ...formData.contentMatrixAudiences, core: e.target.value } 
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-blue-500" />
+                    潛在受眾（可能有興趣的人）
+                  </Label>
+                  <Input
+                    placeholder="例如：對身心靈有興趣的職場人士"
+                    value={formData.contentMatrixAudiences.potential}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      contentMatrixAudiences: { ...formData.contentMatrixAudiences, potential: e.target.value } 
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-amber-500" />
+                    機會受眾（擴大觸及的人）
+                  </Label>
+                  <Input
+                    placeholder="例如：想提升生活品質的一般大眾"
+                    value={formData.contentMatrixAudiences.opportunity}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      contentMatrixAudiences: { ...formData.contentMatrixAudiences, opportunity: e.target.value } 
+                    })}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 三大主題 */}
+            <Card className="elegant-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lightbulb className="w-5 h-5 text-primary" />
+                  三大主題
+                </CardTitle>
+                <CardDescription>
+                  定義你的三個內容主題，建議包含：專業知識、個人故事、生活分享
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="輸入主題，例如：塔羅知識、個案故事、日常生活"
+                    value={newTheme}
+                    onChange={(e) => setNewTheme(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newTheme.trim() && formData.contentMatrixThemes.length < 3) {
+                        setFormData({ ...formData, contentMatrixThemes: [...formData.contentMatrixThemes, newTheme.trim()] });
+                        setNewTheme("");
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    disabled={formData.contentMatrixThemes.length >= 3}
+                    onClick={() => {
+                      if (newTheme.trim() && formData.contentMatrixThemes.length < 3) {
+                        setFormData({ ...formData, contentMatrixThemes: [...formData.contentMatrixThemes, newTheme.trim()] });
+                        setNewTheme("");
+                      }
+                    }}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {formData.contentMatrixThemes.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {formData.contentMatrixThemes.map((theme, index) => (
+                      <Badge key={index} variant="secondary" className="gap-1 text-base py-1 px-3">
+                        {theme}
+                        <button
+                          onClick={() => setFormData({ ...formData, contentMatrixThemes: formData.contentMatrixThemes.filter((_, i) => i !== index) })}
+                          className="ml-1 hover:text-destructive"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                {formData.contentMatrixThemes.length < 3 && (
+                  <p className="text-sm text-muted-foreground">
+                    還可以新增 {3 - formData.contentMatrixThemes.length} 個主題
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 九宮格預覽 */}
+            {formData.contentMatrixAudiences.core && formData.contentMatrixThemes.length > 0 && (
+            <Card className="elegant-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  九宮格預覽
+                </CardTitle>
+                <CardDescription>
+                  以下是你的內容矩陣，每個格子都是一個內容方向
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr>
+                        <th className="p-2 border border-border bg-muted/50"></th>
+                        {formData.contentMatrixThemes.map((theme, i) => (
+                          <th key={i} className="p-2 border border-border bg-muted/50 text-sm font-medium">
+                            {theme}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="p-2 border border-border bg-emerald-500/10 text-sm font-medium">
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                            {formData.contentMatrixAudiences.core || "核心受眾"}
+                          </div>
+                        </td>
+                        {formData.contentMatrixThemes.map((theme, i) => (
+                          <td key={i} className="p-2 border border-border text-xs text-muted-foreground">
+                            針對 {formData.contentMatrixAudiences.core} 的 {theme} 內容
+                          </td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td className="p-2 border border-border bg-blue-500/10 text-sm font-medium">
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-blue-500" />
+                            {formData.contentMatrixAudiences.potential || "潛在受眾"}
+                          </div>
+                        </td>
+                        {formData.contentMatrixThemes.map((theme, i) => (
+                          <td key={i} className="p-2 border border-border text-xs text-muted-foreground">
+                            針對 {formData.contentMatrixAudiences.potential} 的 {theme} 內容
+                          </td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td className="p-2 border border-border bg-amber-500/10 text-sm font-medium">
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-amber-500" />
+                            {formData.contentMatrixAudiences.opportunity || "機會受眾"}
+                          </div>
+                        </td>
+                        {formData.contentMatrixThemes.map((theme, i) => (
+                          <td key={i} className="p-2 border border-border text-xs text-muted-foreground">
+                            針對 {formData.contentMatrixAudiences.opportunity} 的 {theme} 內容
+                          </td>
+                        ))}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+            )}
           </div>
           )}
         </div>

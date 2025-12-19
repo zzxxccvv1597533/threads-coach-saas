@@ -404,6 +404,21 @@ export async function getDraftsByUserId(userId: number): Promise<DraftPost[]> {
   return db.select().from(draftPosts).where(eq(draftPosts.userId, userId)).orderBy(desc(draftPosts.updatedAt));
 }
 
+// 統計內容類型分佈
+export async function getContentTypeStats(userId: number): Promise<{ contentType: string; count: number }[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const drafts = await db.select().from(draftPosts).where(eq(draftPosts.userId, userId));
+  
+  const stats: Record<string, number> = {};
+  for (const draft of drafts) {
+    const type = draft.contentType || 'unknown';
+    stats[type] = (stats[type] || 0) + 1;
+  }
+  
+  return Object.entries(stats).map(([contentType, count]) => ({ contentType, count }));
+}
+
 export async function getDraftById(id: number): Promise<DraftPost | undefined> {
   const db = await getDb();
   if (!db) return undefined;

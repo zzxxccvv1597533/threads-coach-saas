@@ -24,6 +24,7 @@ export default function Dashboard() {
   const { data: drafts, isLoading: draftsLoading } = trpc.draft.list.useQuery();
   const { data: tasks, isLoading: tasksLoading } = trpc.task.today.useQuery();
   const { data: weeklyReport, isLoading: reportLoading } = trpc.post.weeklyReport.useQuery();
+  const { data: contentTypeStats } = trpc.draft.contentTypeStats.useQuery();
 
   // 計算 IP 完成度
   const calculateIpProgress = () => {
@@ -263,6 +264,24 @@ export default function Dashboard() {
           </Card>
         </div>
 
+        {/* 內容比例追蹤 */}
+        {contentTypeStats && contentTypeStats.length > 0 && (
+          <Card className="elegant-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-primary" />
+                內容類型分佈
+              </CardTitle>
+              <CardDescription>
+                建議保持 70% 情緒內容 / 30% 品牌內容的比例
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ContentTypeChart stats={contentTypeStats} />
+            </CardContent>
+          </Card>
+        )}
+
         {/* Quick Actions */}
         <Card className="elegant-card">
           <CardHeader>
@@ -291,6 +310,93 @@ export default function Dashboard() {
         </Card>
       </div>
     </DashboardLayout>
+  );
+}
+
+// 內容類型分佈圖表組件
+function ContentTypeChart({ stats }: { stats: { contentType: string; count: number }[] }) {
+  const contentTypeNames: Record<string, string> = {
+    knowledge: '乾貨型',
+    summary: '懶人包',
+    story: '故事型',
+    viewpoint: '觀點型',
+    contrast: '反差型',
+    casual: '閒聊型',
+    dialogue: '對話型',
+    question: '提問型',
+    poll: '投票型',
+    quote: '金句型',
+    intro: '首頁自介',
+    plus_one: '+1互動',
+    free_value: '價值分享',
+    case_study: '案例故事',
+    lead_magnet: '引流品推廣',
+  };
+
+  // 分類：情緒內容 vs 品牌內容
+  const emotionalTypes = ['story', 'viewpoint', 'contrast', 'casual', 'dialogue', 'question', 'poll', 'quote'];
+  const brandTypes = ['knowledge', 'summary', 'intro', 'plus_one', 'free_value', 'case_study', 'lead_magnet'];
+
+  let emotionalCount = 0;
+  let brandCount = 0;
+
+  stats.forEach(s => {
+    if (emotionalTypes.includes(s.contentType)) {
+      emotionalCount += s.count;
+    } else if (brandTypes.includes(s.contentType)) {
+      brandCount += s.count;
+    }
+  });
+
+  const total = emotionalCount + brandCount;
+  const emotionalPercent = total > 0 ? Math.round((emotionalCount / total) * 100) : 0;
+  const brandPercent = total > 0 ? Math.round((brandCount / total) * 100) : 0;
+
+  return (
+    <div className="space-y-4">
+      {/* 比例條 */}
+      <div className="space-y-2">
+        <div className="flex justify-between text-sm">
+          <span>情緒內容（故事/觀點/閒聊...）</span>
+          <span className="font-medium">{emotionalPercent}%</span>
+        </div>
+        <Progress value={emotionalPercent} className="h-2" />
+      </div>
+      <div className="space-y-2">
+        <div className="flex justify-between text-sm">
+          <span>品牌內容（乾貨/案例/引流...）</span>
+          <span className="font-medium">{brandPercent}%</span>
+        </div>
+        <Progress value={brandPercent} className="h-2" />
+      </div>
+
+      {/* 建議 */}
+      {total >= 5 && (
+        <div className={`p-3 rounded-lg text-sm ${
+          emotionalPercent >= 60 && emotionalPercent <= 80 
+            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+            : 'bg-amber-50 text-amber-700 border border-amber-200'
+        }`}>
+          {emotionalPercent >= 60 && emotionalPercent <= 80 ? (
+            <p>✅ 內容比例很健康！繼續保持這個節奏。</p>
+          ) : emotionalPercent > 80 ? (
+            <p>✨ 情緒內容較多，可以適當增加一些品牌內容來引導變現。</p>
+          ) : (
+            <p>💡 品牌內容較多，建議增加一些情緒內容來提升互動。</p>
+          )}
+        </div>
+      )}
+
+      {/* 詳細分佈 */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 pt-2">
+        {stats.slice(0, 6).map(s => (
+          <div key={s.contentType} className="text-center p-2 rounded-lg bg-muted/30">
+            <p className="text-lg font-bold">{s.count}</p>
+            <p className="text-xs text-muted-foreground">{contentTypeNames[s.contentType] || s.contentType}</p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

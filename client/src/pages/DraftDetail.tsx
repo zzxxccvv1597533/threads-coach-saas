@@ -17,6 +17,9 @@ import {
   CheckCircle,
   Archive,
   Send,
+  Sparkles,
+  List,
+  RefreshCw,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -34,6 +37,10 @@ export default function DraftDetail() {
   
   const [editedBody, setEditedBody] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [showThreads, setShowThreads] = useState(false);
+  const [threads, setThreads] = useState<string[]>([]);
+  const [showHooks, setShowHooks] = useState(false);
+  const [hooks, setHooks] = useState<string[]>([]);
 
   const draft = draftData?.draft;
 
@@ -72,6 +79,28 @@ export default function DraftDetail() {
       utils.draft.get.invalidate({ id: draftId });
       utils.draft.list.invalidate();
       toast.success("已標記為已發布");
+    },
+  });
+
+  const convertToThread = trpc.draft.convertToThread.useMutation({
+    onSuccess: (data) => {
+      setThreads(data.threads);
+      setShowThreads(true);
+      toast.success(`已轉換為 ${data.totalParts} 段串文`);
+    },
+    onError: () => {
+      toast.error("轉換失敗");
+    },
+  });
+
+  const generateHooks = trpc.draft.generateHooks.useMutation({
+    onSuccess: (data) => {
+      setHooks(data.hooks);
+      setShowHooks(true);
+      toast.success(`已生成 ${data.hooks.length} 個 Hook 選項`);
+    },
+    onError: () => {
+      toast.error("生成失敗");
     },
   });
 
@@ -174,6 +203,24 @@ export default function DraftDetail() {
               <Copy className="w-4 h-4 mr-2" />
               複製
             </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => generateHooks.mutate({ content: editedBody })}
+              disabled={generateHooks.isPending}
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              {generateHooks.isPending ? "生成中..." : "優化開頭"}
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => convertToThread.mutate({ content: editedBody })}
+              disabled={convertToThread.isPending}
+            >
+              <List className="w-4 h-4 mr-2" />
+              {convertToThread.isPending ? "轉換中..." : "轉為串文"}
+            </Button>
             {draftStatus !== 'published' && (
               <Button variant="outline" size="sm" onClick={handleMarkPublished}>
                 <Send className="w-4 h-4 mr-2" />
@@ -229,6 +276,95 @@ export default function DraftDetail() {
             )}
           </CardContent>
         </Card>
+
+        {/* Hook 優化器結果 */}
+        {showHooks && hooks.length > 0 && (
+          <Card className="elegant-card border-amber-500/30 bg-amber-500/5">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-amber-500" />
+                    Hook 優化器
+                  </CardTitle>
+                  <CardDescription>
+                    選擇一個你喜歡的開頭，點擊即可替換
+                  </CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setShowHooks(false)}>
+                  收起
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {hooks.map((hook, index) => (
+                <div 
+                  key={index}
+                  className="p-4 rounded-lg border border-border/50 hover:border-amber-500/50 hover:bg-amber-500/5 cursor-pointer transition-all"
+                  onClick={() => {
+                    // 替換第一段為新的 Hook
+                    const lines = editedBody.split('\n\n');
+                    lines[0] = hook;
+                    setEditedBody(lines.join('\n\n'));
+                    setIsEditing(true);
+                    toast.success("已替換開頭");
+                  }}
+                >
+                  <p className="text-sm">{hook}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 串文格式化結果 */}
+        {showThreads && threads.length > 0 && (
+          <Card className="elegant-card border-blue-500/30 bg-blue-500/5">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <List className="w-5 h-5 text-blue-500" />
+                    串文格式（共 {threads.length} 段）
+                  </CardTitle>
+                  <CardDescription>
+                    每段都可以單獨複製發布
+                  </CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setShowThreads(false)}>
+                  收起
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {threads.map((thread, index) => (
+                <div 
+                  key={index}
+                  className="p-4 rounded-lg border border-border/50 bg-background"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <Badge variant="outline" className="mb-2">
+                        第 {index + 1} 段
+                      </Badge>
+                      <p className="text-sm whitespace-pre-wrap">{thread}</p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(thread);
+                        toast.success(`已複製第 ${index + 1} 段`);
+                      }}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Tips */}
         <Card className="border-primary/20 bg-primary/5">

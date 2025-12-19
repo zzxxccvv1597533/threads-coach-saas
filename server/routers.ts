@@ -175,6 +175,20 @@ export const appRouter = router({
         personaExpertise: z.string().optional(),
         personaEmotion: z.string().optional(),
         personaViewpoint: z.string().optional(),
+        // 英雄旅程四階段
+        heroJourneyOrigin: z.string().optional(),
+        heroJourneyProcess: z.string().optional(),
+        heroJourneyHero: z.string().optional(),
+        heroJourneyMission: z.string().optional(),
+        // 身份標籤
+        identityTags: z.array(z.string()).optional(),
+        // 九宮格內容矩陣
+        contentMatrixAudiences: z.object({
+          core: z.string(),
+          potential: z.string(),
+          opportunity: z.string(),
+        }).optional(),
+        contentMatrixThemes: z.array(z.string()).optional(),
         ipAnalysisComplete: z.boolean().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -274,6 +288,12 @@ export const appRouter = router({
       const drafts = await db.getDraftsByUserId(ctx.user.id);
       return drafts ?? [];
     }),
+
+    // 內容類型統計
+    contentTypeStats: protectedProcedure.query(async ({ ctx }) => {
+      const stats = await db.getContentTypeStats(ctx.user.id);
+      return stats;
+    }),
     
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
@@ -321,6 +341,87 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await db.selectHook(input.hookId, input.draftId);
         return { success: true };
+      }),
+
+    // 串文格式化 - 將長文分割成多段
+    convertToThread: protectedProcedure
+      .input(z.object({ content: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: `你是一個專業的 Threads 串文分割專家。
+
+串文規則：
+1. 每段最多 500 字（Threads 限制）
+2. 每段都要能獨立閱讀，但又要能連貫
+3. 第一段是 Hook，要能吸引人點開
+4. 每段結尾可以留懸念，讓人想看下一段
+5. 最後一段是總結和 CTA
+
+輸出格式：
+用 "---" 分隔每段串文，不要加編號或標題。` },
+            { role: "user", content: `請將以下內容轉換成 Threads 串文格式：
+
+${input.content}` }
+          ],
+        });
+
+        await db.logApiUsage(ctx.user.id, 'convertToThread', 'llm', 500, 600);
+        
+        const threadContent = response.choices[0]?.message?.content || '';
+        const threads = typeof threadContent === 'string' 
+          ? threadContent.split('---').map((t: string) => t.trim()).filter((t: string) => t.length > 0)
+          : [];
+        
+        return {
+          threads,
+          totalParts: threads.length,
+        };
+      }),
+
+    // Hook 優化器 - 生成多個開頭選項
+    generateHooks: protectedProcedure
+      .input(z.object({ content: z.string(), count: z.number().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const profile = await db.getIpProfileByUserId(ctx.user.id);
+        const hookCount = input.count || 5;
+        
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: `你是一個專業的 Threads Hook 寫手。
+
+## Hook 三大策略
+1. 鏡像策略：讓讀者看到自己（「你是不是也...」「有沒有一種感覺...」）
+2. 反差策略：打破認知（「很多人以為...但其實...」「我曾經也...」）
+3. 解法策略：提供方法（「教你一個方法...」「這個技巧讓我...」）
+
+## 創作者資料
+- 職業：${profile?.occupation || '未設定'}
+- 語氣風格：${profile?.voiceTone || '未設定'}
+
+## 輸出格式
+請生成 ${hookCount} 個不同風格的 Hook，每個都要：
+1. 簡短有力（一兩句話）
+2. 讓人想繼續看
+3. 符合創作者風格
+
+用 "---" 分隔每個 Hook，不要加編號或標題。` },
+            { role: "user", content: `請為以下內容生成 ${hookCount} 個不同的開頭：
+
+${input.content}` }
+          ],
+        });
+
+        await db.logApiUsage(ctx.user.id, 'generateHooks', 'llm', 400, 500);
+        
+        const hookContent = response.choices[0]?.message?.content || '';
+        const hooks = typeof hookContent === 'string'
+          ? hookContent.split('---').map((h: string) => h.trim()).filter((h: string) => h.length > 0)
+          : [];
+        
+        return {
+          hooks,
+        };
       }),
   }),
 

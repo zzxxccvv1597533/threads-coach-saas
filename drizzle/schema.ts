@@ -93,6 +93,16 @@ export const ipProfiles = mysqlTable("ip_profiles", {
   personaExpertise: text("personaExpertise"),
   personaEmotion: text("personaEmotion"),
   personaViewpoint: text("personaViewpoint"),
+  // 英雄旅程四階段
+  heroJourneyOrigin: text("heroJourneyOrigin"), // 緣起：你為什麼開始做這件事
+  heroJourneyProcess: text("heroJourneyProcess"), // 過程：你經歷了什麼挑戰
+  heroJourneyHero: text("heroJourneyHero"), // 英雄登場：轉折點是什麼
+  heroJourneyMission: text("heroJourneyMission"), // 結局與使命：你現在的使命是什麼
+  // 身份標籤
+  identityTags: json("identityTags").$type<string[]>(), // 身份標籤陣列
+  // 九宮格內容矩陣
+  contentMatrixAudiences: json("contentMatrixAudiences").$type<{core: string; potential: string; opportunity: string}>(),
+  contentMatrixThemes: json("contentMatrixThemes").$type<string[]>(), // 三大主題
   ipAnalysisComplete: boolean("ipAnalysisComplete").default(false),
   currentVersion: int("currentVersion").default(1),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
