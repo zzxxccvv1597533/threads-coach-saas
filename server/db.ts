@@ -582,3 +582,218 @@ export async function getApiUsageByUserId(userId: number) {
   if (!db) return [];
   return db.select().from(apiUsageLogs).where(eq(apiUsageLogs.userId, userId)).orderBy(desc(apiUsageLogs.createdAt));
 }
+
+
+// ==================== 用戶產品矩陣 ====================
+
+import { 
+  userProducts, InsertUserProduct, UserProduct,
+  successStories, InsertSuccessStory, SuccessStory,
+  conversationSummaries, InsertConversationSummary, ConversationSummary,
+  userGrowthMetrics, InsertUserGrowthMetric, UserGrowthMetric,
+} from "../drizzle/schema";
+
+export async function getUserProductsByUserId(userId: number): Promise<UserProduct[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(userProducts)
+    .where(and(eq(userProducts.userId, userId), eq(userProducts.isActive, true)))
+    .orderBy(userProducts.productType);
+}
+
+export async function getUserProductByType(userId: number, productType: string): Promise<UserProduct | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(userProducts)
+    .where(and(
+      eq(userProducts.userId, userId),
+      eq(userProducts.productType, productType as any),
+      eq(userProducts.isActive, true)
+    ))
+    .limit(1);
+  return result[0];
+}
+
+export async function createUserProduct(product: InsertUserProduct): Promise<UserProduct | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  await db.insert(userProducts).values(product);
+  const result = await db.select().from(userProducts)
+    .where(eq(userProducts.userId, product.userId))
+    .orderBy(desc(userProducts.id))
+    .limit(1);
+  return result[0];
+}
+
+export async function updateUserProduct(id: number, product: Partial<InsertUserProduct>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(userProducts).set({ ...product, updatedAt: new Date() }).where(eq(userProducts.id, id));
+}
+
+export async function deleteUserProduct(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(userProducts).set({ isActive: false }).where(eq(userProducts.id, id));
+}
+
+// ==================== 成功案例故事 ====================
+
+export async function getSuccessStoriesByUserId(userId: number): Promise<SuccessStory[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(successStories)
+    .where(eq(successStories.userId, userId))
+    .orderBy(desc(successStories.createdAt));
+}
+
+export async function createSuccessStory(story: InsertSuccessStory): Promise<SuccessStory | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  await db.insert(successStories).values(story);
+  const result = await db.select().from(successStories)
+    .where(eq(successStories.userId, story.userId))
+    .orderBy(desc(successStories.id))
+    .limit(1);
+  return result[0];
+}
+
+export async function updateSuccessStory(id: number, story: Partial<InsertSuccessStory>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(successStories).set({ ...story, updatedAt: new Date() }).where(eq(successStories.id, id));
+}
+
+export async function deleteSuccessStory(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(successStories).where(eq(successStories.id, id));
+}
+
+// ==================== AI 記憶系統 ====================
+
+export async function getConversationSummariesByUserId(userId: number): Promise<ConversationSummary[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(conversationSummaries)
+    .where(eq(conversationSummaries.userId, userId))
+    .orderBy(desc(conversationSummaries.relevanceScore), desc(conversationSummaries.updatedAt));
+}
+
+export async function getConversationSummariesByType(userId: number, summaryType: string): Promise<ConversationSummary[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(conversationSummaries)
+    .where(and(
+      eq(conversationSummaries.userId, userId),
+      eq(conversationSummaries.summaryType, summaryType as any)
+    ))
+    .orderBy(desc(conversationSummaries.relevanceScore));
+}
+
+export async function createConversationSummary(summary: InsertConversationSummary): Promise<ConversationSummary | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  await db.insert(conversationSummaries).values(summary);
+  const result = await db.select().from(conversationSummaries)
+    .where(eq(conversationSummaries.userId, summary.userId))
+    .orderBy(desc(conversationSummaries.id))
+    .limit(1);
+  return result[0];
+}
+
+export async function updateConversationSummary(id: number, summary: Partial<InsertConversationSummary>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(conversationSummaries).set({ ...summary, updatedAt: new Date() }).where(eq(conversationSummaries.id, id));
+}
+
+export async function deleteConversationSummary(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(conversationSummaries).where(eq(conversationSummaries.id, id));
+}
+
+// 獲取用戶的 AI 記憶摘要（用於注入 prompt）
+export async function getUserAIMemory(userId: number): Promise<string> {
+  const summaries = await getConversationSummariesByUserId(userId);
+  if (summaries.length === 0) return '';
+  
+  const memoryParts: string[] = [];
+  
+  const writingPrefs = summaries.filter(s => s.summaryType === 'writing_preference');
+  if (writingPrefs.length > 0) {
+    memoryParts.push(`【寫作偏好】\n${writingPrefs.map(s => s.content).join('\n')}`);
+  }
+  
+  const successPatterns = summaries.filter(s => s.summaryType === 'content_success');
+  if (successPatterns.length > 0) {
+    memoryParts.push(`【成功內容特徵】\n${successPatterns.map(s => s.content).join('\n')}`);
+  }
+  
+  const modPatterns = summaries.filter(s => s.summaryType === 'modification_pattern');
+  if (modPatterns.length > 0) {
+    memoryParts.push(`【修改偏好】\n${modPatterns.map(s => s.content).join('\n')}`);
+  }
+  
+  const styleFeedback = summaries.filter(s => s.summaryType === 'style_feedback');
+  if (styleFeedback.length > 0) {
+    memoryParts.push(`【風格反饋】\n${styleFeedback.map(s => s.content).join('\n')}`);
+  }
+  
+  return memoryParts.join('\n\n');
+}
+
+// ==================== 用戶經營狀態 ====================
+
+export async function getUserGrowthMetrics(userId: number): Promise<UserGrowthMetric | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(userGrowthMetrics)
+    .where(eq(userGrowthMetrics.userId, userId))
+    .limit(1);
+  return result[0];
+}
+
+export async function upsertUserGrowthMetrics(metrics: InsertUserGrowthMetric): Promise<UserGrowthMetric | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const existing = await getUserGrowthMetrics(metrics.userId);
+  
+  if (existing) {
+    await db.update(userGrowthMetrics)
+      .set({ ...metrics, updatedAt: new Date() })
+      .where(eq(userGrowthMetrics.id, existing.id));
+    return { ...existing, ...metrics };
+  } else {
+    await db.insert(userGrowthMetrics).values(metrics);
+    return getUserGrowthMetrics(metrics.userId);
+  }
+}
+
+// 根據數據自動判斷經營階段
+export async function calculateUserStage(userId: number): Promise<string> {
+  const metrics = await getUserGrowthMetrics(userId);
+  if (!metrics) return 'startup';
+  
+  const { followerCount, avgReach, totalSales } = metrics;
+  
+  // 規模化：粉絲 5000+，有成交紀錄
+  if ((followerCount || 0) >= 5000 && (totalSales || 0) > 0) {
+    return 'scale';
+  }
+  
+  // 變現期：粉絲 1000+，有穩定互動
+  if ((followerCount || 0) >= 1000) {
+    return 'monetize';
+  }
+  
+  // 成長期：粉絲 100-1000，流量穩定破千
+  if ((followerCount || 0) >= 100 && (avgReach || 0) >= 1000) {
+    return 'growth';
+  }
+  
+  // 起步期
+  return 'startup';
+}

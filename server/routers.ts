@@ -344,6 +344,180 @@ ${input.angle ? `切角方向：${input.angle}` : ''}
         };
       }),
 
+    // 生成變現內容
+    generateMonetizeContent: protectedProcedure
+      .input(z.object({
+        contentType: z.string(),
+        additionalContext: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const profile = await db.getIpProfileByUserId(ctx.user.id);
+        const products = await db.getUserProductsByUserId(ctx.user.id);
+        const stories = await db.getSuccessStoriesByUserId(ctx.user.id);
+        const aiMemory = await db.getUserAIMemory(ctx.user.id);
+        
+        const coreProduct = products.find(p => p.productType === 'core');
+        const leadProduct = products.find(p => p.productType === 'lead');
+        
+        const contentTypePrompts: Record<string, string> = {
+          profile_intro: `請幫我寫一篇「首頁自介文」，適合置頂。
+要點：
+- 開頭要有吸引力，讓人想繼續看
+- 簡潔介紹我是誰、我能幫什麼忙
+- 展現我的獨特價值
+- 最後引導訪客採取行動（追蹤/私訊）
+- 不要像廣告，要像朋友介紹自己`,
+          service_intro: `請幫我寫一篇「服務介紹文」。
+要點：
+- 用故事或場景帶入，不要直接說「我的服務」
+- 說明這個服務能解決什麼問題
+- 展現服務的獨特價值
+- 軟性 CTA：「想了解更多可以私訊我」
+- 保持原生內容風格`,
+          plus_one: `請幫我寫一篇「+1 互動文」。
+要點：
+- 提供一個免費資源/小禮物（例如：免費快篩、小指南）
+- 讓人留言 +1 就能獲得
+- 說明這個資源能幫什麼忙
+- 製造一點緊迫感（例如：限量、限時）
+- 不要像廣告，要像真心分享`,
+          free_value: `請幫我寫一篇「免費價值文」。
+要點：
+- 分享一個實用的小技巧或觀點
+- 讓讀者覺得「光看這篇就很有價值」
+- 展現你的專業度
+- 最後軟性引導：「想知道更多可以追蹤我」`,
+          success_story: `請幫我寫一篇「成功案例故事」。
+要點：
+- 用故事的方式呈現，不要直接說「我的客戶」
+- 描述客戶「之前」的狀態（不用療效詞彙）
+- 說明轉變過程
+- 分享「之後」的正面改變
+- 避免：「治好了」「痊癒了」等醫療用語`,
+          lead_magnet: `請幫我寫一篇「引流品推廣文」。
+要點：
+- 介紹我的低門檻服務
+- 強調「先體驗看看」的感覺
+- 說明這個服務適合誰
+- 軟性 CTA：「有興趣的可以私訊我」
+- 不要像廣告，要像朋友推薦`,
+        };
+        
+        const systemPrompt = `${SYSTEM_PROMPTS.contentGeneration}
+
+創作者資料：
+- 職業：${profile?.occupation || '未設定'}
+- 語氣風格：${profile?.voiceTone || '未設定'}
+- 專業支柱：${profile?.personaExpertise || '未設定'}
+- 情感支柱：${profile?.personaEmotion || '未設定'}
+- 觀點支柱：${profile?.personaViewpoint || '未設定'}
+
+產品資訊：
+- 核心品：${coreProduct?.name || '未設定'}（${coreProduct?.description || ''}）
+- 價格區間：${coreProduct?.priceRange || '未設定'}
+- 獨特價值：${coreProduct?.uniqueValue || '未設定'}
+${leadProduct ? `- 引流品：${leadProduct.name}（${leadProduct.priceRange || ''}）` : ''}
+
+${stories.length > 0 ? `成功案例：
+${stories.slice(0, 2).map(s => `- ${s.title}：${s.transformation || ''}`).join('\n')}` : ''}
+
+${aiMemory ? `AI 記憶（這位學員的偏好）：
+${aiMemory}` : ''}
+
+重要原則：
+1. 保持原生內容風格，不要像廣告
+2. 用故事和場景帶入，不要硬賣
+3. CTA 要軟性，像朋友分享
+4. 避免「限時優惠」「立即購買」等硬銷文字`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `${contentTypePrompts[input.contentType] || '請幫我寫一篇變現內容'}
+
+${input.additionalContext ? `補充說明：${input.additionalContext}` : ''}
+
+請直接給我完整的貼文內容，不需要額外解釋。` }
+          ],
+        });
+
+        await db.logApiUsage(ctx.user.id, 'generateMonetizeContent', 'llm', 800, 1000);
+        
+        // 創建草稿
+        const draft = await db.createDraft({
+          userId: ctx.user.id,
+          contentType: input.contentType as any,
+          body: typeof response.choices[0]?.message?.content === 'string' ? response.choices[0].message.content : '',
+        });
+
+        return {
+          content: response.choices[0]?.message?.content || '',
+          draftId: draft?.id,
+        };
+      }),
+
+    // 對話修改草稿
+    refineDraft: protectedProcedure
+      .input(z.object({
+        currentDraft: z.string(),
+        instruction: z.string(),
+        chatHistory: z.array(z.object({
+          role: z.enum(["user", "assistant"]),
+          content: z.string(),
+        })).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const profile = await db.getIpProfileByUserId(ctx.user.id);
+        const aiMemory = await db.getUserAIMemory(ctx.user.id);
+        
+        const systemPrompt = `你是一個專業的文案修改助理。你的任務是根據用戶的指示修改草稿。
+
+創作者資料：
+- 職業：${profile?.occupation || '未設定'}
+- 語氣風格：${profile?.voiceTone || '未設定'}
+
+${aiMemory ? `這位學員的偏好：
+${aiMemory}` : ''}
+
+重要原則：
+1. 保持創作者的語氣風格
+2. 只修改用戶要求的部分
+3. 直接給出修改後的完整內容，不需要解釋`;
+
+        const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `當前草稿：
+
+${input.currentDraft}` },
+        ];
+
+        // 加入對話歷史
+        if (input.chatHistory && input.chatHistory.length > 0) {
+          for (const msg of input.chatHistory) {
+            messages.push({ role: msg.role, content: msg.content });
+          }
+        }
+
+        messages.push({ role: "user", content: `請根據以下指示修改：${input.instruction}` });
+
+        const response = await invokeLLM({ messages });
+
+        await db.logApiUsage(ctx.user.id, 'refineDraft', 'llm', 500, 600);
+
+        // 儲存修改偏好到 AI 記憶
+        if (input.instruction.includes('更真誠') || input.instruction.includes('口語化') || input.instruction.includes('像廣告')) {
+          await db.createConversationSummary({
+            userId: ctx.user.id,
+            summaryType: 'modification_pattern',
+            content: `學員偏好：${input.instruction}`,
+          });
+        }
+
+        return {
+          content: response.choices[0]?.message?.content || '',
+        };
+      }),
+
     // 文案健檢
     optimize: protectedProcedure
       .input(z.object({
@@ -702,6 +876,142 @@ ${input.context ? `貼文內容是關於：${input.context}` : ''}
     activatedUsers: adminProcedure.query(async () => {
       return db.getActivatedUsers();
     }),
+  }),
+
+  // ==================== 用戶產品矩陣 ====================
+  userProduct: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const products = await db.getUserProductsByUserId(ctx.user.id);
+      return products ?? [];
+    }),
+
+    create: protectedProcedure
+      .input(z.object({
+        productType: z.enum(["lead", "core", "vip", "passive"]),
+        name: z.string(),
+        description: z.string().optional(),
+        priceRange: z.string().optional(),
+        deliveryTime: z.string().optional(),
+        uniqueValue: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return db.createUserProduct({ userId: ctx.user.id, ...input });
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        priceRange: z.string().optional(),
+        deliveryTime: z.string().optional(),
+        uniqueValue: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await db.updateUserProduct(id, data);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteUserProduct(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ==================== 成功案例故事 ====================
+  successStory: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const stories = await db.getSuccessStoriesByUserId(ctx.user.id);
+      return stories ?? [];
+    }),
+
+    create: protectedProcedure
+      .input(z.object({
+        title: z.string(),
+        clientBackground: z.string().optional(),
+        challenge: z.string().optional(),
+        transformation: z.string().optional(),
+        outcome: z.string().optional(),
+        testimonialQuote: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return db.createSuccessStory({ userId: ctx.user.id, ...input });
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        title: z.string().optional(),
+        clientBackground: z.string().optional(),
+        challenge: z.string().optional(),
+        transformation: z.string().optional(),
+        outcome: z.string().optional(),
+        testimonialQuote: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await db.updateSuccessStory(id, data);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteSuccessStory(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ==================== 用戶經營狀態 ====================
+  growthMetrics: router({
+    get: protectedProcedure.query(async ({ ctx }) => {
+      const metrics = await db.getUserGrowthMetrics(ctx.user.id);
+      return metrics ?? null;
+    }),
+
+    update: protectedProcedure
+      .input(z.object({
+        followerCount: z.number().optional(),
+        avgReach: z.number().optional(),
+        avgEngagement: z.number().optional(),
+        hasProfileSetup: z.boolean().optional(),
+        hasLineLink: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await db.upsertUserGrowthMetrics({ userId: ctx.user.id, ...input });
+        // 自動計算經營階段
+        const stage = await db.calculateUserStage(ctx.user.id);
+        await db.upsertUserGrowthMetrics({ userId: ctx.user.id, currentStage: stage as any });
+        return { success: true, stage };
+      }),
+
+    getStage: protectedProcedure.query(async ({ ctx }) => {
+      return db.calculateUserStage(ctx.user.id);
+    }),
+  }),
+
+  // ==================== AI 記憶系統 ====================
+  aiMemory: router({
+    getSummaries: protectedProcedure.query(async ({ ctx }) => {
+      return db.getConversationSummariesByUserId(ctx.user.id);
+    }),
+
+    getMemoryContext: protectedProcedure.query(async ({ ctx }) => {
+      return db.getUserAIMemory(ctx.user.id);
+    }),
+
+    addSummary: protectedProcedure
+      .input(z.object({
+        summaryType: z.enum(["writing_preference", "content_success", "modification_pattern", "topic_interest", "style_feedback"]),
+        content: z.string(),
+        metadata: z.any().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return db.createConversationSummary({ userId: ctx.user.id, ...input });
+      }),
   }),
 
   // ==================== 知識庫 ====================

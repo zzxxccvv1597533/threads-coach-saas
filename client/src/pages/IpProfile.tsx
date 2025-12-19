@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -21,6 +22,12 @@ import {
   Trash2,
   CheckCircle,
   Info,
+  ShoppingBag,
+  Star,
+  Crown,
+  Package,
+  Edit2,
+  BookOpen,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -30,6 +37,8 @@ export default function IpProfile() {
   const { data: audiences, isLoading: audiencesLoading } = trpc.audience.list.useQuery();
   const { data: pillars } = trpc.contentPillar.list.useQuery();
   const { data: personaPillarsData } = trpc.knowledge.personaPillars.useQuery();
+  const { data: userProducts, isLoading: productsLoading } = trpc.userProduct.list.useQuery();
+  const { data: successStories, isLoading: storiesLoading } = trpc.successStory.list.useQuery();
   
   const upsertProfile = trpc.ipProfile.upsert.useMutation({
     onSuccess: () => {
@@ -52,6 +61,38 @@ export default function IpProfile() {
     },
   });
 
+  const createProduct = trpc.userProduct.create.useMutation({
+    onSuccess: () => {
+      utils.userProduct.list.invalidate();
+      toast.success("產品已新增");
+      setNewProduct({ productType: "core", name: "", description: "", priceRange: "", deliveryTime: "", uniqueValue: "" });
+      setShowProductForm(false);
+    },
+  });
+
+  const deleteProduct = trpc.userProduct.delete.useMutation({
+    onSuccess: () => {
+      utils.userProduct.list.invalidate();
+      toast.success("產品已刪除");
+    },
+  });
+
+  const createStory = trpc.successStory.create.useMutation({
+    onSuccess: () => {
+      utils.successStory.list.invalidate();
+      toast.success("成功案例已新增");
+      setNewStory({ title: "", clientBackground: "", challenge: "", transformation: "", outcome: "", testimonialQuote: "" });
+      setShowStoryForm(false);
+    },
+  });
+
+  const deleteStory = trpc.successStory.delete.useMutation({
+    onSuccess: () => {
+      utils.successStory.list.invalidate();
+      toast.success("成功案例已刪除");
+    },
+  });
+
   const [formData, setFormData] = useState({
     occupation: "",
     voiceTone: "",
@@ -67,6 +108,28 @@ export default function IpProfile() {
     painPoint: "",
     desiredOutcome: "",
   });
+
+  const [newProduct, setNewProduct] = useState({
+    productType: "core" as "lead" | "core" | "vip" | "passive",
+    name: "",
+    description: "",
+    priceRange: "",
+    deliveryTime: "",
+    uniqueValue: "",
+  });
+
+  const [newStory, setNewStory] = useState({
+    title: "",
+    clientBackground: "",
+    challenge: "",
+    transformation: "",
+    outcome: "",
+    testimonialQuote: "",
+  });
+
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [showStoryForm, setShowStoryForm] = useState(false);
+  const [activeTab, setActiveTab] = useState<"basic" | "pillars" | "audience" | "products">("basic");
 
   useEffect(() => {
     if (profile) {
@@ -84,12 +147,17 @@ export default function IpProfile() {
 
   const calculateProgress = () => {
     let score = 0;
-    if (formData.occupation) score += 15;
-    if (formData.voiceTone) score += 15;
-    if (formData.viewpointStatement) score += 15;
-    if (formData.personaExpertise) score += 20;
-    if (formData.personaEmotion) score += 15;
-    if (formData.personaViewpoint) score += 20;
+    if (formData.occupation) score += 10;
+    if (formData.voiceTone) score += 10;
+    if (formData.viewpointStatement) score += 10;
+    if (formData.personaExpertise) score += 15;
+    if (formData.personaEmotion) score += 10;
+    if (formData.personaViewpoint) score += 15;
+    // 核心品是必填，佔 20%
+    const hasCoreProduct = userProducts?.some(p => p.productType === 'core');
+    if (hasCoreProduct) score += 20;
+    // 有受眾佔 10%
+    if (audiences && audiences.length > 0) score += 10;
     return score;
   };
 
@@ -109,7 +177,24 @@ export default function IpProfile() {
     setNewAudience({ segmentName: "", painPoint: "", desiredOutcome: "" });
   };
 
+  const handleAddProduct = () => {
+    if (!newProduct.name) {
+      toast.error("請輸入產品名稱");
+      return;
+    }
+    createProduct.mutate(newProduct);
+  };
+
+  const handleAddStory = () => {
+    if (!newStory.title) {
+      toast.error("請輸入案例標題");
+      return;
+    }
+    createStory.mutate(newStory);
+  };
+
   const progress = calculateProgress();
+  const hasCoreProduct = userProducts?.some(p => p.productType === 'core');
 
   if (isLoading) {
     return (
@@ -130,7 +215,7 @@ export default function IpProfile() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">IP 地基設定</h1>
             <p className="text-muted-foreground mt-1">
-              建立你的人設三支柱，讓 AI 更了解你的風格
+              建立你的人設三支柱與產品矩陣，讓 AI 更了解你的風格
             </p>
           </div>
           <Button onClick={handleSave} disabled={upsertProfile.isPending}>
@@ -147,7 +232,13 @@ export default function IpProfile() {
               <span className="text-sm font-bold text-primary">{progress}%</span>
             </div>
             <Progress value={progress} className="h-2" />
-            {progress < 80 && (
+            {!hasCoreProduct && (
+              <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                <Info className="w-3 h-3" />
+                請先設定你的核心產品/服務（必填）
+              </p>
+            )}
+            {progress < 80 && hasCoreProduct && (
               <p className="text-xs text-muted-foreground mt-2">
                 完成 80% 以上即可開始使用發文工作室
               </p>
@@ -161,15 +252,56 @@ export default function IpProfile() {
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="basic" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="basic">基本資料</TabsTrigger>
-            <TabsTrigger value="pillars">人設三支柱</TabsTrigger>
-            <TabsTrigger value="audience">目標受眾</TabsTrigger>
-          </TabsList>
+        <div className="space-y-6">
+          <div className="bg-muted p-1 rounded-lg grid grid-cols-4 gap-1">
+            <button
+              onClick={() => setActiveTab("basic")}
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeTab === "basic"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              基本資料
+            </button>
+            <button
+              onClick={() => setActiveTab("pillars")}
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeTab === "pillars"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              人設三支柱
+            </button>
+            <button
+              onClick={() => setActiveTab("audience")}
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeTab === "audience"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              目標受眾
+            </button>
+            <button
+              onClick={() => setActiveTab("products")}
+              className={`relative flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeTab === "products"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              我的產品
+              {!hasCoreProduct && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-500 rounded-full" />
+              )}
+            </button>
+          </div>
 
           {/* Basic Info Tab */}
-          <TabsContent value="basic" className="space-y-6">
+          {activeTab === "basic" && (
+          <div className="space-y-6">
             <Card className="elegant-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -233,10 +365,12 @@ export default function IpProfile() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+          )}
 
-          {/* Three Pillars Tab */}
-          <TabsContent value="pillars" className="space-y-6">
+          {/* Pillars Tab */}
+          {activeTab === "pillars" && (
+          <div className="space-y-6">
             {/* Info Card */}
             <Card className="border-primary/20 bg-primary/5">
               <CardContent className="pt-6">
@@ -342,10 +476,12 @@ export default function IpProfile() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+          )}
 
           {/* Audience Tab */}
-          <TabsContent value="audience" className="space-y-6">
+          {activeTab === "audience" && (
+          <div className="space-y-6">
             <Card className="elegant-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -442,8 +578,365 @@ export default function IpProfile() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          </div>
+          )}
+
+          {/* Products Tab */}
+          {activeTab === "products" && (
+          <div className="space-y-6">
+            {/* Info Card */}
+            <Card className="border-amber-500/20 bg-amber-500/5">
+              <CardContent className="pt-6">
+                <div className="flex gap-3">
+                  <ShoppingBag className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-amber-700 mb-1">為什麼要設定產品矩陣？</p>
+                    <p className="text-muted-foreground">
+                      設定你的產品/服務後，AI 可以幫你生成變現用的內容，包括首頁自介、服務介紹、成功案例故事等。
+                      <strong className="text-amber-700">核心品是必填項目</strong>，這是你的主要收入來源。
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Product Matrix */}
+            <Card className="elegant-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="w-5 h-5 text-primary" />
+                  產品矩陣
+                </CardTitle>
+                <CardDescription>
+                  設定你的服務與產品，讓 AI 幫你生成變現內容
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Product Type Guide */}
+                <div className="grid gap-3 md:grid-cols-2">
+                  {productTypes.map((type) => (
+                    <div 
+                      key={type.value}
+                      className={`p-3 rounded-lg border ${
+                        type.value === 'core' 
+                          ? 'border-amber-500/50 bg-amber-500/5' 
+                          : 'border-border/50 bg-muted/20'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        {type.icon}
+                        <span className="font-medium text-sm">{type.label}</span>
+                        {type.value === 'core' && (
+                          <Badge variant="outline" className="text-xs border-amber-500 text-amber-600">必填</Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{type.description}</p>
+                      <p className="text-xs text-primary mt-1">{type.priceHint}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Existing Products */}
+                {productsLoading ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-24 w-full" />
+                  </div>
+                ) : userProducts && userProducts.length > 0 ? (
+                  <div className="space-y-3">
+                    {userProducts.map((product) => {
+                      const typeInfo = productTypes.find(t => t.value === product.productType);
+                      return (
+                        <div 
+                          key={product.id}
+                          className={`p-4 rounded-lg border ${
+                            product.productType === 'core'
+                              ? 'border-amber-500/50 bg-amber-500/5'
+                              : 'border-border/50 bg-muted/30'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                {typeInfo?.icon}
+                                <p className="font-medium">{product.name}</p>
+                                <Badge variant="outline" className="text-xs">
+                                  {typeInfo?.label}
+                                </Badge>
+                              </div>
+                              {product.description && (
+                                <p className="text-sm text-muted-foreground">{product.description}</p>
+                              )}
+                              <div className="flex gap-4 text-xs text-muted-foreground">
+                                {product.priceRange && <span>💰 {product.priceRange}</span>}
+                                {product.deliveryTime && <span>⏱️ {product.deliveryTime}</span>}
+                              </div>
+                              {product.uniqueValue && (
+                                <p className="text-xs text-primary">✨ {product.uniqueValue}</p>
+                              )}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteProduct.mutate({ id: product.id })}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    尚未設定產品，請先新增你的核心產品
+                  </div>
+                )}
+
+                {/* Add Product Button/Form */}
+                {!showProductForm ? (
+                  <Button onClick={() => setShowProductForm(true)} variant="outline" className="w-full">
+                    <Plus className="w-4 h-4 mr-2" />
+                    新增產品/服務
+                  </Button>
+                ) : (
+                  <div className="border-t border-border/50 pt-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium">新增產品/服務</p>
+                      <Button variant="ghost" size="sm" onClick={() => setShowProductForm(false)}>
+                        取消
+                      </Button>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>產品類型</Label>
+                      <RadioGroup
+                        value={newProduct.productType}
+                        onValueChange={(value) => setNewProduct({ ...newProduct, productType: value as any })}
+                        className="grid grid-cols-2 gap-2"
+                      >
+                        {productTypes.map((type) => (
+                          <div key={type.value} className="flex items-center space-x-2">
+                            <RadioGroupItem value={type.value} id={`type-${type.value}`} />
+                            <Label htmlFor={`type-${type.value}`} className="flex items-center gap-1 cursor-pointer text-sm">
+                              {type.icon}
+                              {type.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>產品/服務名稱 *</Label>
+                      <Input
+                        placeholder="例如：完整命盤解讀、15分鐘快速塔羅"
+                        value={newProduct.name}
+                        onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>服務說明</Label>
+                      <Textarea
+                        placeholder="簡單描述這個服務能幫客戶什麼..."
+                        value={newProduct.description}
+                        onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                        rows={2}
+                      />
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>價格區間</Label>
+                        <Input
+                          placeholder="例如：3000-5000元"
+                          value={newProduct.priceRange}
+                          onChange={(e) => setNewProduct({ ...newProduct, priceRange: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>服務時長</Label>
+                        <Input
+                          placeholder="例如：60分鐘、1週內交付"
+                          value={newProduct.deliveryTime}
+                          onChange={(e) => setNewProduct({ ...newProduct, deliveryTime: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>你的獨特價值（差異化）</Label>
+                      <Textarea
+                        placeholder="你跟同業的差異是什麼？例如：我是命理界的閨蜜，用聊天的方式解讀..."
+                        value={newProduct.uniqueValue}
+                        onChange={(e) => setNewProduct({ ...newProduct, uniqueValue: e.target.value })}
+                        rows={2}
+                      />
+                    </div>
+
+                    <Button onClick={handleAddProduct} disabled={createProduct.isPending}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      新增產品
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Success Stories */}
+            <Card className="elegant-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-emerald-500" />
+                  成功案例故事
+                </CardTitle>
+                <CardDescription>
+                  用故事化的方式呈現客戶轉變，避免直接講療效
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Story Guide */}
+                <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5">
+                  <p className="text-sm text-emerald-700 font-medium mb-2">故事化案例小技巧：</p>
+                  <ul className="text-xs text-muted-foreground space-y-1">
+                    <li>• 描述客戶「之前」的狀態（不要用療效詞彙）</li>
+                    <li>• 說明他們經歷了什麼轉變過程</li>
+                    <li>• 分享「之後」的正面改變（用客戶自己的話）</li>
+                    <li>• 避免：「治好了」「痊癒了」等醫療用語</li>
+                  </ul>
+                </div>
+
+                {/* Existing Stories */}
+                {storiesLoading ? (
+                  <Skeleton className="h-24 w-full" />
+                ) : successStories && successStories.length > 0 ? (
+                  <div className="space-y-3">
+                    {successStories.map((story) => (
+                      <div 
+                        key={story.id}
+                        className="p-4 rounded-lg border border-border/50 bg-muted/30"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-2">
+                            <p className="font-medium">{story.title}</p>
+                            {story.clientBackground && (
+                              <p className="text-sm text-muted-foreground">
+                                <span className="font-medium">背景：</span>{story.clientBackground}
+                              </p>
+                            )}
+                            {story.transformation && (
+                              <p className="text-sm text-muted-foreground">
+                                <span className="font-medium">轉變：</span>{story.transformation}
+                              </p>
+                            )}
+                            {story.testimonialQuote && (
+                              <p className="text-sm italic text-primary">
+                                「{story.testimonialQuote}」
+                              </p>
+                            )}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => deleteStory.mutate({ id: story.id })}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    尚未新增成功案例
+                  </div>
+                )}
+
+                {/* Add Story Button/Form */}
+                {!showStoryForm ? (
+                  <Button onClick={() => setShowStoryForm(true)} variant="outline" className="w-full">
+                    <Plus className="w-4 h-4 mr-2" />
+                    新增成功案例
+                  </Button>
+                ) : (
+                  <div className="border-t border-border/50 pt-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium">新增成功案例</p>
+                      <Button variant="ghost" size="sm" onClick={() => setShowStoryForm(false)}>
+                        取消
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>案例標題 *</Label>
+                      <Input
+                        placeholder="例如：從迷茫到找到方向的小美"
+                        value={newStory.title}
+                        onChange={(e) => setNewStory({ ...newStory, title: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>客戶背景（匿名）</Label>
+                      <Textarea
+                        placeholder="例如：30歲上班族，對工作感到迷茫..."
+                        value={newStory.clientBackground}
+                        onChange={(e) => setNewStory({ ...newStory, clientBackground: e.target.value })}
+                        rows={2}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>面臨的挑戰</Label>
+                      <Textarea
+                        placeholder="他當時遇到什麼困難？"
+                        value={newStory.challenge}
+                        onChange={(e) => setNewStory({ ...newStory, challenge: e.target.value })}
+                        rows={2}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>轉變過程</Label>
+                      <Textarea
+                        placeholder="經過你的服務後，他經歷了什麼轉變？"
+                        value={newStory.transformation}
+                        onChange={(e) => setNewStory({ ...newStory, transformation: e.target.value })}
+                        rows={2}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>成果（避免療效承諾）</Label>
+                      <Textarea
+                        placeholder="現在的狀態是什麼？用正面描述..."
+                        value={newStory.outcome}
+                        onChange={(e) => setNewStory({ ...newStory, outcome: e.target.value })}
+                        rows={2}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>客戶見證語錄</Label>
+                      <Textarea
+                        placeholder="客戶自己說的話（可匿名）"
+                        value={newStory.testimonialQuote}
+                        onChange={(e) => setNewStory({ ...newStory, testimonialQuote: e.target.value })}
+                        rows={2}
+                      />
+                    </div>
+
+                    <Button onClick={handleAddStory} disabled={createStory.isPending}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      新增案例
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          )}
+        </div>
       </div>
     </DashboardLayout>
   );
@@ -464,5 +957,36 @@ const goals = [
     value: "expression",
     label: "自我表達",
     description: "主要目標是建立品牌故事、分享觀點與價值觀",
+  },
+];
+
+const productTypes = [
+  {
+    value: "lead",
+    label: "引流品",
+    description: "低門檻服務，讓客戶先體驗",
+    priceHint: "建議 800-1500 元",
+    icon: <Star className="w-4 h-4 text-blue-500" />,
+  },
+  {
+    value: "core",
+    label: "核心品",
+    description: "主要收入來源，你的招牌服務",
+    priceHint: "建議 3000-8000 元",
+    icon: <ShoppingBag className="w-4 h-4 text-amber-500" />,
+  },
+  {
+    value: "vip",
+    label: "高端 VIP",
+    description: "高客單價服務，深度陪伴",
+    priceHint: "建議 1 萬元以上",
+    icon: <Crown className="w-4 h-4 text-purple-500" />,
+  },
+  {
+    value: "passive",
+    label: "被動產品",
+    description: "數位產品、周邊商品",
+    priceHint: "線上課程、開運小物等",
+    icon: <Package className="w-4 h-4 text-emerald-500" />,
   },
 ];

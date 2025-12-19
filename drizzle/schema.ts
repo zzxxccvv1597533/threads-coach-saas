@@ -337,3 +337,88 @@ export const auditLogs = mysqlTable("audit_logs", {
   meta: json("meta"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+
+
+// ==================== 用戶產品矩陣 ====================
+
+export const userProducts = mysqlTable("user_products", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  productType: mysqlEnum("userProductType", ["lead", "core", "vip", "passive"]).notNull(),
+  name: varchar("name", { length: 120 }).notNull(),
+  description: text("description"),
+  priceRange: varchar("priceRange", { length: 50 }), // e.g., "800-1500", "3000-8000"
+  deliveryTime: varchar("deliveryTime", { length: 50 }), // e.g., "15分鐘", "1小時", "1週"
+  uniqueValue: text("uniqueValue"), // 服務特色/差異化
+  isActive: boolean("isActive").default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserProduct = typeof userProducts.$inferSelect;
+export type InsertUserProduct = typeof userProducts.$inferInsert;
+
+// 成功案例故事
+export const successStories = mysqlTable("success_stories", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 120 }),
+  clientBackground: text("clientBackground"), // 客戶背景（匿名）
+  challenge: text("challenge"), // 面臨的挑戰
+  transformation: text("transformation"), // 轉變過程
+  outcome: text("outcome"), // 成果（避免療效承諾）
+  testimonialQuote: text("testimonialQuote"), // 客戶見證語錄
+  isPublic: boolean("isPublic").default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SuccessStory = typeof successStories.$inferSelect;
+export type InsertSuccessStory = typeof successStories.$inferInsert;
+
+// ==================== AI 記憶系統 ====================
+
+// 對話摘要（用於 AI 記憶）
+export const conversationSummaries = mysqlTable("conversation_summaries", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  summaryType: mysqlEnum("summaryType", [
+    "writing_preference",  // 寫作偏好
+    "content_success",     // 成功內容特徵
+    "modification_pattern", // 修改模式
+    "topic_interest",      // 主題興趣
+    "style_feedback"       // 風格反饋
+  ]).notNull(),
+  content: text("content").notNull(),
+  metadata: json("metadata"), // 額外結構化數據
+  relevanceScore: int("relevanceScore").default(100), // 相關性分數，用於排序
+  expiresAt: timestamp("expiresAt"), // 可選的過期時間
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ConversationSummary = typeof conversationSummaries.$inferSelect;
+export type InsertConversationSummary = typeof conversationSummaries.$inferInsert;
+
+// 用戶經營狀態（用於階段判斷）
+export const userGrowthMetrics = mysqlTable("user_growth_metrics", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  followerCount: int("followerCount").default(0),
+  avgReach: int("avgReach").default(0), // 平均觸及
+  avgEngagement: int("avgEngagement").default(0), // 平均互動
+  hasProfileSetup: boolean("hasProfileSetup").default(false), // 是否已設置首頁自介
+  hasLineLink: boolean("hasLineLink").default(false), // 是否已設置 LINE 連結
+  firstSaleAt: timestamp("firstSaleAt"), // 首次成交時間
+  totalSales: int("totalSales").default(0), // 總成交數
+  currentStage: mysqlEnum("currentStage", [
+    "startup",    // 起步期：粉絲 < 100
+    "growth",     // 成長期：粉絲 100-1000，流量穩定破千
+    "monetize",   // 變現期：粉絲 1000+，有穩定互動
+    "scale"       // 規模化：粉絲 5000+，有成交紀錄
+  ]).default("startup"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserGrowthMetric = typeof userGrowthMetrics.$inferSelect;
+export type InsertUserGrowthMetric = typeof userGrowthMetrics.$inferInsert;
