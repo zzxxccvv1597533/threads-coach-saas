@@ -15,6 +15,7 @@ import Reports from "./pages/Reports";
 import Admin from "./pages/Admin";
 import PendingActivation from "./pages/PendingActivation";
 import Apply from "./pages/Apply";
+import DraftDetail from "./pages/DraftDetail";
 
 function Router() {
   return (
@@ -30,6 +31,8 @@ function Router() {
       <Route path={"/admin"} component={Admin} />
       <Route path={"/pending"} component={PendingActivation} />
       <Route path={"/apply"} component={Apply} />
+      <Route path={"/register"} component={Apply} />
+      <Route path={"/drafts/:id"} component={DraftDetail} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

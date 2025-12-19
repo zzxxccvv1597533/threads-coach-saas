@@ -34,7 +34,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Copy, Ticket, Plus, Trash2 } from "lucide-react";
+import { Copy, Ticket, Plus, Trash2, Info, Link } from "lucide-react";
 
 type UserWithActivation = {
   id: number;
@@ -535,6 +535,9 @@ function InvitationManagement() {
   const [validDays, setValidDays] = useState(90);
   const [note, setNote] = useState("");
 
+  // 獲取當前網站的基礎 URL
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+
   const { data: invitations, isLoading } = trpc.invitation.list.useQuery();
 
   const createMutation = trpc.invitation.create.useMutation({
@@ -608,8 +611,47 @@ function InvitationManagement() {
   const activeCount = invitations?.filter(i => i.status === 'active').length || 0;
   const usedCount = invitations?.filter(i => i.status === 'used').length || 0;
 
+  // 複製註冊連結
+  const copyRegisterLink = (code: string) => {
+    const link = `${baseUrl}/apply?code=${code}`;
+    navigator.clipboard.writeText(link);
+    toast.success("已複製學員註冊連結");
+  };
+
   return (
     <div className="space-y-6">
+      {/* 使用說明卡片 */}
+      <Card className="elegant-card border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-blue-800">
+            <Info className="w-5 h-5" />
+            如何使用邀請碼
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <h4 className="font-medium text-blue-900">方法一：發送註冊連結</h4>
+              <p className="text-sm text-blue-700">
+                點擊邀請碼旁的「複製連結」按鈕，將完整註冊連結發送給學員。
+                學員點擊連結後會自動帶入邀請碼。
+              </p>
+            </div>
+            <div className="space-y-2">
+              <h4 className="font-medium text-blue-900">方法二：發送邀請碼</h4>
+              <p className="text-sm text-blue-700">
+                複製邀請碼發送給學員，學員在註冊時輸入邀請碼即可自動開通。
+              </p>
+            </div>
+          </div>
+          <div className="pt-2 border-t border-blue-200">
+            <p className="text-xs text-blue-600">
+              💡 提示：每個邀請碼只能使用一次，使用後學員帳號會自動開通指定天數。
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* 統計卡片 */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="elegant-card">
@@ -684,17 +726,31 @@ function InvitationManagement() {
                   className="flex items-center gap-4 p-4 rounded-xl border bg-card"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
+                    <div className="flex items-center gap-3 mb-2">
                       <code className="text-lg font-mono font-bold tracking-wider">{inv.code}</code>
+                      {getStatusBadge(inv.status)}
+                    </div>
+                    <div className="flex items-center gap-2 mb-2">
                       <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8"
+                        variant="outline" 
+                        size="sm"
+                        className="h-7 text-xs"
                         onClick={() => copyToClipboard(inv.code)}
                       >
-                        <Copy className="w-4 h-4" />
+                        <Copy className="w-3 h-3 mr-1" />
+                        複製碼
                       </Button>
-                      {getStatusBadge(inv.status)}
+                      {inv.status === 'active' && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="h-7 text-xs text-blue-600 border-blue-200 hover:bg-blue-50"
+                          onClick={() => copyRegisterLink(inv.code)}
+                        >
+                          <Link className="w-3 h-3 mr-1" />
+                          複製連結
+                        </Button>
+                      )}
                     </div>
                     <div className="text-sm text-muted-foreground space-x-3">
                       <span>有效期：{inv.validDays} 天</span>

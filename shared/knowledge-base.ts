@@ -35,17 +35,98 @@ export const PERSONA_THREE_PILLARS = {
 };
 
 // ==================== 內容類型 ====================
+// 每種類型有不同的輸入需求和結構要求
 export const CONTENT_TYPES = [
-  { id: "knowledge", name: "知識型", description: "分享專業知識、技巧、方法", example: "塔羅牌的三個常見誤解..." },
-  { id: "summary", name: "整理型", description: "整理、歸納、清單式內容", example: "5個讓你更有魅力的小習慣..." },
-  { id: "story", name: "故事型", description: "個人經歷、案例分享", example: "今天有個案主問我..." },
-  { id: "viewpoint", name: "觀點型", description: "表達立場、價值觀", example: "我一直相信..." },
-  { id: "contrast", name: "反差型", description: "打破認知、製造驚喜", example: "很多人以為...其實..." },
-  { id: "casual", name: "閒聊型", description: "日常分享、輕鬆互動", example: "今天發生了一件有趣的事..." },
-  { id: "dialogue", name: "對話型", description: "對話截圖、問答形式", example: "朋友問我：「你怎麼知道...」" },
-  { id: "question", name: "提問型", description: "引發思考、徵求意見", example: "你們覺得...?" },
-  { id: "poll", name: "投票型", description: "選擇題、投票互動", example: "A還是B？" },
-  { id: "quote", name: "引用型", description: "引用名言、他人觀點", example: "「...」這句話讓我想到..." }
+  { 
+    id: "knowledge", 
+    name: "知識型", 
+    description: "分享專業知識、技巧、方法", 
+    example: "塔羅牌的三個常見誤解...",
+    inputType: "full", // full = 需要完整結構
+    inputFields: ["material"],
+    structure: "golden" // 黃金結構：Hook + 內容 + CTA
+  },
+  { 
+    id: "summary", 
+    name: "整理型", 
+    description: "整理、歸納、清單式內容", 
+    example: "5個讓你更有魅力的小習慣...",
+    inputType: "full",
+    inputFields: ["material", "count"],
+    structure: "list" // 清單結構
+  },
+  { 
+    id: "story", 
+    name: "故事型", 
+    description: "個人經歷、案例分享", 
+    example: "今天有個案主問我...",
+    inputType: "full",
+    inputFields: ["material"],
+    structure: "narrative" // 敘事結構
+  },
+  { 
+    id: "viewpoint", 
+    name: "觀點型", 
+    description: "表達立場、價值觀", 
+    example: "我一直相信...",
+    inputType: "stance", // 需要立場/觀點
+    inputFields: ["stance", "reason"],
+    structure: "argument" // 論述結構
+  },
+  { 
+    id: "contrast", 
+    name: "反差型", 
+    description: "打破認知、製造驚喜", 
+    example: "很多人以為...其實...",
+    inputType: "contrast",
+    inputFields: ["common_belief", "truth"],
+    structure: "twist" // 轉折結構
+  },
+  { 
+    id: "casual", 
+    name: "閒聊型", 
+    description: "日常分享、輕鬆互動", 
+    example: "今天發生了一件有趣的事...",
+    inputType: "simple", // 簡單輸入
+    inputFields: ["topic"],
+    structure: "free" // 自由結構
+  },
+  { 
+    id: "dialogue", 
+    name: "對話型", 
+    description: "對話截圖、問答形式", 
+    example: "朋友問我：「你怎麼知道...」",
+    inputType: "dialogue",
+    inputFields: ["question", "context"],
+    structure: "qa" // 問答結構
+  },
+  { 
+    id: "question", 
+    name: "提問型", 
+    description: "引發思考、徵求意見", 
+    example: "你們覺得...?",
+    inputType: "question", // 只需要問題主題
+    inputFields: ["topic"],
+    structure: "question" // 簡單提問，不需要完整結構
+  },
+  { 
+    id: "poll", 
+    name: "投票型", 
+    description: "選擇題、投票互動", 
+    example: "A還是B？",
+    inputType: "poll", // 需要選項
+    inputFields: ["topic", "options"],
+    structure: "poll" // 投票結構
+  },
+  { 
+    id: "quote", 
+    name: "引用型", 
+    description: "引用名言、他人觀點", 
+    example: "「...」這句話讓我想到...",
+    inputType: "quote",
+    inputFields: ["quote", "reflection"],
+    structure: "reflection" // 反思結構
+  }
 ];
 
 // ==================== Hook 風格 ====================

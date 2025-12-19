@@ -19,7 +19,12 @@ import {
 
 export default function Apply() {
   const { user, loading: isLoading } = useAuth();
-  const [inviteCode, setInviteCode] = useState("");
+  
+  // 從 URL 參數獲取邀請碼
+  const urlParams = new URLSearchParams(window.location.search);
+  const codeFromUrl = urlParams.get('code') || '';
+  
+  const [inviteCode, setInviteCode] = useState(codeFromUrl);
   
   const { data: status, refetch: refetchStatus } = trpc.invitation.myStatus.useQuery(
     undefined,
