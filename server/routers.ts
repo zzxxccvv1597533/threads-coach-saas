@@ -590,31 +590,78 @@ ${input.currentDraft}` },
       .mutation(async ({ ctx, input }) => {
         const profile = await db.getIpProfileByUserId(ctx.user.id);
         
+        // 整合知識庫中的 Hook 策略和「說人話」原則
         const systemPrompt = `${SYSTEM_PROMPTS.optimization}
 
 創作者人設：
 - 語氣風格：${profile?.voiceTone || '未設定'}
 - 專業支柱：${profile?.personaExpertise || '未設定'}
 - 情感支柱：${profile?.personaEmotion || '未設定'}
-- 觀點支柱：${profile?.personaViewpoint || '未設定'}`;
+- 觀點支柱：${profile?.personaViewpoint || '未設定'}
+
+## 評分標準（每項 1-10 分）
+
+### Hook 開頭評分標準：
+- 9-10分：開頭讓人立刻停下，符合鏡像/反差/解法三大策略之一
+- 7-8分：開頭有吸引力，但可以更強
+- 5-6分：開頭普通，沒有特別的停留點
+- 1-4分：開頭弱，讀者可能直接滑過
+
+### 「說人話」評分標準：
+- 9-10分：完全口語化，像朋友聊天，沒有專業術語
+- 7-8分：大部分口語化，偶有專業詞彙但不影響理解
+- 5-6分：有些專業術語，需要思考才能理解
+- 1-4分：太專業或太書面，一般人聽不懂
+
+### CTA 評分標準：
+- 9-10分：CTA 明確且軟性，讓人想行動但不像廣告
+- 7-8分：CTA 清晰，但可以更自然
+- 5-6分：CTA 模糊或太硬
+- 1-4分：沒有 CTA 或 CTA 像廣告
+
+### 結構評分標準：
+- 9-10分：結構清晰，段落適中，很好吸收
+- 7-8分：結構還可以，但有優化空間
+- 5-6分：結構有點亂，段落太長或太短
+- 1-4分：結構混亂，難以閱讀
+
+### Hashtag 評分標準：
+- 9-10分：Hashtag 精準且數量適中（3-5個），有助於曝光
+- 7-8分：Hashtag 還可以，但可以更精準
+- 5-6分：Hashtag 太多或太少，或不夠精準
+- 1-4分：沒有 Hashtag 或 Hashtag 完全不相關`;
 
         const response = await invokeLLM({
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: `請用四透鏡框架檢查並優化這篇文案：
+            { role: "user", content: `請用以下格式檢查並優化這篇文案：
 
 「${input.text}」
 
-請依序檢查：
-1. 心法透鏡：情緒基調是渴望還是焦慮？
-2. 人設透鏡：語氣像不像創作者？
-3. 結構透鏡：好不好吸收？
-4. 轉化透鏡：CTA是否明確？
+## 請輸出以下內容：
 
-然後提供：
-- 每個透鏡的檢查結果與建議
-- 優化版本A（小幅調整）
-- 優化版本B（大幅重寫）` }
+### 📊 文案評分
+
+| 項目 | 分數 | 說明 |
+|------|------|------|
+| Hook 開頭 | X/10 | (簡短說明) |
+| 說人話 | X/10 | (簡短說明) |
+| CTA | X/10 | (簡短說明) |
+| 結構 | X/10 | (簡短說明) |
+| Hashtag | X/10 | (簡短說明) |
+| **總分** | **X/50** | |
+
+### 🔍 具體優化建議
+
+1. **Hook 開頭**：(具體建議，如果需要優化，提供 2-3 個替代開頭)
+2. **說人話**：(列出需要替換的專業術語和更白話的說法)
+3. **CTA**：(如果需要優化，提供更軟性的 CTA 建議)
+4. **結構**：(如果需要優化，提供結構調整建議)
+5. **Hashtag**：(如果需要優化，提供更好的 Hashtag 建議)
+
+### ✨ 優化版本
+
+(直接輸出優化後的完整文案，不需要額外說明)` }
           ],
         });
 
@@ -1087,6 +1134,74 @@ ${input.context ? `貼文內容是關於：${input.context}` : ''}
     productMatrix: publicProcedure.query(() => KNOWLEDGE_BASE.productMatrix),
     businessGoals: publicProcedure.query(() => KNOWLEDGE_BASE.businessGoals),
     personaPillars: publicProcedure.query(() => KNOWLEDGE_BASE.personaThreePillars),
+  }),
+
+  // ==================== 邀請碼系統 ====================
+  invitation: router({
+    // 驗證並使用邀請碼（公開 API，用於學員註冊）
+    use: protectedProcedure
+      .input(z.object({ code: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.useInvitationCode(input.code, ctx.user.id);
+      }),
+    
+    // 查詢當前用戶的開通狀態
+    myStatus: protectedProcedure.query(async ({ ctx }) => {
+      return {
+        activationStatus: ctx.user.activationStatus,
+        activatedAt: ctx.user.activatedAt,
+        expiresAt: ctx.user.expiresAt,
+        activationNote: ctx.user.activationNote,
+      };
+    }),
+    
+    // 以下是管理員專用 API
+    
+    // 創建單個邀請碼
+    create: adminProcedure
+      .input(z.object({
+        validDays: z.number().default(90),
+        note: z.string().optional(),
+        expiresAt: z.date().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return db.createInvitationCode({
+          createdBy: ctx.user.id,
+          validDays: input.validDays,
+          note: input.note,
+          expiresAt: input.expiresAt,
+        });
+      }),
+    
+    // 批量創建邀請碼
+    createBatch: adminProcedure
+      .input(z.object({
+        count: z.number().min(1).max(100),
+        validDays: z.number().default(90),
+        note: z.string().optional(),
+        expiresAt: z.date().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return db.createBatchInvitationCodes({
+          createdBy: ctx.user.id,
+          count: input.count,
+          validDays: input.validDays,
+          note: input.note,
+          expiresAt: input.expiresAt,
+        });
+      }),
+    
+    // 獲取所有邀請碼
+    list: adminProcedure.query(async () => {
+      return db.getAllInvitationCodes();
+    }),
+    
+    // 撤銷邀請碼
+    revoke: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        return db.revokeInvitationCode(input.id);
+      }),
   }),
 });
 

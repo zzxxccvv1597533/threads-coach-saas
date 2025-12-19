@@ -264,6 +264,27 @@ export default function WritingStudio() {
   // Show warning banner instead of blocking
   const showIpWarning = ipProgress < 50;
 
+  // 計算缺少的 IP 資料項目
+  const missingIpItems = (() => {
+    if (!ipProfile) return [];
+    const items: { name: string; boost: string; link: string }[] = [];
+    if (!ipProfile.occupation) {
+      items.push({ name: '職業/身份', boost: '專業度 +15%', link: '/ip-profile' });
+    }
+    if (!ipProfile.personaExpertise || !ipProfile.personaEmotion || !ipProfile.personaViewpoint) {
+      items.push({ name: '人設三支柱', boost: '粉絲記憶度 +30%', link: '/ip-profile' });
+    }
+    if (!ipProfile.viewpointStatement) {
+      items.push({ name: '信念價值觀', boost: '內容一致性 +25%', link: '/ip-profile' });
+    }
+    return items;
+  })();
+
+  // 檢查產品資訊是否完善
+  const missingProductInfo = !hasCoreProduct ? [
+    { name: '核心產品', boost: '變現轉換率 +40%', link: '/ip-profile' }
+  ] : [];
+
   // 判斷是否應該顯示變現建議
   const shouldShowMonetizeTip = growthMetrics && 
     ((growthMetrics.followerCount ?? 0) >= 100 || (growthMetrics.avgReach ?? 0) >= 1000);
@@ -564,17 +585,82 @@ export default function WritingStudio() {
 
             {/* Step 3: Draft Result with Chat */}
             {step >= 3 && draftResult && (
-              <DraftResultWithChat
-                draftResult={draftResult}
-                draftId={draftId}
-                chatMessages={chatMessages}
-                chatInput={chatInput}
-                isChatting={isChatting}
-                onChatInputChange={setChatInput}
-                onChatSubmit={handleChatSubmit}
-                onCopy={handleCopy}
-                chatEndRef={chatEndRef}
-              />
+              <>
+                <DraftResultWithChat
+                  draftResult={draftResult}
+                  draftId={draftId}
+                  chatMessages={chatMessages}
+                  chatInput={chatInput}
+                  isChatting={isChatting}
+                  onChatInputChange={setChatInput}
+                  onChatSubmit={handleChatSubmit}
+                  onCopy={handleCopy}
+                  chatEndRef={chatEndRef}
+                />
+                
+                {/* IP 未完善提醒卡片 */}
+                {(missingIpItems.length > 0 || missingProductInfo.length > 0) && (
+                  <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-amber-800 text-base">
+                        <Zap className="w-5 h-5" />
+                        提升內容效果的小建議
+                      </CardTitle>
+                      <CardDescription className="text-amber-700">
+                        完善以下資料，讓 AI 產出更符合你風格的內容
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="space-y-3">
+                        {missingIpItems.map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-3 bg-white/60 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                                <Info className="w-4 h-4 text-amber-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-sm text-amber-900">設定{item.name}</p>
+                                <p className="text-xs text-amber-700">完善後可提升 <span className="font-semibold text-emerald-600">{item.boost}</span></p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-amber-700 hover:text-amber-900 hover:bg-amber-100"
+                              onClick={() => window.location.href = item.link}
+                            >
+                              前往設定
+                              <ChevronRight className="w-4 h-4 ml-1" />
+                            </Button>
+                          </div>
+                        ))}
+                        {missingProductInfo.map((item, idx) => (
+                          <div key={`product-${idx}`} className="flex items-center justify-between p-3 bg-white/60 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                                <ShoppingBag className="w-4 h-4 text-emerald-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-sm text-amber-900">設定{item.name}</p>
+                                <p className="text-xs text-amber-700">完善後可提升 <span className="font-semibold text-emerald-600">{item.boost}</span></p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-amber-700 hover:text-amber-900 hover:bg-amber-100"
+                              onClick={() => window.location.href = item.link}
+                            >
+                              前往設定
+                              <ChevronRight className="w-4 h-4 ml-1" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
             )}
           </div>
           )}
@@ -697,17 +783,60 @@ export default function WritingStudio() {
 
                 {/* Draft Result with Chat */}
                 {draftResult && (
-                  <DraftResultWithChat
-                    draftResult={draftResult}
-                    draftId={draftId}
-                    chatMessages={chatMessages}
-                    chatInput={chatInput}
-                    isChatting={isChatting}
-                    onChatInputChange={setChatInput}
-                    onChatSubmit={handleChatSubmit}
-                    onCopy={handleCopy}
-                    chatEndRef={chatEndRef}
-                  />
+                  <>
+                    <DraftResultWithChat
+                      draftResult={draftResult}
+                      draftId={draftId}
+                      chatMessages={chatMessages}
+                      chatInput={chatInput}
+                      isChatting={isChatting}
+                      onChatInputChange={setChatInput}
+                      onChatSubmit={handleChatSubmit}
+                      onCopy={handleCopy}
+                      chatEndRef={chatEndRef}
+                    />
+                    
+                    {/* IP 未完善提醒卡片 - 變現內容 */}
+                    {missingIpItems.length > 0 && (
+                      <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="flex items-center gap-2 text-amber-800 text-base">
+                            <Zap className="w-5 h-5" />
+                            提升變現效果的小建議
+                          </CardTitle>
+                          <CardDescription className="text-amber-700">
+                            完善以下資料，讓變現內容更有說服力
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <div className="space-y-3">
+                            {missingIpItems.map((item, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-3 bg-white/60 rounded-lg">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                                    <Info className="w-4 h-4 text-amber-600" />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-sm text-amber-900">設定{item.name}</p>
+                                    <p className="text-xs text-amber-700">完善後可提升 <span className="font-semibold text-emerald-600">{item.boost}</span></p>
+                                  </div>
+                                </div>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="text-amber-700 hover:text-amber-900 hover:bg-amber-100"
+                                  onClick={() => window.location.href = item.link}
+                                >
+                                  前往設定
+                                  <ChevronRight className="w-4 h-4 ml-1" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -719,7 +848,7 @@ export default function WritingStudio() {
   );
 }
 
-// 草稿結果 + 對話修改組件
+// 草稿結果 + 對話修改組件 (ChatGPT 風格)
 interface DraftResultWithChatProps {
   draftResult: string;
   draftId: number | null;
@@ -745,13 +874,11 @@ function DraftResultWithChat({
 }: DraftResultWithChatProps) {
   return (
     <Card className="elegant-card border-primary/20">
-      <CardHeader>
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
-              ✓
-            </span>
-            生成結果
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Sparkles className="w-5 h-5 text-primary" />
+            AI 創作助手
           </CardTitle>
           <div className="flex gap-2">
             <Button 
@@ -775,70 +902,119 @@ function DraftResultWithChat({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Draft Content */}
-        <div className="prose prose-sm max-w-none bg-muted/20 p-4 rounded-lg">
-          <Streamdown>{draftResult}</Streamdown>
-        </div>
-
-        {/* Chat History */}
-        {chatMessages.length > 0 && (
-          <div className="space-y-3 max-h-60 overflow-y-auto">
-            {chatMessages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[80%] p-3 rounded-lg text-sm ${
-                    msg.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
-                  }`}
-                >
-                  {msg.role === 'user' ? (
-                    msg.content
-                  ) : (
-                    <div className="prose prose-sm max-w-none">
-                      <Streamdown>{msg.content}</Streamdown>
-                    </div>
-                  )}
+      <CardContent className="p-0">
+        {/* ChatGPT 風格對話區域 */}
+        <div className="flex flex-col h-[500px]">
+          {/* 對話歷史區 */}
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+            {/* AI 初始回覆 - 生成的草稿 */}
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shrink-0">
+                <Sparkles className="w-4 h-4 text-white" />
+              </div>
+              <div className="flex-1 space-y-2">
+                <div className="text-sm font-medium text-muted-foreground">幕創 AI</div>
+                <div className="bg-muted/50 rounded-2xl rounded-tl-sm p-4">
+                  <div className="prose prose-sm max-w-none text-foreground">
+                    <Streamdown>{draftResult}</Streamdown>
+                  </div>
                 </div>
               </div>
+            </div>
+
+            {/* 對話歷史 */}
+            {chatMessages.map((msg, idx) => (
+              <div key={idx} className="flex gap-3">
+                {msg.role === 'user' ? (
+                  // 用戶訊息 - 靠右
+                  <>
+                    <div className="flex-1" />
+                    <div className="max-w-[85%] space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground text-right">你</div>
+                      <div className="bg-primary text-primary-foreground rounded-2xl rounded-tr-sm p-4">
+                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                      </div>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0">
+                      <User className="w-4 h-4 text-white" />
+                    </div>
+                  </>
+                ) : (
+                  // AI 回覆 - 靠左
+                  <>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="flex-1 max-w-[85%] space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground">幕創 AI</div>
+                      <div className="bg-muted/50 rounded-2xl rounded-tl-sm p-4">
+                        <div className="prose prose-sm max-w-none text-foreground">
+                          <Streamdown>{msg.content}</Streamdown>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             ))}
+            
+            {/* 載入中狀態 */}
+            {isChatting && (
+              <div className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div className="text-sm font-medium text-muted-foreground">幕創 AI</div>
+                  <div className="bg-muted/50 rounded-2xl rounded-tl-sm p-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      正在思考中...
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div ref={chatEndRef} />
           </div>
-        )}
 
-        {/* Chat Input */}
-        <div className="border-t border-border/50 pt-4">
-          <div className="flex gap-2">
-            <Input
-              placeholder="告訴 AI 你想怎麼修改，例如：幫我改得更真誠一點..."
-              value={chatInput}
-              onChange={(e) => onChatInputChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  onChatSubmit();
-                }
-              }}
-              disabled={isChatting}
-            />
-            <Button 
-              onClick={onChatSubmit}
-              disabled={isChatting || !chatInput.trim()}
-            >
-              {isChatting ? (
-                <RefreshCw className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </Button>
+          {/* 固定底部輸入框 */}
+          <div className="border-t border-border/50 p-4 bg-background/80 backdrop-blur-sm">
+            <div className="flex gap-3 items-end">
+              <div className="flex-1 relative">
+                <Textarea
+                  placeholder="告訴 AI 你想怎麼修改，例如：幫我改得更真誠一點..."
+                  value={chatInput}
+                  onChange={(e) => onChatInputChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      onChatSubmit();
+                    }
+                  }}
+                  disabled={isChatting}
+                  className="min-h-[44px] max-h-[120px] resize-none pr-12 rounded-xl"
+                  rows={1}
+                />
+                <Button 
+                  onClick={onChatSubmit}
+                  disabled={isChatting || !chatInput.trim()}
+                  size="icon"
+                  className="absolute right-2 bottom-2 h-8 w-8 rounded-lg"
+                >
+                  {isChatting ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              💡 試試看：「幫我改得更口語化」「加入更多個人故事」「這段太像廣告了」
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            💡 試試看：「幫我改得更口語化」「加入更多個人故事」「這段太像廣告了」
-          </p>
         </div>
       </CardContent>
     </Card>

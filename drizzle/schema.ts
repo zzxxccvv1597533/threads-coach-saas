@@ -24,6 +24,45 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+// 邀請碼系統
+export const invitationCodes = mysqlTable("invitation_codes", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 32 }).notNull().unique(),
+  createdBy: int("createdBy").notNull(), // 創建者 (admin)
+  usedBy: int("usedBy"), // 使用者
+  usedAt: timestamp("usedAt"),
+  validDays: int("validDays").default(90).notNull(), // 有效天數，預設 90 天
+  note: text("note"), // 備註（例如學員姓名）
+  status: mysqlEnum("status", ["active", "used", "expired", "revoked"]).default("active").notNull(),
+  expiresAt: timestamp("expiresAt"), // 邀請碼本身的過期時間
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type InvitationCode = typeof invitationCodes.$inferSelect;
+export type InsertInvitationCode = typeof invitationCodes.$inferInsert;
+
+// 付款紀錄（藍新金流預留）
+export const paymentRecords = mysqlTable("payment_records", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  subscriptionId: int("subscriptionId"),
+  // 藍新金流回傳資訊
+  merchantOrderNo: varchar("merchantOrderNo", { length: 64 }).notNull(),
+  tradeNo: varchar("tradeNo", { length: 64 }),
+  paymentType: varchar("paymentType", { length: 32 }),
+  payTime: timestamp("payTime"),
+  // 付款資訊
+  amount: int("amount").notNull(),
+  currency: varchar("currency", { length: 3 }).default("TWD"),
+  status: mysqlEnum("paymentStatus", ["pending", "success", "failed", "refunded"]).default("pending").notNull(),
+  rawResponse: text("rawResponse"), // 藍新金流原始回傳資料
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PaymentRecord = typeof paymentRecords.$inferSelect;
+export type InsertPaymentRecord = typeof paymentRecords.$inferInsert;
+
 export const userSettings = mysqlTable("user_settings", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -279,14 +318,25 @@ export const orderItems = mysqlTable("order_items", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+// 訂閱系統（藍新金流預留）
 export const subscriptions = mysqlTable("subscriptions", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  productId: int("productId").notNull(),
-  status: mysqlEnum("subscriptionStatus", ["active", "canceled", "past_due"]).default("active"),
+  productId: int("productId"),
+  plan: mysqlEnum("plan", ["free", "monthly", "yearly"]).default("free").notNull(),
+  status: mysqlEnum("subscriptionStatus", ["active", "cancelled", "expired", "pending"]).default("pending").notNull(),
+  // 藍新金流相關欄位
+  newebpayMerchantOrderNo: varchar("newebpayMerchantOrderNo", { length: 64 }),
+  newebpayTradeNo: varchar("newebpayTradeNo", { length: 64 }),
+  newebpayPaymentType: varchar("newebpayPaymentType", { length: 32 }),
+  // 訂閱資訊
+  amount: int("amount"), // 金額（元）
+  currency: varchar("currency", { length: 3 }).default("TWD"),
   currentPeriodStart: timestamp("currentPeriodStart"),
   currentPeriodEnd: timestamp("currentPeriodEnd"),
+  nextBillingDate: timestamp("nextBillingDate"),
   providerRef: varchar("providerRef", { length: 120 }),
+  cancelledAt: timestamp("cancelledAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

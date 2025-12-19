@@ -16,6 +16,10 @@ import {
   Layout,
   Target,
   Sparkles,
+  TrendingUp,
+  MessageCircle,
+  Hash,
+  Zap,
 } from "lucide-react";
 
 export default function Optimize() {
@@ -80,6 +84,15 @@ export default function Optimize() {
     conversion: "text-amber-500 bg-amber-500/10",
   };
 
+  // 評分項目說明
+  const scoreItems = [
+    { icon: Zap, name: "Hook 開頭", desc: "開頭是否讓人停下來", color: "text-amber-500 bg-amber-500/10" },
+    { icon: MessageCircle, name: "說人話", desc: "是否口語化、好理解", color: "text-blue-500 bg-blue-500/10" },
+    { icon: Target, name: "CTA", desc: "行動呼籲是否明確且軟性", color: "text-emerald-500 bg-emerald-500/10" },
+    { icon: Layout, name: "結構", desc: "段落是否清晰好吸收", color: "text-purple-500 bg-purple-500/10" },
+    { icon: Hash, name: "Hashtag", desc: "標籤是否精準有效", color: "text-rose-500 bg-rose-500/10" },
+  ];
+
   return (
     <DashboardLayout>
       <div className="space-y-6 max-w-4xl">
@@ -87,23 +100,22 @@ export default function Optimize() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">文案健檢</h1>
           <p className="text-muted-foreground mt-1">
-            使用四透鏡框架，系統化優化你的文案
+            使用知識庫標準，系統化評分並優化你的文案
           </p>
         </div>
 
-        {/* Four Lens Overview */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {fourLens && Object.entries(fourLens).map(([key, lens]) => {
-            const Icon = lensIcons[key as keyof typeof lensIcons];
-            const colorClass = lensColors[key as keyof typeof lensColors];
+        {/* Score Items Overview */}
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
+          {scoreItems.map((item) => {
+            const Icon = item.icon;
             return (
-              <Card key={key} className="elegant-card">
-                <CardContent className="pt-6">
-                  <div className={`w-10 h-10 rounded-lg ${colorClass} flex items-center justify-center mb-3`}>
-                    <Icon className="w-5 h-5" />
+              <Card key={item.name} className="elegant-card">
+                <CardContent className="pt-4 pb-3 px-4">
+                  <div className={`w-8 h-8 rounded-lg ${item.color} flex items-center justify-center mb-2`}>
+                    <Icon className="w-4 h-4" />
                   </div>
-                  <h3 className="font-semibold mb-1">{lens.name}</h3>
-                  <p className="text-xs text-muted-foreground">{lens.question}</p>
+                  <h3 className="font-semibold text-sm mb-0.5">{item.name}</h3>
+                  <p className="text-xs text-muted-foreground">{item.desc}</p>
                 </CardContent>
               </Card>
             );
@@ -118,7 +130,7 @@ export default function Optimize() {
               輸入文案
             </CardTitle>
             <CardDescription>
-              貼上你想健檢的文案，AI 會用四透鏡框架幫你分析
+              貼上你想健檢的文案，AI 會用五大維度幫你評分並給出優化建議
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -142,8 +154,8 @@ export default function Optimize() {
                   </>
                 ) : (
                   <>
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    四透鏡健檢
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    五維度健檢
                   </>
                 )}
               </Button>
@@ -175,7 +187,7 @@ export default function Optimize() {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-emerald-500" />
-                  四透鏡健檢結果
+                  文案健檢結果
                 </CardTitle>
                 <Button 
                   variant="ghost" 
@@ -186,9 +198,12 @@ export default function Optimize() {
                   複製
                 </Button>
               </div>
+              <CardDescription>
+                根據 Hook、說人話、CTA、結構、Hashtag 五大維度評分
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="prose prose-sm max-w-none">
+              <div className="prose prose-sm max-w-none dark:prose-invert">
                 <Streamdown>{optimizeResult}</Streamdown>
               </div>
             </CardContent>
@@ -218,12 +233,42 @@ export default function Optimize() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="prose prose-sm max-w-none">
+              <div className="prose prose-sm max-w-none dark:prose-invert">
                 <Streamdown>{clarityResult}</Streamdown>
               </div>
             </CardContent>
           </Card>
         )}
+
+        {/* Four Lens Reference (Collapsed) */}
+        <Card className="elegant-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Eye className="w-4 h-4 text-muted-foreground" />
+              四透鏡框架參考
+            </CardTitle>
+            <CardDescription>
+              健檢時也會參考四透鏡框架的原則
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              {fourLens && Object.entries(fourLens).map(([key, lens]) => {
+                const Icon = lensIcons[key as keyof typeof lensIcons];
+                const colorClass = lensColors[key as keyof typeof lensColors];
+                return (
+                  <div key={key} className="p-3 rounded-lg bg-muted/30">
+                    <div className={`w-8 h-8 rounded-lg ${colorClass} flex items-center justify-center mb-2`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <h3 className="font-semibold text-sm mb-1">{lens.name}</h3>
+                    <p className="text-xs text-muted-foreground">{lens.question}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

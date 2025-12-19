@@ -22,6 +22,7 @@ import {
   conversations,
   conversationMessages,
   rawMaterials,
+  invitationCodes, InsertInvitationCode, InvitationCode,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -797,3 +798,150 @@ export async function calculateUserStage(userId: number): Promise<string> {
   // 起步期
   return 'startup';
 }
+
+
+// ==================== 邀請碼相關 ====================
+
+// 生成隨機邀請碼
+function generateInviteCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 排除容易混淆的字符
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+// 創建邀請碼
+export async function createInvitationCode(data: {
+  createdBy: number;
+  validDays?: number;
+  note?: string;
+  expiresAt?: Date;
+}): Promise<InvitationCode | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const code = generateInviteCode();
+  const result = await db.insert(invitationCodes).values({
+    code,
+    createdBy: data.createdBy,
+    validDays: data.validDays ?? 90,
+    note: data.note,
+    expiresAt: data.expiresAt,
+    status: 'active',
+  });
+  
+  const insertId = Number(result[0].insertId);
+  const [created] = await db.select().from(invitationCodes).where(eq(invitationCodes.id, insertId));
+  return created ?? null;
+}
+
+// 批量創建邀請碼
+export async function createBatchInvitationCodes(data: {
+  createdBy: number;
+  count: number;
+  validDays?: number;
+  note?: string;
+  expiresAt?: Date;
+}): Promise<InvitationCode[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const codes: InvitationCode[] = [];
+  for (let i = 0; i < data.count; i++) {
+    const code = await createInvitationCode({
+      createdBy: data.createdBy,
+      validDays: data.validDays,
+      note: data.note,
+      expiresAt: data.expiresAt,
+    });
+    if (code) codes.push(code);
+  }
+  return codes;
+}
+
+// 根據邀請碼查詢
+export async function getInvitationCodeByCode(code: string): Promise<InvitationCode | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const [result] = await db.select().from(invitationCodes).where(eq(invitationCodes.code, code));
+  return result ?? null;
+}
+
+// 驗證並使用邀請碼
+export async function useInvitationCode(code: string, userId: number): Promise<{ success: boolean; message: string; validDays?: number }> {
+  const db = await getDb();
+  if (!db) return { success: false, message: '資料庫連接失敗' };
+  
+  const invitation = await getInvitationCodeByCode(code);
+  if (!invitation) {
+    return { success: false, message: '邀請碼不存在' };
+  }
+  
+  if (invitation.status !== 'active') {
+    return { success: false, message: '邀請碼已被使用或已失效' };
+  }
+  
+  if (invitation.expiresAt && new Date(invitation.expiresAt) < new Date()) {
+    // 更新狀態為過期
+    await db.update(invitationCodes)
+      .set({ status: 'expired' })
+      .where(eq(invitationCodes.id, invitation.id));
+    return { success: false, message: '邀請碼已過期' };
+  }
+  
+  // 使用邀請碼
+  await db.update(invitationCodes)
+    .set({ 
+      usedBy: userId, 
+      usedAt: new Date(),
+      status: 'used',
+    })
+    .where(eq(invitationCodes.id, invitation.id));
+  
+  // 更新用戶的開通狀態
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + invitation.validDays);
+  
+  await db.update(users)
+    .set({
+      activationStatus: 'activated',
+      activatedAt: new Date(),
+      expiresAt: expiresAt,
+      activationNote: `使用邀請碼 ${code} 開通`,
+    })
+    .where(eq(users.id, userId));
+  
+  return { success: true, message: '開通成功', validDays: invitation.validDays };
+}
+
+// 獲取所有邀請碼（管理員用）
+export async function getAllInvitationCodes(): Promise<InvitationCode[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(invitationCodes).orderBy(desc(invitationCodes.createdAt));
+}
+
+// 撤銷邀請碼
+export async function revokeInvitationCode(id: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  await db.update(invitationCodes)
+    .set({ status: 'revoked' })
+    .where(eq(invitationCodes.id, id));
+  return true;
+}
+
+// 獲取用戶列表（管理員用，包含開通狀態）
+export async function getAllUsersWithActivation(): Promise<(typeof users.$inferSelect)[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(users).orderBy(desc(users.createdAt));
+}
+
+

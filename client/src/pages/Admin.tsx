@@ -34,6 +34,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Copy, Ticket, Plus, Trash2 } from "lucide-react";
 
 type UserWithActivation = {
   id: number;
@@ -221,6 +222,10 @@ export default function Admin() {
             <TabsTrigger value="all" className="gap-2">
               <Users className="w-4 h-4" />
               全部用戶
+            </TabsTrigger>
+            <TabsTrigger value="invitations" className="gap-2">
+              <Ticket className="w-4 h-4" />
+              邀請碼管理
             </TabsTrigger>
           </TabsList>
 
@@ -426,6 +431,11 @@ export default function Admin() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* 邀請碼管理 */}
+          <TabsContent value="invitations">
+            <InvitationManagement />
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -514,5 +524,268 @@ export default function Admin() {
         </DialogContent>
       </Dialog>
     </DashboardLayout>
+  );
+}
+
+// 邀請碼管理組件
+function InvitationManagement() {
+  const utils = trpc.useUtils();
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [batchCount, setBatchCount] = useState(1);
+  const [validDays, setValidDays] = useState(90);
+  const [note, setNote] = useState("");
+
+  const { data: invitations, isLoading } = trpc.invitation.list.useQuery();
+
+  const createMutation = trpc.invitation.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`邀請碼已創建：${data?.code || ''}`);
+      utils.invitation.list.invalidate();
+      setCreateDialogOpen(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error("創建失敗：" + error.message);
+    },
+  });
+
+  const createBatchMutation = trpc.invitation.createBatch.useMutation({
+    onSuccess: (data) => {
+      toast.success(`已批量創建 ${data.length} 個邀請碼`);
+      utils.invitation.list.invalidate();
+      setCreateDialogOpen(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error("批量創建失敗：" + error.message);
+    },
+  });
+
+  const revokeMutation = trpc.invitation.revoke.useMutation({
+    onSuccess: () => {
+      toast.success("邀請碼已撤銷");
+      utils.invitation.list.invalidate();
+    },
+    onError: (error) => {
+      toast.error("撤銷失敗：" + error.message);
+    },
+  });
+
+  const resetForm = () => {
+    setBatchCount(1);
+    setValidDays(90);
+    setNote("");
+  };
+
+  const handleCreate = () => {
+    if (batchCount === 1) {
+      createMutation.mutate({ validDays, note: note || undefined });
+    } else {
+      createBatchMutation.mutate({ count: batchCount, validDays, note: note || undefined });
+    }
+  };
+
+  const copyToClipboard = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast.success("已複製邀請碼");
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'used':
+        return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-200"><CheckCircle className="w-3 h-3 mr-1" />已使用</Badge>;
+      case 'active':
+        return <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 border-blue-200"><Activity className="w-3 h-3 mr-1" />可用</Badge>;
+      case 'expired':
+        return <Badge variant="outline" className="bg-gray-500/10 text-gray-600 border-gray-200"><Clock className="w-3 h-3 mr-1" />已過期</Badge>;
+      case 'revoked':
+        return <Badge variant="destructive" className="bg-red-500/10 text-red-600 border-red-200"><XCircle className="w-3 h-3 mr-1" />已撤銷</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const activeCount = invitations?.filter(i => i.status === 'active').length || 0;
+  const usedCount = invitations?.filter(i => i.status === 'used').length || 0;
+
+  return (
+    <div className="space-y-6">
+      {/* 統計卡片 */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="elegant-card">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                <Ticket className="w-6 h-6 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{activeCount}</p>
+                <p className="text-sm text-muted-foreground">可用邀請碼</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="elegant-card">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-emerald-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{usedCount}</p>
+                <p className="text-sm text-muted-foreground">已使用</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="elegant-card">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Users className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{invitations?.length || 0}</p>
+                <p className="text-sm text-muted-foreground">總邀請碼數</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 邀請碼列表 */}
+      <Card className="elegant-card">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Ticket className="w-5 h-5 text-primary" />
+              邀請碼列表
+            </CardTitle>
+            <CardDescription>
+              管理學員邀請碼，每個邀請碼只能使用一次
+            </CardDescription>
+          </div>
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            創建邀請碼
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          ) : invitations && invitations.length > 0 ? (
+            <div className="space-y-3">
+              {invitations.map((inv) => (
+                <div 
+                  key={inv.id}
+                  className="flex items-center gap-4 p-4 rounded-xl border bg-card"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-1">
+                      <code className="text-lg font-mono font-bold tracking-wider">{inv.code}</code>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8"
+                        onClick={() => copyToClipboard(inv.code)}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                      {getStatusBadge(inv.status)}
+                    </div>
+                    <div className="text-sm text-muted-foreground space-x-3">
+                      <span>有效期：{inv.validDays} 天</span>
+                      {inv.usedBy && <span>· 使用者 ID：{inv.usedBy}</span>}
+                      {inv.usedAt && <span>· 使用時間：{format(new Date(inv.usedAt), 'yyyy/MM/dd HH:mm', { locale: zhTW })}</span>}
+                      {inv.note && <span>· {inv.note}</span>}
+                    </div>
+                  </div>
+                  {inv.status === 'active' && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                      onClick={() => revokeMutation.mutate({ id: inv.id })}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <Ticket className="w-12 h-12 mx-auto mb-4 opacity-20" />
+              <p>還沒有邀請碼</p>
+              <p className="text-sm">點擊上方按鈕創建第一個邀請碼</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 創建邀請碼對話框 */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>創建邀請碼</DialogTitle>
+            <DialogDescription>
+              創建新的邀請碼給學員使用
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="batchCount">創建數量</Label>
+              <Input
+                id="batchCount"
+                type="number"
+                min={1}
+                max={100}
+                value={batchCount}
+                onChange={(e) => setBatchCount(parseInt(e.target.value) || 1)}
+              />
+              <p className="text-xs text-muted-foreground">
+                最多可一次創建 100 個
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="validDays">有效天數</Label>
+              <Input
+                id="validDays"
+                type="number"
+                min={1}
+                value={validDays}
+                onChange={(e) => setValidDays(parseInt(e.target.value) || 90)}
+              />
+              <p className="text-xs text-muted-foreground">
+                學員使用邀請碼後的帳號有效期
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="note">備註（選填）</Label>
+              <Input
+                id="note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="例如：第一期學員"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+              取消
+            </Button>
+            <Button 
+              onClick={handleCreate}
+              disabled={createMutation.isPending || createBatchMutation.isPending}
+            >
+              {(createMutation.isPending || createBatchMutation.isPending) ? "創建中..." : `創建 ${batchCount} 個邀請碼`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
