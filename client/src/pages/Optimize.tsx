@@ -90,7 +90,6 @@ export default function Optimize() {
     { icon: MessageCircle, name: "說人話", desc: "是否口語化、好理解", color: "text-blue-500 bg-blue-500/10" },
     { icon: Target, name: "CTA", desc: "行動呼籲是否明確且軟性", color: "text-emerald-500 bg-emerald-500/10" },
     { icon: Layout, name: "結構", desc: "段落是否清晰好吸收", color: "text-purple-500 bg-purple-500/10" },
-    { icon: Hash, name: "Hashtag", desc: "標籤是否精準有效", color: "text-rose-500 bg-rose-500/10" },
   ];
 
   return (

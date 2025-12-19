@@ -32,12 +32,16 @@ export function useAuth(options?: UseAuthOptions) {
         error instanceof TRPCClientError &&
         error.data?.code === "UNAUTHORIZED"
       ) {
+        // 已經登出，直接導向首頁
+        window.location.href = '/';
         return;
       }
       throw error;
     } finally {
       utils.auth.me.setData(undefined, null);
       await utils.auth.me.invalidate();
+      // 登出後導向首頁
+      window.location.href = '/';
     }
   }, [logoutMutation, utils]);
 

@@ -142,6 +142,8 @@ export default function IpProfile() {
   const [activeTab, setActiveTab] = useState<"basic" | "pillars" | "audience" | "products" | "story" | "matrix">("basic");
   const [newIdentityTag, setNewIdentityTag] = useState("");
   const [newTheme, setNewTheme] = useState("");
+  const [painPointMatrix, setPainPointMatrix] = useState<Record<string, Record<string, string[]>>>({});
+  const [isGeneratingPainPoints, setIsGeneratingPainPoints] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -1314,74 +1316,177 @@ export default function IpProfile() {
               </CardContent>
             </Card>
 
-            {/* 九宮格預覽 */}
+            {/* 痛點矩陣 */}
             {formData.contentMatrixAudiences.core && formData.contentMatrixThemes.length > 0 && (
             <Card className="elegant-card">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-primary" />
-                  九宮格預覽
-                </CardTitle>
-                <CardDescription>
-                  以下是你的內容矩陣，每個格子都是一個內容方向
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-primary" />
+                      痛點矩陣
+                    </CardTitle>
+                    <CardDescription>
+                      每個格子都是具體的發文選題，點擊「生成痛點」讓 AI 幫你分析
+                    </CardDescription>
+                  </div>
+                  <Button
+                    onClick={async () => {
+                      setIsGeneratingPainPoints(true);
+                      try {
+                        const audiences = [
+                          formData.contentMatrixAudiences.core,
+                          formData.contentMatrixAudiences.potential,
+                          formData.contentMatrixAudiences.opportunity,
+                        ].filter(Boolean);
+                        
+                        const result = await utils.client.ipProfile.generatePainPointMatrix.mutate({
+                          audiences,
+                          themes: formData.contentMatrixThemes,
+                          occupation: formData.occupation,
+                        });
+                        
+                        setPainPointMatrix(result.matrix);
+                        toast.success("痛點矩陣已生成");
+                      } catch (error) {
+                        toast.error("生成失敗，請稍後再試");
+                      } finally {
+                        setIsGeneratingPainPoints(false);
+                      }
+                    }}
+                    disabled={isGeneratingPainPoints}
+                    className="gap-2"
+                  >
+                    {isGeneratingPainPoints ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        生成中...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        生成痛點
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse">
                     <thead>
                       <tr>
-                        <th className="p-2 border border-border bg-muted/50"></th>
+                        <th className="p-3 border border-border bg-muted/50 text-left min-w-[120px]">
+                          受眾 ↓ / 主題 →
+                        </th>
                         {formData.contentMatrixThemes.map((theme, i) => (
-                          <th key={i} className="p-2 border border-border bg-muted/50 text-sm font-medium">
+                          <th key={i} className="p-3 border border-border bg-muted/50 text-sm font-medium min-w-[200px]">
                             {theme}
                           </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
+                      {/* 核心受眾 */}
                       <tr>
-                        <td className="p-2 border border-border bg-emerald-500/10 text-sm font-medium">
-                          <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <td className="p-3 border border-border bg-emerald-500/10 text-sm font-medium">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-emerald-500" />
                             {formData.contentMatrixAudiences.core || "核心受眾"}
                           </div>
                         </td>
-                        {formData.contentMatrixThemes.map((theme, i) => (
-                          <td key={i} className="p-2 border border-border text-xs text-muted-foreground">
-                            針對 {formData.contentMatrixAudiences.core} 的 {theme} 內容
-                          </td>
-                        ))}
+                        {formData.contentMatrixThemes.map((theme, i) => {
+                          const painPoints = painPointMatrix[formData.contentMatrixAudiences.core]?.[theme] || [];
+                          return (
+                            <td key={i} className="p-3 border border-border text-sm align-top">
+                              {painPoints.length > 0 ? (
+                                <ul className="space-y-1">
+                                  {painPoints.map((point: string, j: number) => (
+                                    <li key={j} className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
+                                      • {point}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <span className="text-muted-foreground/50 text-xs">
+                                  點擊「生成痛點」按鈕
+                                </span>
+                              )}
+                            </td>
+                          );
+                        })}
                       </tr>
+                      {/* 潛在受眾 */}
+                      {formData.contentMatrixAudiences.potential && (
                       <tr>
-                        <td className="p-2 border border-border bg-blue-500/10 text-sm font-medium">
-                          <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-full bg-blue-500" />
-                            {formData.contentMatrixAudiences.potential || "潛在受眾"}
+                        <td className="p-3 border border-border bg-blue-500/10 text-sm font-medium">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-blue-500" />
+                            {formData.contentMatrixAudiences.potential}
                           </div>
                         </td>
-                        {formData.contentMatrixThemes.map((theme, i) => (
-                          <td key={i} className="p-2 border border-border text-xs text-muted-foreground">
-                            針對 {formData.contentMatrixAudiences.potential} 的 {theme} 內容
-                          </td>
-                        ))}
+                        {formData.contentMatrixThemes.map((theme, i) => {
+                          const painPoints = painPointMatrix[formData.contentMatrixAudiences.potential]?.[theme] || [];
+                          return (
+                            <td key={i} className="p-3 border border-border text-sm align-top">
+                              {painPoints.length > 0 ? (
+                                <ul className="space-y-1">
+                                  {painPoints.map((point: string, j: number) => (
+                                    <li key={j} className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
+                                      • {point}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <span className="text-muted-foreground/50 text-xs">
+                                  點擊「生成痛點」按鈕
+                                </span>
+                              )}
+                            </td>
+                          );
+                        })}
                       </tr>
+                      )}
+                      {/* 機會受眾 */}
+                      {formData.contentMatrixAudiences.opportunity && (
                       <tr>
-                        <td className="p-2 border border-border bg-amber-500/10 text-sm font-medium">
-                          <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-full bg-amber-500" />
-                            {formData.contentMatrixAudiences.opportunity || "機會受眾"}
+                        <td className="p-3 border border-border bg-amber-500/10 text-sm font-medium">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-amber-500" />
+                            {formData.contentMatrixAudiences.opportunity}
                           </div>
                         </td>
-                        {formData.contentMatrixThemes.map((theme, i) => (
-                          <td key={i} className="p-2 border border-border text-xs text-muted-foreground">
-                            針對 {formData.contentMatrixAudiences.opportunity} 的 {theme} 內容
-                          </td>
-                        ))}
+                        {formData.contentMatrixThemes.map((theme, i) => {
+                          const painPoints = painPointMatrix[formData.contentMatrixAudiences.opportunity]?.[theme] || [];
+                          return (
+                            <td key={i} className="p-3 border border-border text-sm align-top">
+                              {painPoints.length > 0 ? (
+                                <ul className="space-y-1">
+                                  {painPoints.map((point: string, j: number) => (
+                                    <li key={j} className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
+                                      • {point}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <span className="text-muted-foreground/50 text-xs">
+                                  點擊「生成痛點」按鈕
+                                </span>
+                              )}
+                            </td>
+                          );
+                        })}
                       </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
+                
+                {Object.keys(painPointMatrix).length > 0 && (
+                  <p className="text-sm text-muted-foreground mt-4">
+                    💡 提示：點擊任一痛點可以直接帶入發文工作室生成文案
+                  </p>
+                )}
               </CardContent>
             </Card>
             )}

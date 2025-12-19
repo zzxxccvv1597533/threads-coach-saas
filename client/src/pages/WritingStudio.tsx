@@ -95,23 +95,56 @@ export default function WritingStudio() {
   const { data: successStories } = trpc.successStory.list.useQuery();
   const { data: growthMetrics } = trpc.growthMetrics.get.useQuery();
   
-  const [mode, setMode] = useState<"brainstorm" | "material" | "monetize">("brainstorm");
-  const [material, setMaterial] = useState("");
-  const [selectedContentType, setSelectedContentType] = useState("story");
-  const [selectedMonetizeType, setSelectedMonetizeType] = useState("profile_intro");
-  const [selectedAngle, setSelectedAngle] = useState("");
-  const [step, setStep] = useState(1);
+  // 從 localStorage 讀取保存的狀態
+  const getStoredState = <T,>(key: string, defaultValue: T): T => {
+    if (typeof window === 'undefined') return defaultValue;
+    try {
+      const stored = localStorage.getItem(`writingStudio_${key}`);
+      return stored ? JSON.parse(stored) : defaultValue;
+    } catch {
+      return defaultValue;
+    }
+  };
+
+  const [mode, setMode] = useState<"brainstorm" | "material" | "monetize">(() => getStoredState("mode", "brainstorm"));
+  const [material, setMaterial] = useState(() => getStoredState("material", ""));
+  const [selectedContentType, setSelectedContentType] = useState(() => getStoredState("selectedContentType", "story"));
+  const [selectedMonetizeType, setSelectedMonetizeType] = useState(() => getStoredState("selectedMonetizeType", "profile_intro"));
+  const [selectedAngle, setSelectedAngle] = useState(() => getStoredState("selectedAngle", ""));
+  const [step, setStep] = useState(() => getStoredState("step", 1));
   
-  const [brainstormResult, setBrainstormResult] = useState("");
-  const [anglesResult, setAnglesResult] = useState("");
-  const [draftResult, setDraftResult] = useState("");
-  const [draftId, setDraftId] = useState<number | null>(null);
+  const [brainstormResult, setBrainstormResult] = useState(() => getStoredState("brainstormResult", ""));
+  const [anglesResult, setAnglesResult] = useState(() => getStoredState("anglesResult", ""));
+  const [draftResult, setDraftResult] = useState(() => getStoredState("draftResult", ""));
+  const [draftId, setDraftId] = useState<number | null>(() => getStoredState("draftId", null));
 
   // 對話修改功能
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => getStoredState("chatMessages", []));
   const [chatInput, setChatInput] = useState("");
   const [isChatting, setIsChatting] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  // 保存狀態到 localStorage
+  useEffect(() => {
+    const saveState = (key: string, value: unknown) => {
+      try {
+        localStorage.setItem(`writingStudio_${key}`, JSON.stringify(value));
+      } catch {
+        // 忽略儲存錯誤
+      }
+    };
+    saveState("mode", mode);
+    saveState("material", material);
+    saveState("selectedContentType", selectedContentType);
+    saveState("selectedMonetizeType", selectedMonetizeType);
+    saveState("selectedAngle", selectedAngle);
+    saveState("step", step);
+    saveState("brainstormResult", brainstormResult);
+    saveState("anglesResult", anglesResult);
+    saveState("draftResult", draftResult);
+    saveState("draftId", draftId);
+    saveState("chatMessages", chatMessages);
+  }, [mode, material, selectedContentType, selectedMonetizeType, selectedAngle, step, brainstormResult, anglesResult, draftResult, draftId, chatMessages]);
 
   const brainstorm = trpc.ai.brainstorm.useMutation({
     onSuccess: (data) => {

@@ -203,6 +203,76 @@ export const appRouter = router({
         await db.createIpProfileVersion(profile.id, input.note);
         return { success: true };
       }),
+    
+    // 生成痛點矩陣
+    generatePainPointMatrix: protectedProcedure
+      .input(z.object({
+        audiences: z.array(z.string()),
+        themes: z.array(z.string()),
+        occupation: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { audiences, themes, occupation } = input;
+        
+        const prompt = `你是一位 Threads 內容策略專家。請根據以下資訊生成痛點矩陣。
+
+用戶職業/領域：${occupation || '未指定'}
+
+受眾分層：
+${audiences.map((a, i) => `${i + 1}. ${a}`).join('\n')}
+
+子主題：
+${themes.map((t, i) => `${i + 1}. ${t}`).join('\n')}
+
+請為每個「受眾 × 子主題」的組合，生成 2-3 個具體的痛點/卡關點。
+
+痛點的定義：受眾在這個主題上實際遇到的煩惱，例如：
+- 覺得麻煩
+- 難以決定
+- 感到焦慮
+- 不確定怎麼做
+- 耗費時間
+- 害怕失敗
+
+請用 JSON 格式回應，結構如下：
+{
+  "受眾1": {
+    "主題1": ["痛點1", "痛點2"],
+    "主題2": ["痛點1", "痛點2"]
+  },
+  "受眾2": {
+    "主題1": ["痛點1", "痛點2"],
+    "主題2": ["痛點1", "痛點2"]
+  }
+}
+
+每個痛點要具體、可用於發文選題，例如：
+- 「不知道要拍什麼 - 面對鏡頭很緊張 - 沒人看」
+- 「服務很好但價格拉不高 - 不會包裝產品 - 怕被說貪財」
+
+只輸出 JSON，不要其他文字。`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: "你是一位專業的內容策略專家，擅長分析受眾痛點並生成內容選題。" },
+            { role: "user", content: prompt }
+          ],
+        });
+
+        const rawContent = response.choices[0]?.message?.content;
+        const content = typeof rawContent === 'string' ? rawContent : '{}';
+        
+        // 解析 JSON
+        try {
+          // 移除可能的 markdown 標記
+          const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          const matrix = JSON.parse(cleanContent);
+          return { matrix };
+        } catch {
+          // 如果解析失敗，返回空矩陣
+          return { matrix: {} };
+        }
+      }),
   }),
 
   // ==================== 受眾分析 ====================
@@ -963,13 +1033,7 @@ ${input.currentDraft}` },
 - 9-10分：結構清晰，段落適中，很好吸收
 - 7-8分：結構還可以，但有優化空間
 - 5-6分：結構有點亂，段落太長或太短
-- 1-4分：結構混亂，難以閱讀
-
-### Hashtag 評分標準：
-- 9-10分：Hashtag 精準且數量適中（3-5個），有助於曝光
-- 7-8分：Hashtag 還可以，但可以更精準
-- 5-6分：Hashtag 太多或太少，或不夠精準
-- 1-4分：沒有 Hashtag 或 Hashtag 完全不相關`;
+- 1-4分：結構混亂，難以閱讀`;
 
         const response = await invokeLLM({
           messages: [
@@ -988,8 +1052,7 @@ ${input.currentDraft}` },
 | 說人話 | X/10 | (簡短說明) |
 | CTA | X/10 | (簡短說明) |
 | 結構 | X/10 | (簡短說明) |
-| Hashtag | X/10 | (簡短說明) |
-| **總分** | **X/50** | |
+| **總分** | **X/40** | |
 
 ### 🔍 具體優化建議
 
@@ -997,7 +1060,6 @@ ${input.currentDraft}` },
 2. **說人話**：(列出需要替換的專業術語和更白話的說法)
 3. **CTA**：(如果需要優化，提供更軟性的 CTA 建議)
 4. **結構**：(如果需要優化，提供結構調整建議)
-5. **Hashtag**：(如果需要優化，提供更好的 Hashtag 建議)
 
 ### ✨ 優化版本
 
