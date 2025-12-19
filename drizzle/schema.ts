@@ -11,12 +11,19 @@ export const users = mysqlTable("users", {
   loginMethod: varchar("loginMethod", { length: 64 }).default("password"),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   status: mysqlEnum("status", ["active", "suspended"]).default("active").notNull(),
-  // 學員開通狀態: pending=待開通, activated=已開通, expired=已過期
-  activationStatus: mysqlEnum("activationStatus", ["pending", "activated", "expired"]).default("pending").notNull(),
+  // 學員開通狀態: pending=待開通, activated=已開通, expired=已過期, rejected=已拒絕
+  activationStatus: mysqlEnum("activationStatus", ["pending", "activated", "expired", "rejected"]).default("pending").notNull(),
   activatedAt: timestamp("activatedAt"),
   activatedBy: int("activatedBy"),
   expiresAt: timestamp("expiresAt"),
   activationNote: text("activationNote"),
+  // 拒絕相關
+  rejectedAt: timestamp("rejectedAt"),
+  rejectedBy: int("rejectedBy"),
+  rejectionReason: text("rejectionReason"),
+  // 邀請碼額度（使用邀請碼註冊時記錄，開通時套用）
+  invitationCodeId: int("invitationCodeId"),
+  invitationBonusDays: int("invitationBonusDays"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),

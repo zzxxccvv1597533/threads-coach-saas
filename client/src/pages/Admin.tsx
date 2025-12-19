@@ -41,10 +41,13 @@ type UserWithActivation = {
   name: string | null;
   email: string | null;
   role: "user" | "admin";
-  activationStatus: "pending" | "activated" | "expired";
+  activationStatus: "pending" | "activated" | "expired" | "rejected";
   activatedAt: Date | null;
   expiresAt: Date | null;
   activationNote: string | null;
+  rejectedAt: Date | null;
+  rejectionReason: string | null;
+  invitationBonusDays: number | null;
   createdAt: Date;
 };
 
@@ -59,9 +62,11 @@ export default function Admin() {
 
   const [activateDialogOpen, setActivateDialogOpen] = useState(false);
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserWithActivation | null>(null);
   const [expiryDate, setExpiryDate] = useState("");
   const [activationNote, setActivationNote] = useState("");
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const activateMutation = trpc.admin.activateUser.useMutation({
     onSuccess: () => {
@@ -87,6 +92,19 @@ export default function Admin() {
     },
     onError: (error) => {
       toast.error("停用失敗：" + error.message);
+    },
+  });
+
+  const rejectMutation = trpc.admin.rejectUser.useMutation({
+    onSuccess: () => {
+      toast.success("已拒絕學員申請");
+      utils.admin.users.invalidate();
+      setRejectDialogOpen(false);
+      setSelectedUser(null);
+      setRejectionReason("");
+    },
+    onError: (error) => {
+      toast.error("拒絕失敗：" + error.message);
     },
   });
 
@@ -129,6 +147,19 @@ export default function Admin() {
     });
   };
 
+  const handleReject = (u: UserWithActivation) => {
+    setSelectedUser(u);
+    setRejectDialogOpen(true);
+  };
+
+  const confirmReject = () => {
+    if (!selectedUser) return;
+    rejectMutation.mutate({
+      userId: selectedUser.id,
+      reason: rejectionReason || undefined,
+    });
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'activated':
@@ -137,6 +168,8 @@ export default function Admin() {
         return <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-200"><Clock className="w-3 h-3 mr-1" />待開通</Badge>;
       case 'expired':
         return <Badge variant="destructive" className="bg-red-500/10 text-red-600 border-red-200"><XCircle className="w-3 h-3 mr-1" />已過期</Badge>;
+      case 'rejected':
+        return <Badge variant="destructive" className="bg-gray-500/10 text-gray-600 border-gray-200"><XCircle className="w-3 h-3 mr-1" />已拒絕</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -263,18 +296,34 @@ export default function Admin() {
                           <div className="flex items-center gap-2 mb-1">
                             <p className="font-medium">{u.name || '未命名'}</p>
                             {getStatusBadge(u.activationStatus)}
+                            {u.invitationBonusDays && (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">
+                                <Ticket className="w-3 h-3 mr-1" />
+                                邀請碼 {u.invitationBonusDays} 天
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-sm text-muted-foreground">
                             {u.email || '無 Email'} · 註冊於 {format(new Date(u.createdAt), 'yyyy/MM/dd HH:mm', { locale: zhTW })}
                           </p>
                         </div>
-                        <Button 
-                          onClick={() => handleActivate(u)}
-                          className="bg-emerald-600 hover:bg-emerald-700"
-                        >
-                          <UserCheck className="w-4 h-4 mr-2" />
-                          開通
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline"
+                            onClick={() => handleReject(u)}
+                            className="text-gray-600 hover:text-gray-700 hover:bg-gray-100"
+                          >
+                            <UserX className="w-4 h-4 mr-2" />
+                            拒絕
+                          </Button>
+                          <Button 
+                            onClick={() => handleActivate(u)}
+                            className="bg-emerald-600 hover:bg-emerald-700"
+                          >
+                            <UserCheck className="w-4 h-4 mr-2" />
+                            開通
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -519,6 +568,42 @@ export default function Admin() {
               disabled={deactivateMutation.isPending}
             >
               {deactivateMutation.isPending ? "處理中..." : "確認停用"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 拒絕對話框 */}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>拒絕學員申請</DialogTitle>
+            <DialogDescription>
+              確認要拒絕 {selectedUser?.name || selectedUser?.email} 的申請嗎？
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="reject-reason">拒絕原因（選填）</Label>
+              <Textarea
+                id="reject-reason"
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="例如：未在報名名單中、資料不符等"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
+              取消
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={confirmReject}
+              disabled={rejectMutation.isPending}
+            >
+              {rejectMutation.isPending ? "處理中..." : "確認拒絕"}
             </Button>
           </DialogFooter>
         </DialogContent>

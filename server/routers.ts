@@ -44,8 +44,8 @@ export const appRouter = router({
         const hashedPassword = await bcrypt.hash(input.password, 10);
         
         // 檢查邀請碼
-        let activationStatus: 'pending' | 'activated' = 'pending';
-        let expiresAt: Date | undefined;
+        let invitationCodeId: number | undefined;
+        let invitationBonusDays: number | undefined;
         
         if (input.invitationCode) {
           const invitation = await db.getInvitationCodeByCode(input.invitationCode);
@@ -56,19 +56,19 @@ export const appRouter = router({
             throw new TRPCError({ code: 'BAD_REQUEST', message: '邀請碼已使用或已過期' });
           }
           
-          // 設定開通狀態和過期時間
-          activationStatus = 'activated';
-          expiresAt = new Date();
-          expiresAt.setDate(expiresAt.getDate() + invitation.validDays);
+          // 記錄邀請碼額度，但不自動開通，等待管理員審核
+          invitationCodeId = invitation.id;
+          invitationBonusDays = invitation.validDays;
         }
         
-        // 建立用戶
+        // 建立用戶（預設待開通狀態）
         const user = await db.createUserWithPassword({
           email: input.email,
           password: hashedPassword,
           name: input.name,
-          activationStatus,
-          expiresAt,
+          activationStatus: 'pending',
+          invitationCodeId,
+          invitationBonusDays,
         });
         
         if (!user) {
@@ -1202,6 +1202,17 @@ ${input.context ? `貼文內容是關於：${input.context}` : ''}
       }))
       .mutation(async ({ input }) => {
         await db.deactivateUser(input.userId, input.note);
+        return { success: true };
+      }),
+    
+    // 拒絕學員
+    rejectUser: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        reason: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await db.rejectUser(input.userId, ctx.user.id, input.reason);
         return { success: true };
       }),
     

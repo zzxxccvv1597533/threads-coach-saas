@@ -128,8 +128,10 @@ export async function createUserWithPassword(data: {
   password: string;
   name?: string;
   role?: 'user' | 'admin';
-  activationStatus?: 'pending' | 'activated' | 'expired';
+  activationStatus?: 'pending' | 'activated' | 'expired' | 'rejected';
   expiresAt?: Date;
+  invitationCodeId?: number;
+  invitationBonusDays?: number;
 }) {
   const db = await getDb();
   if (!db) {
@@ -150,6 +152,8 @@ export async function createUserWithPassword(data: {
     activationStatus: data.activationStatus || 'pending',
     expiresAt: data.expiresAt || null,
     loginMethod: 'password',
+    invitationCodeId: data.invitationCodeId || null,
+    invitationBonusDays: data.invitationBonusDays || null,
   });
 
   return getUserByEmail(data.email);
@@ -182,12 +186,33 @@ export async function activateUser(userId: number, activatedBy: number, expiresA
   const db = await getDb();
   if (!db) return;
   
+  // 先取得用戶資料，檢查是否有邀請碼額度
+  const user = await getUserById(userId);
+  let finalExpiresAt = expiresAt;
+  
+  // 如果用戶有邀請碼額度且沒有指定過期時間，套用邀請碼額度
+  if (user?.invitationBonusDays && !expiresAt) {
+    finalExpiresAt = new Date();
+    finalExpiresAt.setDate(finalExpiresAt.getDate() + user.invitationBonusDays);
+    
+    // 標記邀請碼為已使用
+    if (user.invitationCodeId) {
+      await db.update(invitationCodes)
+        .set({
+          status: 'used',
+          usedBy: userId,
+          usedAt: new Date(),
+        })
+        .where(eq(invitationCodes.id, user.invitationCodeId));
+    }
+  }
+  
   await db.update(users)
     .set({
       activationStatus: 'activated',
       activatedAt: new Date(),
       activatedBy,
-      expiresAt: expiresAt || null,
+      expiresAt: finalExpiresAt || null,
       activationNote: note || null,
     })
     .where(eq(users.id, userId));
@@ -201,6 +226,20 @@ export async function deactivateUser(userId: number, note?: string) {
     .set({
       activationStatus: 'expired',
       activationNote: note || null,
+    })
+    .where(eq(users.id, userId));
+}
+
+export async function rejectUser(userId: number, rejectedBy: number, reason?: string) {
+  const db = await getDb();
+  if (!db) return;
+  
+  await db.update(users)
+    .set({
+      activationStatus: 'rejected',
+      rejectedAt: new Date(),
+      rejectedBy,
+      rejectionReason: reason || null,
     })
     .where(eq(users.id, userId));
 }

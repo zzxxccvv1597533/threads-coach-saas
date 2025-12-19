@@ -41,6 +41,11 @@ export default function Register() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!name) {
+      toast.error("請填寫您的本名，方便我們核對報名資料");
+      return;
+    }
+    
     if (!email || !password) {
       toast.error("請填寫 Email 和密碼");
       return;
@@ -59,7 +64,7 @@ export default function Register() {
     registerMutation.mutate({ 
       email, 
       password, 
-      name: name || undefined,
+      name,
       invitationCode: invitationCode || undefined,
     });
   };
@@ -95,15 +100,19 @@ export default function Register() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">姓名（選填）</Label>
+                <Label htmlFor="name">本名 <span className="text-red-500">*</span></Label>
                 <Input
                   id="name"
                   type="text"
-                  placeholder="您的姓名"
+                  placeholder="請填寫報名時使用的本名"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   autoComplete="name"
+                  required
                 />
+                <p className="text-xs text-muted-foreground">
+                  請填寫您報名課程時使用的本名，方便我們核對身份
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
@@ -169,12 +178,12 @@ export default function Register() {
                 {invitationCode && (
                   <p className="text-xs text-emerald-600 flex items-center gap-1">
                     <CheckCircle className="w-3 h-3" />
-                    使用邀請碼註冊將自動開通帳號
+                    使用邀請碼註冊將獲得 90 天免費使用權（仍需管理員審核）
                   </p>
                 )}
                 {!invitationCode && (
                   <p className="text-xs text-muted-foreground">
-                    沒有邀請碼也可以註冊，但需要等待管理員審核開通
+                    沒有邀請碼也可以註冊，需要等待管理員審核開通
                   </p>
                 )}
               </div>
