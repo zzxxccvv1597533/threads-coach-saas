@@ -20,6 +20,7 @@ import {
   MessageCircle,
   Hash,
   Zap,
+  Wand2,
 } from "lucide-react";
 
 export default function Optimize() {
@@ -28,6 +29,7 @@ export default function Optimize() {
   const [inputText, setInputText] = useState("");
   const [optimizeResult, setOptimizeResult] = useState("");
   const [clarityResult, setClarityResult] = useState("");
+  const [autoFixResult, setAutoFixResult] = useState("");
   
   const optimize = trpc.ai.optimize.useMutation({
     onSuccess: (data) => {
@@ -49,6 +51,16 @@ export default function Optimize() {
     },
   });
 
+  const autoFix = trpc.ai.autoFix.useMutation({
+    onSuccess: (data) => {
+      setAutoFixResult(typeof data.content === 'string' ? data.content : '');
+      toast.success("AI 已幫你優化文案！");
+    },
+    onError: () => {
+      toast.error("優化失敗，請稍後再試");
+    },
+  });
+
   const handleOptimize = () => {
     if (!inputText.trim()) {
       toast.error("請先輸入要健檢的文案");
@@ -63,6 +75,14 @@ export default function Optimize() {
       return;
     }
     checkClarity.mutate({ text: inputText });
+  };
+
+  const handleAutoFix = () => {
+    if (!inputText.trim()) {
+      toast.error("請先輸入要優化的文案");
+      return;
+    }
+    autoFix.mutate({ text: inputText });
   };
 
   const handleCopy = (text: string) => {
@@ -175,6 +195,24 @@ export default function Optimize() {
                   </>
                 )}
               </Button>
+              <Button 
+                variant="outline"
+                onClick={handleAutoFix}
+                disabled={autoFix.isPending || !inputText.trim()}
+                className="border-purple-300 text-purple-700 hover:bg-purple-50"
+              >
+                {autoFix.isPending ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    優化中...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-4 h-4 mr-2" />
+                    AI 幫我修改
+                  </>
+                )}
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -204,6 +242,50 @@ export default function Optimize() {
             <CardContent>
               <div className="prose prose-sm max-w-none dark:prose-invert">
                 <Streamdown>{optimizeResult}</Streamdown>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Auto Fix Result */}
+        {autoFixResult && (
+          <Card className="elegant-card border-purple-500/20 bg-gradient-to-br from-purple-50/50 to-indigo-50/50">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Wand2 className="w-5 h-5 text-purple-500" />
+                  AI 優化版本
+                </CardTitle>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setInputText(autoFixResult);
+                      setAutoFixResult("");
+                      toast.success("已套用優化版本");
+                    }}
+                    className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                  >
+                    套用這版
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleCopy(autoFixResult)}
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    複製
+                  </Button>
+                </div>
+              </div>
+              <CardDescription>
+                AI 已根據爆款元素優化你的文案，點擊「套用這版」可以繼續調整
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="prose prose-sm max-w-none dark:prose-invert bg-white/60 p-4 rounded-lg">
+                <pre className="whitespace-pre-wrap font-sans text-sm">{autoFixResult}</pre>
               </div>
             </CardContent>
           </Card>

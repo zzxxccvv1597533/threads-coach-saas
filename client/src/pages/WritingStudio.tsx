@@ -90,7 +90,7 @@ interface ChatMessage {
 }
 
 export default function WritingStudio() {
-  const { data: contentTypes } = trpc.knowledge.contentTypes.useQuery();
+  const { data: contentTypes } = trpc.knowledge.contentTypesWithViralElements.useQuery();
   const { data: ipProfile } = trpc.ipProfile.get.useQuery();
   const { data: userProducts } = trpc.userProduct.list.useQuery();
   const { data: successStories } = trpc.successStory.list.useQuery();
@@ -601,7 +601,7 @@ export default function WritingStudio() {
                       onValueChange={setSelectedContentType}
                       className="grid grid-cols-2 md:grid-cols-3 gap-2"
                     >
-                      {contentTypes?.map((type: { id: string; name: string }) => (
+                      {contentTypes?.map((type: { id: string; name: string; description: string }) => (
                         <div key={type.id} className="flex items-center space-x-2">
                           <RadioGroupItem value={type.id} id={type.id} />
                           <Label htmlFor={type.id} className="text-sm cursor-pointer">
@@ -611,6 +611,48 @@ export default function WritingStudio() {
                       ))}
                     </RadioGroup>
                   </div>
+
+                  {/* 爆款元素提示卡片 */}
+                  {selectedContentType && (() => {
+                    const selectedType = contentTypes?.find((t: { id: string }) => t.id === selectedContentType) as { 
+                      id: string; 
+                      name: string; 
+                      description: string;
+                      viralElements?: { 
+                        hookTips: string; 
+                        contentTips: string; 
+                        ctaTips: string; 
+                        avoidTips: string; 
+                      } 
+                    } | undefined;
+                    if (!selectedType?.viralElements) return null;
+                    return (
+                      <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-4 space-y-3">
+                        <div className="flex items-center gap-2 text-purple-700 font-medium">
+                          <Sparkles className="w-4 h-4" />
+                          <span>{selectedType.name}爆款元素</span>
+                        </div>
+                        <div className="grid gap-2 text-sm">
+                          <div className="flex gap-2">
+                            <span className="text-purple-600 font-medium min-w-[60px]">開頭：</span>
+                            <span className="text-gray-700">{selectedType.viralElements.hookTips}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <span className="text-purple-600 font-medium min-w-[60px]">內容：</span>
+                            <span className="text-gray-700">{selectedType.viralElements.contentTips}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <span className="text-purple-600 font-medium min-w-[60px]">互動：</span>
+                            <span className="text-gray-700">{selectedType.viralElements.ctaTips}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <span className="text-red-500 font-medium min-w-[60px]">避免：</span>
+                            <span className="text-gray-700">{selectedType.viralElements.avoidTips}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div className="space-y-2">
                     <Label>補充切角方向（選填）</Label>

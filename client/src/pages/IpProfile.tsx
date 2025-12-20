@@ -1675,7 +1675,7 @@ export default function IpProfile() {
                                         setLocation(`/writing-studio?material=${encodeURIComponent(material)}&angle=${encodeURIComponent(point)}`);
                                       }}
                                     >
-                                      • {point}
+                                      「{point}」
                                     </li>
                                   ))}
                                 </ul>
@@ -1713,7 +1713,7 @@ export default function IpProfile() {
                                         setLocation(`/writing-studio?material=${encodeURIComponent(material)}&angle=${encodeURIComponent(point)}`);
                                       }}
                                     >
-                                      • {point}
+                                      「{point}」
                                     </li>
                                   ))}
                                 </ul>
@@ -1752,7 +1752,7 @@ export default function IpProfile() {
                                         setLocation(`/writing-studio?material=${encodeURIComponent(material)}&angle=${encodeURIComponent(point)}`);
                                       }}
                                     >
-                                      • {point}
+                                      「{point}」
                                     </li>
                                   ))}
                                 </ul>
@@ -1772,7 +1772,7 @@ export default function IpProfile() {
                 
                 {Object.keys(painPointMatrix).length > 0 && (
                   <p className="text-sm text-muted-foreground mt-4">
-                    💡 提示：點擊任一痛點可以直接帶入發文工作室生成文案
+💡 提示：這些是「受眾會說的話」，點擊任一句可以直接帶入發文工作室作為開頭 Hook
                   </p>
                 )}
               </CardContent>
