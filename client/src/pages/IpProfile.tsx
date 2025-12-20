@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { 
   Target, 
@@ -32,6 +33,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function IpProfile() {
+  const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const { data: profile, isLoading } = trpc.ipProfile.get.useQuery();
   const { data: audiences, isLoading: audiencesLoading } = trpc.audience.list.useQuery();
@@ -1402,7 +1404,15 @@ export default function IpProfile() {
                               {painPoints.length > 0 ? (
                                 <ul className="space-y-1">
                                   {painPoints.map((point: string, j: number) => (
-                                    <li key={j} className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
+                                    <li 
+                                      key={j} 
+                                      className="text-muted-foreground hover:text-primary cursor-pointer transition-colors hover:underline"
+                                      onClick={() => {
+                                        // 將痛點帶入發文工作室
+                                        const material = `受眾：${formData.contentMatrixAudiences.core}\n主題：${theme}\n痛點：${point}`;
+                                        setLocation(`/writing-studio?material=${encodeURIComponent(material)}&angle=${encodeURIComponent(point)}`);
+                                      }}
+                                    >
                                       • {point}
                                     </li>
                                   ))}
@@ -1432,7 +1442,14 @@ export default function IpProfile() {
                               {painPoints.length > 0 ? (
                                 <ul className="space-y-1">
                                   {painPoints.map((point: string, j: number) => (
-                                    <li key={j} className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
+                                    <li 
+                                      key={j} 
+                                      className="text-muted-foreground hover:text-primary cursor-pointer transition-colors hover:underline"
+                                      onClick={() => {
+                                        const material = `受眾：${formData.contentMatrixAudiences.potential}\n主題：${theme}\n痛點：${point}`;
+                                        setLocation(`/writing-studio?material=${encodeURIComponent(material)}&angle=${encodeURIComponent(point)}`);
+                                      }}
+                                    >
                                       • {point}
                                     </li>
                                   ))}
@@ -1463,7 +1480,14 @@ export default function IpProfile() {
                               {painPoints.length > 0 ? (
                                 <ul className="space-y-1">
                                   {painPoints.map((point: string, j: number) => (
-                                    <li key={j} className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
+                                    <li 
+                                      key={j} 
+                                      className="text-muted-foreground hover:text-primary cursor-pointer transition-colors hover:underline"
+                                      onClick={() => {
+                                        const material = `受眾：${formData.contentMatrixAudiences.opportunity}\n主題：${theme}\n痛點：${point}`;
+                                        setLocation(`/writing-studio?material=${encodeURIComponent(material)}&angle=${encodeURIComponent(point)}`);
+                                      }}
+                                    >
                                       • {point}
                                     </li>
                                   ))}

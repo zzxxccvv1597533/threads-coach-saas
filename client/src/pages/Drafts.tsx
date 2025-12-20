@@ -146,7 +146,7 @@ export default function Drafts() {
                         </Badge>
                       </div>
                       <p className="text-sm line-clamp-2 mb-2">
-                        {draft.body || draft.title || '（無內容）'}
+                        {(draft.body || draft.title || '（無內容）').replace(/\*\*/g, '')}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {draft.createdAt ? format(new Date(draft.createdAt), 'yyyy/MM/dd HH:mm', { locale: zhTW }) : '-'}

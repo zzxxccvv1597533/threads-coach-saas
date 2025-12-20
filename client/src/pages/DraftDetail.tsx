@@ -44,9 +44,18 @@ export default function DraftDetail() {
 
   const draft = draftData?.draft;
 
+  // 清理 Markdown 符號的函數
+  const cleanMarkdown = (text: string) => {
+    return text
+      .replace(/\*\*/g, '') // 移除粗體符號
+      .replace(/\*/g, '')   // 移除斜體符號
+      .replace(/^#+\s/gm, '') // 移除標題符號
+      .replace(/`/g, '');    // 移除代碼符號
+  };
+
   useEffect(() => {
     if (draft?.body) {
-      setEditedBody(draft.body);
+      setEditedBody(cleanMarkdown(draft.body));
     }
   }, [draft?.body]);
 
@@ -122,7 +131,8 @@ export default function DraftDetail() {
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(editedBody);
+    // 複製時確保清理 Markdown 符號
+    navigator.clipboard.writeText(cleanMarkdown(editedBody));
     toast.success("已複製到剪貼簿");
   };
 

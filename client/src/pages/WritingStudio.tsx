@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { useState, useRef, useEffect } from "react";
+import { useSearch } from "wouter";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 import { 
@@ -145,6 +146,31 @@ export default function WritingStudio() {
     saveState("draftId", draftId);
     saveState("chatMessages", chatMessages);
   }, [mode, material, selectedContentType, selectedMonetizeType, selectedAngle, step, brainstormResult, anglesResult, draftResult, draftId, chatMessages]);
+
+  // 處理 URL 參數（從痛點矩陣跳轉過來）
+  const searchString = useSearch();
+  useEffect(() => {
+    if (searchString) {
+      const params = new URLSearchParams(searchString);
+      const urlMaterial = params.get('material');
+      const urlAngle = params.get('angle');
+      
+      if (urlMaterial) {
+        setMaterial(decodeURIComponent(urlMaterial));
+        setMode('material');
+        setStep(1);
+        
+        if (urlAngle) {
+          setSelectedAngle(decodeURIComponent(urlAngle));
+        }
+        
+        toast.success('已從痛點矩陣帶入素材，可以開始生成文案！');
+        
+        // 清除 URL 參數，避免重複處理
+        window.history.replaceState({}, '', '/writing-studio');
+      }
+    }
+  }, [searchString]);
 
   const brainstorm = trpc.ai.brainstorm.useMutation({
     onSuccess: (data) => {
