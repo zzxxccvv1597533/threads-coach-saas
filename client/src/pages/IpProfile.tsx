@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { 
@@ -42,10 +42,19 @@ export default function IpProfile() {
   const { data: userProducts, isLoading: productsLoading } = trpc.userProduct.list.useQuery();
   const { data: successStories, isLoading: storiesLoading } = trpc.successStory.list.useQuery();
   
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const upsertProfile = trpc.ipProfile.upsert.useMutation({
     onSuccess: () => {
       utils.ipProfile.get.invalidate();
+      setHasUnsavedChanges(false);
+      setLastSavedAt(new Date());
       toast.success("IP 地基已儲存");
+    },
+    onError: () => {
+      toast.error("儲存失敗，請稍後再試");
     },
   });
 
@@ -147,6 +156,7 @@ export default function IpProfile() {
   const [painPointMatrix, setPainPointMatrix] = useState<Record<string, Record<string, string[]>>>({});
   const [isGeneratingPainPoints, setIsGeneratingPainPoints] = useState(false);
 
+  // 從資料庫載入資料
   useEffect(() => {
     if (profile) {
       setFormData({
@@ -168,8 +178,71 @@ export default function IpProfile() {
         contentMatrixAudiences: (profile.contentMatrixAudiences as { core: string; potential: string; opportunity: string }) || { core: "", potential: "", opportunity: "" },
         contentMatrixThemes: (profile.contentMatrixThemes as string[]) || [],
       });
+      // 設定最後儲存時間
+      if (profile.updatedAt) {
+        setLastSavedAt(new Date(profile.updatedAt));
+      }
     }
   }, [profile]);
+
+  // 自動儲存功能：當 formData 變更時，3 秒後自動儲存
+  useEffect(() => {
+    // 如果資料還在載入中，不要觸發自動儲存
+    if (isLoading || !profile) return;
+    
+    // 檢查是否有變更（比較當前 formData 與資料庫中的 profile）
+    const hasChanges = 
+      formData.occupation !== (profile.occupation || "") ||
+      formData.voiceTone !== (profile.voiceTone || "") ||
+      formData.viewpointStatement !== (profile.viewpointStatement || "") ||
+      formData.goalPrimary !== (profile.goalPrimary || "monetize") ||
+      formData.personaExpertise !== (profile.personaExpertise || "") ||
+      formData.personaEmotion !== (profile.personaEmotion || "") ||
+      formData.personaViewpoint !== (profile.personaViewpoint || "") ||
+      formData.heroJourneyOrigin !== (profile.heroJourneyOrigin || "") ||
+      formData.heroJourneyProcess !== (profile.heroJourneyProcess || "") ||
+      formData.heroJourneyHero !== (profile.heroJourneyHero || "") ||
+      formData.heroJourneyMission !== (profile.heroJourneyMission || "") ||
+      JSON.stringify(formData.identityTags) !== JSON.stringify((profile.identityTags as string[]) || []) ||
+      JSON.stringify(formData.contentMatrixAudiences) !== JSON.stringify((profile.contentMatrixAudiences as { core: string; potential: string; opportunity: string }) || { core: "", potential: "", opportunity: "" }) ||
+      JSON.stringify(formData.contentMatrixThemes) !== JSON.stringify((profile.contentMatrixThemes as string[]) || []);
+    
+    setHasUnsavedChanges(hasChanges);
+    
+    if (hasChanges) {
+      // 清除之前的定時器
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      
+      // 設定 3 秒後自動儲存
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        upsertProfile.mutate({
+          ...formData,
+          ipAnalysisComplete: calculateProgress() >= 80,
+        });
+      }, 3000);
+    }
+    
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [formData, profile, isLoading]);
+
+  // 離開頁面前提醒
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '你有未儲存的變更，確定要離開嗎？';
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   const calculateProgress = () => {
     let score = 0;
@@ -244,10 +317,43 @@ export default function IpProfile() {
               建立你的人設三支柱與產品矩陣，讓 AI 更了解你的風格
             </p>
           </div>
-          <Button onClick={handleSave} disabled={upsertProfile.isPending}>
-            <Save className="w-4 h-4 mr-2" />
-            {upsertProfile.isPending ? "儲存中..." : "儲存設定"}
-          </Button>
+          <div className="flex items-center gap-3">
+            {/* 儲存狀態提示 */}
+            <div className="text-sm text-muted-foreground">
+              {upsertProfile.isPending ? (
+                <span className="flex items-center gap-1 text-amber-600">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  儲存中...
+                </span>
+              ) : hasUnsavedChanges ? (
+                <span className="flex items-center gap-1 text-amber-600">
+                  <div className="w-2 h-2 rounded-full bg-amber-500" />
+                  未儲存的變更
+                </span>
+              ) : lastSavedAt ? (
+                <span className="flex items-center gap-1 text-emerald-600">
+                  <CheckCircle className="w-3 h-3" />
+                  已自動儲存
+                </span>
+              ) : null}
+            </div>
+            <Button 
+              onClick={handleSave} 
+              disabled={upsertProfile.isPending || !hasUnsavedChanges}
+              variant={hasUnsavedChanges ? "default" : "outline"}
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {upsertProfile.isPending ? "儲存中..." : "立即儲存"}
+            </Button>
+          </div>
+        </div>
+        
+        {/* 自動儲存提示 */}
+        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+          <p className="text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
+            <Info className="w-4 h-4" />
+            你的變更會在 3 秒後自動儲存，也可以點擊「立即儲存」按鈕手動儲存
+          </p>
         </div>
 
         {/* Progress Card */}
