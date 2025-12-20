@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, userId, occupation, voiceTone, updatedAt FROM ip_profiles ORDER BY updatedAt DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute SELECT id, userId, occupation, voiceTone, updatedAt FROM ip_profiles ORDER BY updatedAt DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "userId": "1",
+      "occupation": "寵物溝通師",
+      "voiceTone": "溫柔且犀利",
+      "updatedAt": "2025-12-20 01:52:39"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\toccupation\tvoiceTone\tupdatedAt\n1\t1\t寵物溝通師\t溫柔且犀利\t2025-12-20 01:52:39\n",
+  "stderr": "",
+  "execution_time_ms": 1604
+}

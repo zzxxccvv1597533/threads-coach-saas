@@ -186,26 +186,71 @@ export default function IpProfile() {
   }, [profile]);
 
   // 自動儲存功能：當 formData 變更時，3 秒後自動儲存
+  // 使用 useRef 來追蹤初始狀態，避免無限迴圈
+  const initialFormDataRef = useRef<typeof formData | null>(null);
+  const isInitializedRef = useRef(false);
+
+  // 當 profile 載入後，設定初始狀態
   useEffect(() => {
-    // 如果資料還在載入中，不要觸發自動儲存
-    if (isLoading || !profile) return;
+    if (!isLoading && !isInitializedRef.current) {
+      // 如果 profile 存在，使用 profile 的值；否則使用預設值
+      const initialData = profile ? {
+        occupation: profile.occupation || "",
+        voiceTone: profile.voiceTone || "",
+        viewpointStatement: profile.viewpointStatement || "",
+        goalPrimary: profile.goalPrimary || "monetize",
+        personaExpertise: profile.personaExpertise || "",
+        personaEmotion: profile.personaEmotion || "",
+        personaViewpoint: profile.personaViewpoint || "",
+        heroJourneyOrigin: profile.heroJourneyOrigin || "",
+        heroJourneyProcess: profile.heroJourneyProcess || "",
+        heroJourneyHero: profile.heroJourneyHero || "",
+        heroJourneyMission: profile.heroJourneyMission || "",
+        identityTags: (profile.identityTags as string[]) || [],
+        contentMatrixAudiences: (profile.contentMatrixAudiences as { core: string; potential: string; opportunity: string }) || { core: "", potential: "", opportunity: "" },
+        contentMatrixThemes: (profile.contentMatrixThemes as string[]) || [],
+      } : {
+        occupation: "",
+        voiceTone: "",
+        viewpointStatement: "",
+        goalPrimary: "monetize" as const,
+        personaExpertise: "",
+        personaEmotion: "",
+        personaViewpoint: "",
+        heroJourneyOrigin: "",
+        heroJourneyProcess: "",
+        heroJourneyHero: "",
+        heroJourneyMission: "",
+        identityTags: [] as string[],
+        contentMatrixAudiences: { core: "", potential: "", opportunity: "" },
+        contentMatrixThemes: [] as string[],
+      };
+      initialFormDataRef.current = initialData;
+      isInitializedRef.current = true;
+    }
+  }, [isLoading, profile]);
+
+  useEffect(() => {
+    // 如果資料還在載入中或尚未初始化，不要觸發自動儲存
+    if (isLoading || !isInitializedRef.current || !initialFormDataRef.current) return;
     
-    // 檢查是否有變更（比較當前 formData 與資料庫中的 profile）
+    // 檢查是否有變更（比較當前 formData 與初始狀態）
+    const initial = initialFormDataRef.current;
     const hasChanges = 
-      formData.occupation !== (profile.occupation || "") ||
-      formData.voiceTone !== (profile.voiceTone || "") ||
-      formData.viewpointStatement !== (profile.viewpointStatement || "") ||
-      formData.goalPrimary !== (profile.goalPrimary || "monetize") ||
-      formData.personaExpertise !== (profile.personaExpertise || "") ||
-      formData.personaEmotion !== (profile.personaEmotion || "") ||
-      formData.personaViewpoint !== (profile.personaViewpoint || "") ||
-      formData.heroJourneyOrigin !== (profile.heroJourneyOrigin || "") ||
-      formData.heroJourneyProcess !== (profile.heroJourneyProcess || "") ||
-      formData.heroJourneyHero !== (profile.heroJourneyHero || "") ||
-      formData.heroJourneyMission !== (profile.heroJourneyMission || "") ||
-      JSON.stringify(formData.identityTags) !== JSON.stringify((profile.identityTags as string[]) || []) ||
-      JSON.stringify(formData.contentMatrixAudiences) !== JSON.stringify((profile.contentMatrixAudiences as { core: string; potential: string; opportunity: string }) || { core: "", potential: "", opportunity: "" }) ||
-      JSON.stringify(formData.contentMatrixThemes) !== JSON.stringify((profile.contentMatrixThemes as string[]) || []);
+      formData.occupation !== initial.occupation ||
+      formData.voiceTone !== initial.voiceTone ||
+      formData.viewpointStatement !== initial.viewpointStatement ||
+      formData.goalPrimary !== initial.goalPrimary ||
+      formData.personaExpertise !== initial.personaExpertise ||
+      formData.personaEmotion !== initial.personaEmotion ||
+      formData.personaViewpoint !== initial.personaViewpoint ||
+      formData.heroJourneyOrigin !== initial.heroJourneyOrigin ||
+      formData.heroJourneyProcess !== initial.heroJourneyProcess ||
+      formData.heroJourneyHero !== initial.heroJourneyHero ||
+      formData.heroJourneyMission !== initial.heroJourneyMission ||
+      JSON.stringify(formData.identityTags) !== JSON.stringify(initial.identityTags) ||
+      JSON.stringify(formData.contentMatrixAudiences) !== JSON.stringify(initial.contentMatrixAudiences) ||
+      JSON.stringify(formData.contentMatrixThemes) !== JSON.stringify(initial.contentMatrixThemes);
     
     setHasUnsavedChanges(hasChanges);
     
@@ -221,6 +266,8 @@ export default function IpProfile() {
           ...formData,
           ipAnalysisComplete: calculateProgress() >= 80,
         });
+        // 儲存成功後更新初始狀態
+        initialFormDataRef.current = { ...formData };
       }, 3000);
     }
     
@@ -229,7 +276,7 @@ export default function IpProfile() {
         clearTimeout(autoSaveTimeoutRef.current);
       }
     };
-  }, [formData, profile, isLoading]);
+  }, [formData, isLoading]);
 
   // 離開頁面前提醒
   useEffect(() => {
@@ -264,6 +311,11 @@ export default function IpProfile() {
     upsertProfile.mutate({
       ...formData,
       ipAnalysisComplete: calculateProgress() >= 80,
+    }, {
+      onSuccess: () => {
+        // 儲存成功後更新初始狀態
+        initialFormDataRef.current = { ...formData };
+      }
     });
   };
 
