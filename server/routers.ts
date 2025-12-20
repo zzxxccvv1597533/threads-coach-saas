@@ -1061,6 +1061,7 @@ ${input.additionalContext ? `補充說明：${input.additionalContext}` : ''}
       .input(z.object({
         currentDraft: z.string(),
         instruction: z.string(),
+        draftId: z.number().optional(), // 新增：草稿 ID
         chatHistory: z.array(z.object({
           role: z.enum(["user", "assistant"]),
           content: z.string(),
@@ -1101,6 +1102,8 @@ ${input.currentDraft}` },
         messages.push({ role: "user", content: `請根據以下指示修改：${input.instruction}` });
 
         const response = await invokeLLM({ messages });
+        const rawContent = response.choices[0]?.message?.content;
+        const newContent = typeof rawContent === 'string' ? rawContent : '';
 
         await db.logApiUsage(ctx.user.id, 'refineDraft', 'llm', 500, 600);
 
@@ -1113,8 +1116,15 @@ ${input.currentDraft}` },
           });
         }
 
+        // 更新資料庫中的草稿內容
+        if (input.draftId) {
+          await db.updateDraft(input.draftId, {
+            body: newContent,
+          });
+        }
+
         return {
-          content: response.choices[0]?.message?.content || '',
+          content: newContent,
         };
       }),
 

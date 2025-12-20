@@ -284,6 +284,7 @@ export default function WritingStudio() {
     refineDraft.mutate({
       currentDraft: draftResult,
       instruction: userMessage,
+      draftId: draftId || undefined, // 傳遞草稿 ID 以更新資料庫
       chatHistory: chatMessages,
     });
   };
