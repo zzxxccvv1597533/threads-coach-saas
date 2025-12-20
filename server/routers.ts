@@ -210,45 +210,83 @@ export const appRouter = router({
         audiences: z.array(z.string()),
         themes: z.array(z.string()),
         occupation: z.string().optional(),
+        voiceTone: z.string().optional(),
+        viewpoint: z.string().optional(),
+        identityTags: z.array(z.string()).optional(),
+        contentPillars: z.object({
+          authority: z.string().optional(),
+          emotion: z.string().optional(),
+          uniqueness: z.string().optional(),
+        }).optional(),
+        products: z.array(z.object({
+          name: z.string(),
+          type: z.string(),
+          description: z.string().optional(),
+        })).optional(),
       }))
       .mutation(async ({ input }) => {
-        const { audiences, themes, occupation } = input;
+        const { audiences, themes, occupation, voiceTone, viewpoint, identityTags, contentPillars, products } = input;
         
-        const prompt = `你是一位 Threads 內容策略專家。請根據以下資訊生成痛點矩陣。
+        // 提取受眾名稱（去除括號內的痛點描述）
+        const cleanAudiences = audiences.map(a => {
+          // 如果包含括號，只取括號前的名稱
+          const match = a.match(/^([^\uff08\(]+)/);
+          return match ? match[1].trim() : a.trim();
+        });
+        
+        // 建構 IP 地基資訊
+        let ipContext = '';
+        if (occupation) ipContext += `職業/身份：${occupation}\n`;
+        if (voiceTone) ipContext += `語氣風格：${voiceTone}\n`;
+        if (viewpoint) ipContext += `觀點宣言：${viewpoint}\n`;
+        if (identityTags && identityTags.length > 0) ipContext += `身份標籤：${identityTags.join('、')}\n`;
+        if (contentPillars) {
+          if (contentPillars.authority) ipContext += `專業權威：${contentPillars.authority}\n`;
+          if (contentPillars.emotion) ipContext += `情感共鳴：${contentPillars.emotion}\n`;
+          if (contentPillars.uniqueness) ipContext += `獨特觀點：${contentPillars.uniqueness}\n`;
+        }
+        if (products && products.length > 0) {
+          ipContext += `產品/服務：${products.map(p => p.name).join('、')}\n`;
+        }
+        
+        const prompt = `你是一位 Threads 內容策略專家。請根據以下創作者資訊和受眾資訊，生成精準的痛點矩陣。
 
-用戶職業/領域：${occupation || '未指定'}
+=== 創作者 IP 地基 ===
+${ipContext || '未設定'}
 
-受眾分層：
-${audiences.map((a, i) => `${i + 1}. ${a}`).join('\n')}
+=== 受眾分層 ===
+${cleanAudiences.map((a, i) => `${i + 1}. ${a}`).join('\n')}
 
-子主題：
+=== 內容主題 ===
 ${themes.map((t, i) => `${i + 1}. ${t}`).join('\n')}
 
-請為每個「受眾 × 子主題」的組合，生成 2-3 個具體的痛點/卡關點。
+=== 任務 ===
+請為每個「受眾 × 主題」的組合，生成 2-3 個具體的痛點/卡關點。
 
-痛點的定義：受眾在這個主題上實際遇到的煩惱，例如：
-- 覺得麻煩
-- 難以決定
-- 感到焦慮
-- 不確定怎麼做
-- 耗費時間
-- 害怕失敗
+痛點必須：
+1. 符合創作者的專業領域和服務範圍
+2. 是受眾在這個主題上實際會遇到的煩惱
+3. 可以轉化為具體的發文選題
+4. 用口語化的方式表達，像受眾自己會說的話
 
-請用 JSON 格式回應，結構如下：
+痛點範例（請根據創作者領域調整）：
+- 「不知道該不該說」
+- 「想做但不知道怎麼開始」
+- 「已經很努力了但還是沒有效果」
+- 「害怕被評判」
+- 「不確定這樣做對不對」
+
+=== 輸出格式 ===
+請用 JSON 格式回應，受眾名稱必須完全匹配以下名稱：
+${cleanAudiences.map(a => `- "${a}"`).join('\n')}
+
+結構如下：
 {
-  "受眾1": {
-    "主題1": ["痛點1", "痛點2"],
-    "主題2": ["痛點1", "痛點2"]
-  },
-  "受眾2": {
-    "主題1": ["痛點1", "痛點2"],
-    "主題2": ["痛點1", "痛點2"]
+  "${cleanAudiences[0] || '受眾1'}": {
+    "${themes[0] || '主題1'}": ["痛點1", "痛點2"],
+    "${themes[1] || '主題2'}": ["痛點1", "痛點2"]
   }
 }
-
-每個痛點要具體、可用於發文選題，例如：
-- 「不知道要拍什麼 - 面對鏡頭很緊張 - 沒人看」
-- 「服務很好但價格拉不高 - 不會包裝產品 - 怕被說貪財」
 
 只輸出 JSON，不要其他文字。`;
 

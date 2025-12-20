@@ -1593,6 +1593,19 @@ export default function IpProfile() {
                           audiences,
                           themes: formData.contentMatrixThemes,
                           occupation: formData.occupation,
+                          voiceTone: formData.voiceTone,
+                          viewpoint: formData.viewpointStatement,
+                          identityTags: formData.identityTags,
+                          contentPillars: {
+                            authority: formData.personaExpertise,
+                            emotion: formData.personaEmotion,
+                            uniqueness: formData.personaViewpoint,
+                          },
+                          products: userProducts?.map(p => ({
+                            name: p.name,
+                            type: p.productType,
+                            description: p.description || undefined,
+                          })),
                         });
                         
                         setPainPointMatrix(result.matrix);
@@ -1622,14 +1635,14 @@ export default function IpProfile() {
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
+                  <table className="w-full border-collapse table-fixed">
                     <thead>
                       <tr>
-                        <th className="p-3 border border-border bg-muted/50 text-left min-w-[120px]">
-                          受眾 ↓ / 主題 →
+                        <th className="p-3 border border-border bg-muted/50 text-left w-[140px]">
+                          <span className="text-xs text-muted-foreground">受眾 ↓</span>
                         </th>
                         {formData.contentMatrixThemes.map((theme, i) => (
-                          <th key={i} className="p-3 border border-border bg-muted/50 text-sm font-medium min-w-[200px]">
+                          <th key={i} className="p-3 border border-border bg-muted/50 text-sm font-medium">
                             {theme}
                           </th>
                         ))}
@@ -1638,14 +1651,16 @@ export default function IpProfile() {
                     <tbody>
                       {/* 核心受眾 */}
                       <tr>
-                        <td className="p-3 border border-border bg-emerald-500/10 text-sm font-medium">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                            {formData.contentMatrixAudiences.core || "核心受眾"}
+                        <td className="p-3 border border-border bg-emerald-500/10 text-sm font-medium w-[140px] align-top">
+                          <div className="flex items-start gap-2">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0 mt-1" />
+                            <span className="text-xs leading-tight">{(formData.contentMatrixAudiences.core || "核心受眾").split(/[\uff08\(]/)[0].trim()}</span>
                           </div>
                         </td>
                         {formData.contentMatrixThemes.map((theme, i) => {
-                          const painPoints = painPointMatrix[formData.contentMatrixAudiences.core]?.[theme] || [];
+                          // 提取乾淨的受眾名稱（去除括號內的痛點描述）
+                          const cleanAudienceName = (formData.contentMatrixAudiences.core || '').split(/[\uff08\(]/)[0].trim();
+                          const painPoints = painPointMatrix[cleanAudienceName]?.[theme] || painPointMatrix[formData.contentMatrixAudiences.core]?.[theme] || [];
                           return (
                             <td key={i} className="p-3 border border-border text-sm align-top">
                               {painPoints.length > 0 ? (
@@ -1676,14 +1691,15 @@ export default function IpProfile() {
                       {/* 潛在受眾 */}
                       {formData.contentMatrixAudiences.potential && (
                       <tr>
-                        <td className="p-3 border border-border bg-blue-500/10 text-sm font-medium">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-blue-500" />
-                            {formData.contentMatrixAudiences.potential}
+                        <td className="p-3 border border-border bg-blue-500/10 text-sm font-medium w-[140px] align-top">
+                          <div className="flex items-start gap-2">
+                            <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-1" />
+                            <span className="text-xs leading-tight">{formData.contentMatrixAudiences.potential.split(/[\uff08\(]/)[0].trim()}</span>
                           </div>
                         </td>
                         {formData.contentMatrixThemes.map((theme, i) => {
-                          const painPoints = painPointMatrix[formData.contentMatrixAudiences.potential]?.[theme] || [];
+                          const cleanAudienceName = formData.contentMatrixAudiences.potential.split(/[\uff08\(]/)[0].trim();
+                          const painPoints = painPointMatrix[cleanAudienceName]?.[theme] || painPointMatrix[formData.contentMatrixAudiences.potential]?.[theme] || [];
                           return (
                             <td key={i} className="p-3 border border-border text-sm align-top">
                               {painPoints.length > 0 ? (
@@ -1714,14 +1730,15 @@ export default function IpProfile() {
                       {/* 機會受眾 */}
                       {formData.contentMatrixAudiences.opportunity && (
                       <tr>
-                        <td className="p-3 border border-border bg-amber-500/10 text-sm font-medium">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-amber-500" />
-                            {formData.contentMatrixAudiences.opportunity}
+                        <td className="p-3 border border-border bg-amber-500/10 text-sm font-medium w-[140px] align-top">
+                          <div className="flex items-start gap-2">
+                            <div className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0 mt-1" />
+                            <span className="text-xs leading-tight">{formData.contentMatrixAudiences.opportunity.split(/[\uff08\(]/)[0].trim()}</span>
                           </div>
                         </td>
                         {formData.contentMatrixThemes.map((theme, i) => {
-                          const painPoints = painPointMatrix[formData.contentMatrixAudiences.opportunity]?.[theme] || [];
+                          const cleanAudienceName = formData.contentMatrixAudiences.opportunity.split(/[\uff08\(]/)[0].trim();
+                          const painPoints = painPointMatrix[cleanAudienceName]?.[theme] || painPointMatrix[formData.contentMatrixAudiences.opportunity]?.[theme] || [];
                           return (
                             <td key={i} className="p-3 border border-border text-sm align-top">
                               {painPoints.length > 0 ? (
