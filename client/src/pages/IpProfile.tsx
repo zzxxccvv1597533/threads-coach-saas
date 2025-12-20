@@ -1365,52 +1365,141 @@ export default function IpProfile() {
                   三層受眾
                 </CardTitle>
                 <CardDescription>
-                  定義你的三層目標受眾，從核心到機會
+                  從「目標受眾」頁籤中選擇你的三層目標受眾，或手動輸入
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* 如果有已設定的受眾，顯示快速選擇按鈕 */}
+                {audiences && audiences.length > 0 && (
+                  <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
+                    <p className="text-sm font-medium mb-2">快速選擇已設定的受眾：</p>
+                    <div className="flex flex-wrap gap-2">
+                      {audiences.map((audience) => (
+                        <Button
+                          key={audience.id}
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                          onClick={() => {
+                            // 智能填入：如果核心受眾空白就填核心，否則填潛在，最後填機會
+                            const audienceText = `${audience.segmentName}${audience.painPoint ? `（痛點：${audience.painPoint}）` : ''}`;
+                            if (!formData.contentMatrixAudiences.core) {
+                              setFormData({ 
+                                ...formData, 
+                                contentMatrixAudiences: { ...formData.contentMatrixAudiences, core: audienceText } 
+                              });
+                            } else if (!formData.contentMatrixAudiences.potential) {
+                              setFormData({ 
+                                ...formData, 
+                                contentMatrixAudiences: { ...formData.contentMatrixAudiences, potential: audienceText } 
+                              });
+                            } else if (!formData.contentMatrixAudiences.opportunity) {
+                              setFormData({ 
+                                ...formData, 
+                                contentMatrixAudiences: { ...formData.contentMatrixAudiences, opportunity: audienceText } 
+                              });
+                            } else {
+                              toast.info("三層受眾已填滿，請先清除某一層再選擇");
+                            }
+                          }}
+                        >
+                          {audience.segmentName}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-emerald-500" />
                     核心受眾（最想幫助的人）
                   </Label>
-                  <Input
-                    placeholder="例如：想轉型的職場媽媽"
-                    value={formData.contentMatrixAudiences.core}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      contentMatrixAudiences: { ...formData.contentMatrixAudiences, core: e.target.value } 
-                    })}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="例如：想轉型的職場媽媽"
+                      value={formData.contentMatrixAudiences.core}
+                      onChange={(e) => setFormData({ 
+                        ...formData, 
+                        contentMatrixAudiences: { ...formData.contentMatrixAudiences, core: e.target.value } 
+                      })}
+                    />
+                    {formData.contentMatrixAudiences.core && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setFormData({ 
+                          ...formData, 
+                          contentMatrixAudiences: { ...formData.contentMatrixAudiences, core: '' } 
+                        })}
+                      >
+                        <Trash2 className="w-4 h-4 text-muted-foreground" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-blue-500" />
                     潛在受眾（可能有興趣的人）
                   </Label>
-                  <Input
-                    placeholder="例如：對身心靈有興趣的職場人士"
-                    value={formData.contentMatrixAudiences.potential}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      contentMatrixAudiences: { ...formData.contentMatrixAudiences, potential: e.target.value } 
-                    })}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="例如：對身心靈有興趣的職場人士"
+                      value={formData.contentMatrixAudiences.potential}
+                      onChange={(e) => setFormData({ 
+                        ...formData, 
+                        contentMatrixAudiences: { ...formData.contentMatrixAudiences, potential: e.target.value } 
+                      })}
+                    />
+                    {formData.contentMatrixAudiences.potential && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setFormData({ 
+                          ...formData, 
+                          contentMatrixAudiences: { ...formData.contentMatrixAudiences, potential: '' } 
+                        })}
+                      >
+                        <Trash2 className="w-4 h-4 text-muted-foreground" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-amber-500" />
                     機會受眾（擴大觸及的人）
                   </Label>
-                  <Input
-                    placeholder="例如：想提升生活品質的一般大眾"
-                    value={formData.contentMatrixAudiences.opportunity}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      contentMatrixAudiences: { ...formData.contentMatrixAudiences, opportunity: e.target.value } 
-                    })}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="例如：想提升生活品質的一般大眾"
+                      value={formData.contentMatrixAudiences.opportunity}
+                      onChange={(e) => setFormData({ 
+                        ...formData, 
+                        contentMatrixAudiences: { ...formData.contentMatrixAudiences, opportunity: e.target.value } 
+                      })}
+                    />
+                    {formData.contentMatrixAudiences.opportunity && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setFormData({ 
+                          ...formData, 
+                          contentMatrixAudiences: { ...formData.contentMatrixAudiences, opportunity: '' } 
+                        })}
+                      >
+                        <Trash2 className="w-4 h-4 text-muted-foreground" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
+                
+                {audiences && audiences.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    💡 提示：先到「目標受眾」頁籤新增受眾，就可以快速選擇了
+                  </p>
+                )}
               </CardContent>
             </Card>
 
