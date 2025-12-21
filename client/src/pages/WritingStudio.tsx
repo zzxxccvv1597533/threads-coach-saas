@@ -1118,6 +1118,96 @@ export default function WritingStudio() {
               </Card>
             ) : (
               <>
+                {/* IP 地基預覽卡片 - 顯示已設定的內容 */}
+                <Card className="elegant-card border-brand-blue/20 bg-gradient-to-br from-brand-blue/5 to-brand-gold/5">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-brand-blue">
+                      <User className="w-5 h-5" />
+                      AI 將參考你的 IP 地基
+                    </CardTitle>
+                    <CardDescription>
+                      以下資料會自動帶入變現內容，讓內容更符合你的人設
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* 人設三支柱 */}
+                    {(ipProfile?.personaExpertise || ipProfile?.personaEmotion || ipProfile?.personaViewpoint) && (
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium text-brand-blue">人設三支柱</div>
+                        <div className="grid gap-2 md:grid-cols-3">
+                          {ipProfile?.personaExpertise && (
+                            <div className="p-2 bg-white/60 rounded-lg border border-brand-blue/10">
+                              <div className="text-xs text-muted-foreground mb-1">專業權威</div>
+                              <div className="text-sm line-clamp-2">{ipProfile.personaExpertise}</div>
+                            </div>
+                          )}
+                          {ipProfile?.personaEmotion && (
+                            <div className="p-2 bg-white/60 rounded-lg border border-brand-blue/10">
+                              <div className="text-xs text-muted-foreground mb-1">情感共鳴</div>
+                              <div className="text-sm line-clamp-2">{ipProfile.personaEmotion}</div>
+                            </div>
+                          )}
+                          {ipProfile?.personaViewpoint && (
+                            <div className="p-2 bg-white/60 rounded-lg border border-brand-blue/10">
+                              <div className="text-xs text-muted-foreground mb-1">獨特觀點</div>
+                              <div className="text-sm line-clamp-2">{ipProfile.personaViewpoint}</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* 英雄旅程故事 */}
+                    {(ipProfile?.heroJourneyOrigin || ipProfile?.heroJourneyMission) && (
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium text-brand-blue">你的故事</div>
+                        <div className="p-2 bg-white/60 rounded-lg border border-brand-blue/10">
+                          {ipProfile.heroJourneyOrigin && (
+                            <div className="text-sm line-clamp-2">緣起：{ipProfile.heroJourneyOrigin}</div>
+                          )}
+                          {ipProfile.heroJourneyMission && (
+                            <div className="text-xs text-muted-foreground mt-1">使命：{ipProfile.heroJourneyMission}</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* 產品資訊 */}
+                    {userProducts && userProducts.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium text-brand-blue">已設定的產品</div>
+                        <div className="flex flex-wrap gap-2">
+                          {userProducts.map((product) => (
+                            <Badge 
+                              key={product.id} 
+                              variant="outline" 
+                              className={`${
+                                product.productType === 'core' ? 'border-purple-500 text-purple-700 bg-purple-50' :
+                                product.productType === 'lead' ? 'border-blue-500 text-blue-700 bg-blue-50' :
+                                product.productType === 'vip' ? 'border-amber-500 text-amber-700 bg-amber-50' :
+                                'border-teal-500 text-teal-700 bg-teal-50'
+                              }`}
+                            >
+                              {product.productType === 'core' ? '核心品' :
+                               product.productType === 'lead' ? '引流品' :
+                               product.productType === 'vip' ? 'VIP' : '被動品'}
+                              ：{product.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* 編輯連結 */}
+                    <div className="flex justify-end">
+                      <Button variant="ghost" size="sm" onClick={() => window.location.href = '/ip-profile'} className="text-brand-blue hover:text-brand-blue/80">
+                        編輯 IP 地基
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {/* Content Type Selection */}
                 <Card className="elegant-card">
                   <CardHeader>
