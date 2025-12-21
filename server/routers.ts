@@ -1457,6 +1457,7 @@ ${viralElementsPrompt}
       .input(z.object({
         contentType: z.string(),
         additionalContext: z.string().optional(),
+        inputFields: z.record(z.string(), z.string()).optional(), // 動態輸入欄位
       }))
       .mutation(async ({ ctx, input }) => {
         const profile = await db.getIpProfileByUserId(ctx.user.id);
@@ -1600,24 +1601,25 @@ ${viralElementsPrompt}
 - 讓讀者感受到「這個價格試試看也不會虐」`,
           vip_service: `寫一篇「VIP 服務推廣文」，這是高價服務的軟性推廣。
 
-## 成功方式：販售「確定性」與「夥伴關係」
-- VIP 服務賣的不是「更多功能」，而是「更高的確定性」
-- 強調「對賭」與「承諾」機制
-- 針對已有營收基礎、想要擴張的族群
-- 讓讀者感受到「這是我的最強後盾」
+## 成功方式：販售「深度陪伴」與「長期關係」
+- VIP 服務賣的不是「更多功能」，而是「更深入的陪伴」
+- 強調「我會跟你一起走」的夥伴關係
+- 針對想要更深入理解自己、需要長期支持的人
+- 讓讀者感受到「這是一段深度的陪伴旅程」
 
 ## 內容結構
-1. Hook：「最近有一位學員問我.../很多人問我能不能更深入帶他...」
-2. 共鳴：描述 VIP 客戶的狀態（已有基礎，想要突破）
-3. 價值主張：「我會跟你站在同一邊...」（夥伴關係）
-4. 對賭機制：「如果沒有達到 XX，我會...」
-5. 稀缺性：「每月只收 X 位新學員...」
-6. CTA：「如果你已經有基礎，想要更快突破，可以私訊我聊聊」
+1. Hook：「最近有一位個案告訴我.../有人問我能不能更深入地陪他...」
+2. 共鳴：描述需要深度陪伴的人的狀態（想要更深入理解自己、需要持續支持）
+3. 價值主張：「我會跟你一起走這段路...」（深度陪伴）
+4. 服務內容：「包含定期諮詢/隨時討論/專屬支持...」
+5. 適合誰：「如果你是想要更深入理解自己的人...」
+6. CTA：「想知道這段陪伴適不適合你，可以私訊我聊聊」
 
 ## 風格要求
-- 軟性推廣，不是硬銷
-- 強調「我會跟你一起」的夥伴感
-- 讓讀者感受到「這是最高規格的服務」`,
+- 溫暖真誠，不是推銷
+- 強調「我會跟你一起」的陪伴感
+- 讓讀者感受到「這是一段深度的關係」
+- 不用緊迫感或限時優惠`,
           passive_product: `寫一篇「數位產品推廣文」，介紹電子書、課程、模板等被動收入產品。
 
 ## 成功方式：強調「系統化」與「可複製」
@@ -1719,14 +1721,46 @@ ${aiMemory}` : ''}
 不要用引號或分隔線來分隔段落，直接用空行。
 不要寫「標題」「開頭」「結尾」等標註。`;
 
+        // 建構用戶輸入欄位的描述
+        const inputFieldsContext: string[] = [];
+        if (input.inputFields) {
+          const fieldLabels: Record<string, string> = {
+            offer_content: '提供的內容（留言 +1 後會得到）',
+            target_pain: '目標受眾的痛點',
+            product_name: '產品名稱',
+            product_benefit: '產品效益',
+            value_preview: '內容預告（這個內容能帶來什麼價值）',
+            free_content: '免費內容',
+            service_detail: '服務內容',
+            transformation: '轉變效果',
+            social_proof: '社會證明',
+            case_background: '案例背景',
+            case_transformation: '案例轉變',
+            case_result: '案例結果',
+            vip_benefit: 'VIP 服務效益',
+            exclusivity: '專屬價值',
+          };
+          
+          for (const [key, value] of Object.entries(input.inputFields)) {
+            if (value && value.trim()) {
+              const label = fieldLabels[key] || key;
+              inputFieldsContext.push(`【${label}】${value}`);
+            }
+          }
+        }
+        
+        const userInputContext = inputFieldsContext.length > 0 
+          ? `=== 用戶提供的具體資料（必須在內容中使用） ===\n${inputFieldsContext.join('\n')}\n\n`
+          : '';
+
         const response = await invokeLLM({
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: `${contentTypePrompts[input.contentType] || '請幫我寫一篇變現內容'}
 
-${input.additionalContext ? `補充說明：${input.additionalContext}` : ''}
-
-重要：直接輸出可以發布的貼文，不要包含任何標題、解釋或提示詞。` }
+${userInputContext}${input.additionalContext ? `補充說明：${input.additionalContext}\n\n` : ''}重要：
+1. 如果用戶提供了具體資料，必須在內容中使用這些資料
+2. 直接輸出可以發布的貼文，不要包含任何標題、解釋或提示詞` }
           ],
         });
 

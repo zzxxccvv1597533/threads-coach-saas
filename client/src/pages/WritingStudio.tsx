@@ -69,7 +69,7 @@ const monetizationContentTypes = [
     badge: "引流品",
     badgeColor: "bg-blue-500",
     category: "lead",
-    inputFields: ["product_name", "product_benefit", "urgency"],
+    inputFields: ["product_name", "product_benefit", "value_preview"],
   },
   {
     id: "free_value",
@@ -163,10 +163,10 @@ const monetizeInputFields: Record<string, { label: string; placeholder: string; 
     placeholder: "例如：學會如何寫出爆款貼文...",
     description: "買了會得到什麼結果？",
   },
-  urgency: {
-    label: "緊迫感",
-    placeholder: "例如：限時優惠、只剩 5 個名額...",
-    description: "為什麼要現在行動？（選填）",
+  value_preview: {
+    label: "內容預告",
+    placeholder: "例如：這份清單能讓你快速定位現在的狀態...",
+    description: "簡單描述這個內容能帶來什麼價值？",
   },
   free_content: {
     label: "免費內容",
@@ -450,9 +450,18 @@ export default function WritingStudio() {
       toast.error("請先在 IP 地基設定你的核心產品");
       return;
     }
+    // 只傳遞有內容的欄位
+    const filledInputFields: Record<string, string> = {};
+    for (const [key, value] of Object.entries(flexibleInputs)) {
+      if (value && value.trim()) {
+        filledInputFields[key] = value;
+      }
+    }
+    
     generateMonetizeContent.mutate({
       contentType: selectedMonetizeType,
       additionalContext: material || undefined,
+      inputFields: Object.keys(filledInputFields).length > 0 ? filledInputFields : undefined,
     });
   };
 
