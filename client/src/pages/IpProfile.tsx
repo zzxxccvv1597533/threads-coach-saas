@@ -155,6 +155,8 @@ export default function IpProfile() {
   const [newTheme, setNewTheme] = useState("");
   const [painPointMatrix, setPainPointMatrix] = useState<Record<string, Record<string, string[]>>>({});
   const [isGeneratingPainPoints, setIsGeneratingPainPoints] = useState(false);
+  const [suggestedTopics, setSuggestedTopics] = useState<Array<{ name: string; description: string }>>([]);
+  const [isGeneratingTopics, setIsGeneratingTopics] = useState(false);
 
   // 從資料庫載入資料
   useEffect(() => {
@@ -1506,15 +1508,101 @@ export default function IpProfile() {
             {/* 三大主題 */}
             <Card className="elegant-card">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Lightbulb className="w-5 h-5 text-primary" />
-                  三大主題
-                </CardTitle>
-                <CardDescription>
-                  定義你的三個內容主題，建議包含：專業知識、個人故事、生活分享
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Lightbulb className="w-5 h-5 text-primary" />
+                      三大主題
+                    </CardTitle>
+                    <CardDescription>
+                      定義你的三個內容主題，或讓 AI 根據你的 IP 地基建議
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isGeneratingTopics || !formData.contentMatrixAudiences.core}
+                    onClick={async () => {
+                      setIsGeneratingTopics(true);
+                      try {
+                        const audiences = [
+                          formData.contentMatrixAudiences.core,
+                          formData.contentMatrixAudiences.potential,
+                          formData.contentMatrixAudiences.opportunity,
+                        ].filter(Boolean);
+                        
+                        const result = await utils.client.ipProfile.generateSubTopics.mutate({
+                          audiences,
+                          occupation: formData.occupation,
+                          voiceTone: formData.voiceTone,
+                          contentPillars: {
+                            authority: formData.personaExpertise,
+                            emotion: formData.personaEmotion,
+                            uniqueness: formData.personaViewpoint,
+                          },
+                          heroJourney: {
+                            origin: formData.heroJourneyOrigin,
+                            process: formData.heroJourneyProcess,
+                            hero: formData.heroJourneyHero,
+                            mission: formData.heroJourneyMission,
+                          },
+                          products: userProducts?.map(p => ({
+                            name: p.name,
+                            type: p.productType,
+                            description: p.description || undefined,
+                          })),
+                        });
+                        
+                        setSuggestedTopics(result.topics || []);
+                        toast.success("已生成主題建議，點擊即可新增");
+                      } catch (error) {
+                        toast.error("生成失敗，請稍後再試");
+                      } finally {
+                        setIsGeneratingTopics(false);
+                      }
+                    }}
+                    className="gap-2"
+                  >
+                    {isGeneratingTopics ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                        生成中...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        AI 建議主題
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* AI 建議的主題 */}
+                {suggestedTopics.length > 0 && formData.contentMatrixThemes.length < 3 && (
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-3">
+                    <div className="text-sm font-medium text-primary">💡 AI 建議的主題（點擊新增）</div>
+                    <div className="grid gap-2">
+                      {suggestedTopics.map((topic, index) => (
+                        <button
+                          key={index}
+                          className="text-left p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                          onClick={() => {
+                            if (formData.contentMatrixThemes.length < 3 && !formData.contentMatrixThemes.includes(topic.name)) {
+                              setFormData({ ...formData, contentMatrixThemes: [...formData.contentMatrixThemes, topic.name] });
+                              toast.success(`已新增「${topic.name}」`);
+                            }
+                          }}
+                          disabled={formData.contentMatrixThemes.includes(topic.name)}
+                        >
+                          <div className="font-medium text-sm">{topic.name}</div>
+                          <div className="text-xs text-muted-foreground mt-1">{topic.description}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-2">
                   <Input
                     placeholder="輸入主題，例如：塔羅知識、個案故事、日常生活"

@@ -327,6 +327,82 @@ export const THREADS_STYLE_GUIDE = {
   }
 };
 
+// ==================== 靈活輸入欄位定義 ====================
+export const FLEXIBLE_INPUT_FIELDS: Record<string, { label: string; placeholder: string; required: boolean; description: string }> = {
+  material: {
+    label: "素材/主題",
+    placeholder: "例如：最近很多人問我關於自我懷疑的問題...",
+    required: true,
+    description: "你想分享的主題或素材"
+  },
+  count: {
+    label: "清單項目數",
+    placeholder: "例如：5",
+    required: false,
+    description: "你想列出幾個重點（建議 3-7 個）"
+  },
+  stance: {
+    label: "你的觀點/立場",
+    placeholder: "例如：我認為自我懷疑不是壞事...",
+    required: true,
+    description: "你想表達的核心觀點"
+  },
+  reason: {
+    label: "支撐理由",
+    placeholder: "例如：因為我自己也曾經歷過...",
+    required: false,
+    description: "為什麼你有這個觀點？可以用經歷或案例支撐"
+  },
+  common_belief: {
+    label: "大家通常認為",
+    placeholder: "例如：很多人認為要先有自信才能行動...",
+    required: true,
+    description: "大家普遍的認知或迷思"
+  },
+  truth: {
+    label: "但其實",
+    placeholder: "例如：但其實行動才能帶來自信...",
+    required: true,
+    description: "你想分享的真相或反差觀點"
+  },
+  topic: {
+    label: "主題/話題",
+    placeholder: "例如：今天的心情...",
+    required: true,
+    description: "你想聊的話題"
+  },
+  question: {
+    label: "別人問你的問題",
+    placeholder: "例如：朋友問我「你怎麼知道自己適合什麼？」",
+    required: true,
+    description: "別人問你的問題，用引號包起來"
+  },
+  context: {
+    label: "背景說明",
+    placeholder: "例如：這是在聊到職涯轉換的時候...",
+    required: false,
+    description: "這個對話發生的背景"
+  },
+  options: {
+    label: "投票選項",
+    placeholder: "例如：A. 先存錢再說 / B. 先投資自己",
+    required: true,
+    description: "用 A/B 或數字列出選項"
+  },
+  quote: {
+    label: "引用的句子",
+    placeholder: "例如：「成功不是終點，失敗也不是終結」",
+    required: true,
+    description: "你想引用的名言或句子"
+  },
+  reflection: {
+    label: "你的解讀",
+    placeholder: "例如：這句話讓我想到...",
+    required: false,
+    description: "你對這句話的解讀或感想"
+  }
+};
+
 // ==================== Hook 風格 ====================
 export const HOOK_STYLES = [
   { id: "mirror", name: "鏡像開頭", description: "直接說出受眾的心聲", example: "你是不是也常常..." },

@@ -325,6 +325,126 @@ ${cleanAudiences.map(a => `- "${a}"`).join('\n')}
           return { matrix: {} };
         }
       }),
+    
+    // 生成子主題選項
+    generateSubTopics: protectedProcedure
+      .input(z.object({
+        audiences: z.array(z.string()),
+        occupation: z.string().optional(),
+        voiceTone: z.string().optional(),
+        contentPillars: z.object({
+          authority: z.string().optional(),
+          emotion: z.string().optional(),
+          uniqueness: z.string().optional(),
+        }).optional(),
+        heroJourney: z.object({
+          origin: z.string().optional(),
+          process: z.string().optional(),
+          hero: z.string().optional(),
+          mission: z.string().optional(),
+        }).optional(),
+        products: z.array(z.object({
+          name: z.string(),
+          type: z.string(),
+          description: z.string().optional(),
+        })).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { audiences, occupation, voiceTone, contentPillars, heroJourney, products } = input;
+        
+        // 建構 IP 地基資訊
+        let ipContext = '';
+        if (occupation) ipContext += `職業/身份：${occupation}\n`;
+        if (voiceTone) ipContext += `語氣風格：${voiceTone}\n`;
+        if (contentPillars) {
+          if (contentPillars.authority) ipContext += `專業權威：${contentPillars.authority}\n`;
+          if (contentPillars.emotion) ipContext += `情感共鳴：${contentPillars.emotion}\n`;
+          if (contentPillars.uniqueness) ipContext += `獨特觀點：${contentPillars.uniqueness}\n`;
+        }
+        if (heroJourney) {
+          if (heroJourney.origin) ipContext += `我的故事-緣起：${heroJourney.origin}\n`;
+          if (heroJourney.process) ipContext += `我的故事-過程：${heroJourney.process}\n`;
+          if (heroJourney.hero) ipContext += `我的故事-轉折：${heroJourney.hero}\n`;
+          if (heroJourney.mission) ipContext += `我的故事-使命：${heroJourney.mission}\n`;
+        }
+        if (products && products.length > 0) {
+          ipContext += `產品/服務：${products.map(p => p.name).join('、')}\n`;
+        }
+        
+        const prompt = `你是一位 Threads 內容策略專家。請根據以下創作者資訊和受眾資訊，生成 5 個適合的內容子主題。
+
+=== 創作者 IP 地基 ===
+${ipContext || '未設定'}
+
+=== 目標受眾 ===
+${audiences.join('、')}
+
+=== 任務 ===
+請生成 5 個內容子主題，這些主題必須：
+1. 符合創作者的專業領域
+2. 能夠觸動目標受眾的痛點
+3. 有足夠的內容發展空間
+4. 具體且可執行
+
+範例（請根據創作者領域調整）：
+- 塔羅師：感情解讀、事業方向、自我探索、日常灵感、個案故事
+- 健身教練：新手入門、飲食建議、常見迷思、訓練心法、成功案例
+- 心理諮商師：親密關係、自我療癒、情緒管理、原生家庽誰、日常觀察
+
+=== 輸出格式 ===
+請用 JSON 格式回應：
+{
+  "topics": [
+    { "name": "主題名稱", "description": "這個主題可以寫什麼內容" },
+    ...
+  ]
+}
+
+只輸出 JSON，不要其他文字。`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: "你是一位專業的內容策略專家，擅長分析受眾痛點並生成內容選題。" },
+            { role: "user", content: prompt }
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "topics_response",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  topics: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string", description: "主題名稱" },
+                        description: { type: "string", description: "主題說明" }
+                      },
+                      required: ["name", "description"],
+                      additionalProperties: false
+                    }
+                  }
+                },
+                required: ["topics"],
+                additionalProperties: false
+              }
+            }
+          }
+        });
+
+        const rawContent = response.choices[0]?.message?.content;
+        const content = typeof rawContent === 'string' ? rawContent : '{}';
+        
+        try {
+          const result = JSON.parse(content);
+          return { topics: result.topics || [] };
+        } catch {
+          return { topics: [] };
+        }
+      }),
   }),
 
   // ==================== 受眾分析 ====================
@@ -619,23 +739,66 @@ ${coreProduct ? `核心產品：${coreProduct.name}` : '未設定'}
             { role: "system", content: systemPrompt },
             { role: "user", content: `請根據我的 IP 地基和受眾，給我5個今天可以發的貼文主題建議。${input.topic ? `參考方向：${input.topic}` : ''}
 
-請用以下格式回覆：
+請用 JSON 格式回覆：
+{
+  "topics": [
+    {
+      "title": "主題名稱",
+      "audience": "適合哪一群人",
+      "contentType": "story",
+      "hook": "一句讓人想繼續看的開頭"
+    }
+  ]
+}
 
-1. 【主題名稱】
-   適合受眾：哪一群人會對這個主題有共鳴
-   建議類型：故事型/知識型/觀點型/提問型...
-   開頭示範：一句讓人想繼續看的 Hook
+contentType 可選值：knowledge(知識型), summary(懶人包), story(故事型), viewpoint(觀點型), contrast(反差型), casual(日常閃文), dialogue(對話型), question(提問型), poll(投票型), quote(金句型)
 
-2. ...
-
-每個主題都要與我的專業領域和受眾痛點相關。` }
+每個主題都要與我的專業領域和受眾痛點相關。只輸出 JSON，不要其他文字。` }
           ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "brainstorm_response",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  topics: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string", description: "主題名稱" },
+                        audience: { type: "string", description: "適合受眾" },
+                        contentType: { type: "string", description: "內容類型" },
+                        hook: { type: "string", description: "開頭示範" }
+                      },
+                      required: ["title", "audience", "contentType", "hook"],
+                      additionalProperties: false
+                    }
+                  }
+                },
+                required: ["topics"],
+                additionalProperties: false
+              }
+            }
+          }
         });
 
         await db.logApiUsage(ctx.user.id, 'brainstorm', 'llm', 500, 300);
         
+        // 解析 JSON 回應
+        let topicsData: { topics: Array<{ title: string; audience: string; contentType: string; hook: string }> } = { topics: [] };
+        try {
+          const rawContent = response.choices[0]?.message?.content;
+          const content = typeof rawContent === 'string' ? rawContent : '{}';
+          topicsData = JSON.parse(content);
+        } catch (e) {
+          console.error('Failed to parse brainstorm JSON:', e);
+        }
+        
         return {
-          suggestions: response.choices[0]?.message?.content || '',
+          suggestions: topicsData.topics || [],
         };
       }),
 
@@ -683,41 +846,86 @@ ${audienceContext || '未設定'}
             { role: "system", content: systemPrompt },
             { role: "user", content: `我有一個素材想發文：「${input.material}」
 
-請幫我用3個不同的切角來發展這個素材。
+請幫我用 3 個不同的切角來發展這個素材。
 
-請用以下格式回覆：
+請用以下 JSON 格式回覆（只輸出 JSON，不要其他文字）：
 
----
+{
+  "angles": [
+    {
+      "name": "故事型",
+      "type": "story",
+      "description": "用個人經歷或案例故事帶出觀點",
+      "hook": "昨天有個案主跟我說...",
+      "cta": "你有過這種經驗嗎？"
+    },
+    {
+      "name": "觀點型",
+      "type": "viewpoint",
+      "description": "直接表達立場和看法",
+      "hook": "我認為...",
+      "cta": "你們怎麼看？"
+    },
+    {
+      "name": "提問型",
+      "type": "question",
+      "description": "拋出問題引發討論",
+      "hook": "你有沒有想過...",
+      "cta": "想聽聽大家的看法"
+    }
+  ]
+}
 
-【切角一：故事型】
-適合類型：故事型
-互動方式：你有過這種經驗嗎？
-開頭示範：「昨天有個案主跟我說...」
-
----
-
-【切角二：觀點型】
-適合類型：觀點型
-互動方式：你們怎麼看？
-開頭示範：「我認為...」
-
----
-
-【切角三：提問型】
-適合類型：提問型
-互動方式：想聽聽大家的看法
-開頭示範：「你有沒有想過...」
-
----
-
-每個切角的開頭示範要簡潔有力，讓人想繼續看。` }
+注意：
+1. 每個切角的 hook 要簡潔有力，讓人想繼續看
+2. description 要說明這個切角的特色
+3. 切角要符合創作者的人設和受眾痛點` }
           ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "angles_response",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  angles: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string", description: "切角名稱" },
+                        type: { type: "string", description: "切角類型" },
+                        description: { type: "string", description: "切角說明" },
+                        hook: { type: "string", description: "開頭示範" },
+                        cta: { type: "string", description: "互動引導" }
+                      },
+                      required: ["name", "type", "description", "hook", "cta"],
+                      additionalProperties: false
+                    }
+                  }
+                },
+                required: ["angles"],
+                additionalProperties: false
+              }
+            }
+          }
         });
 
         await db.logApiUsage(ctx.user.id, 'analyzeAngles', 'llm', 400, 500);
         
+        // 解析 JSON 回應
+        let anglesData: { angles: Array<{ name: string; type: string; description: string; hook: string; cta: string }> } = { angles: [] };
+        try {
+          const rawContent = response.choices[0]?.message?.content;
+          const content = typeof rawContent === 'string' ? rawContent : '{}';
+          anglesData = JSON.parse(content);
+        } catch (e) {
+          console.error('Failed to parse angles JSON:', e);
+        }
+        
         return {
-          angles: response.choices[0]?.message?.content || '',
+          angles: anglesData.angles || [],
         };
       }),
 

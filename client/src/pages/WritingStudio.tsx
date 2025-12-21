@@ -26,11 +26,14 @@ import {
   Send,
   ShoppingBag,
   User,
+  Users,
   Target,
   Gift,
   Star,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+
+import { FLEXIBLE_INPUT_FIELDS, CONTENT_TYPES_WITH_VIRAL_ELEMENTS } from "@shared/knowledge-base";
 
 // 導流內容類型定義
 const monetizationContentTypes = [
@@ -115,10 +118,11 @@ export default function WritingStudio() {
   const [selectedAngle, setSelectedAngle] = useState(() => getStoredState("selectedAngle", ""));
   const [step, setStep] = useState(() => getStoredState("step", 1));
   
-  const [brainstormResult, setBrainstormResult] = useState(() => getStoredState("brainstormResult", ""));
-  const [anglesResult, setAnglesResult] = useState(() => getStoredState("anglesResult", ""));
+  const [brainstormResult, setBrainstormResult] = useState<Array<{ title: string; audience: string; contentType: string; hook: string }>>(() => getStoredState("brainstormResult", []));
+  const [anglesResult, setAnglesResult] = useState<Array<{ name: string; type: string; description: string; hook: string; cta: string }>>(() => getStoredState("anglesResult", []));
   const [draftResult, setDraftResult] = useState(() => getStoredState("draftResult", ""));
   const [draftId, setDraftId] = useState<number | null>(() => getStoredState("draftId", null));
+  const [flexibleInputs, setFlexibleInputs] = useState<Record<string, string>>(() => getStoredState("flexibleInputs", {}));
 
   // 對話修改功能
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => getStoredState("chatMessages", []));
@@ -146,7 +150,8 @@ export default function WritingStudio() {
     saveState("draftResult", draftResult);
     saveState("draftId", draftId);
     saveState("chatMessages", chatMessages);
-  }, [mode, material, selectedContentType, selectedMonetizeType, selectedAngle, step, brainstormResult, anglesResult, draftResult, draftId, chatMessages]);
+    saveState("flexibleInputs", flexibleInputs);
+  }, [mode, material, selectedContentType, selectedMonetizeType, selectedAngle, step, brainstormResult, anglesResult, draftResult, draftId, chatMessages, flexibleInputs]);
 
   // 處理 URL 參數（從痛點矩陣或其他頁面跳轉過來）
   const searchString = useSearch();
@@ -182,7 +187,7 @@ export default function WritingStudio() {
 
   const brainstorm = trpc.ai.brainstorm.useMutation({
     onSuccess: (data) => {
-      setBrainstormResult(typeof data.suggestions === 'string' ? data.suggestions : '');
+      setBrainstormResult(Array.isArray(data.suggestions) ? data.suggestions : []);
       toast.success("靈感已生成！");
     },
     onError: () => {
@@ -192,7 +197,7 @@ export default function WritingStudio() {
 
   const analyzeAngles = trpc.ai.analyzeAngles.useMutation({
     onSuccess: (data) => {
-      setAnglesResult(typeof data.angles === 'string' ? data.angles : '');
+      setAnglesResult(Array.isArray(data.angles) ? data.angles : []);
       setStep(2);
       toast.success("切角分析完成！");
     },
@@ -306,11 +311,12 @@ export default function WritingStudio() {
     setMaterial("");
     setSelectedAngle("");
     setStep(1);
-    setBrainstormResult("");
-    setAnglesResult("");
+    setBrainstormResult([]);
+    setAnglesResult([]);
     setDraftResult("");
     setDraftId(null);
     setChatMessages([]);
+    setFlexibleInputs({});
   };
 
   // Check if IP profile is complete enough
@@ -523,42 +529,66 @@ export default function WritingStudio() {
               </CardContent>
             </Card>
 
-            {/* Brainstorm Result */}
-            {brainstormResult && (
+            {/* Brainstorm Result - 卡片式選擇 */}
+            {brainstormResult && brainstormResult.length > 0 && (
               <Card className="elegant-card">
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>主題建議</CardTitle>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleCopy(brainstormResult)}
-                    >
-                      <Copy className="w-4 h-4 mr-2" />
-                      複製
-                    </Button>
-                  </div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-amber-500" />
+                    選擇主題
+                  </CardTitle>
+                  <CardDescription>
+                    AI 根據你的 IP 地基生成了 {brainstormResult.length} 個主題，點擊選擇你想發展的主題
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="prose prose-sm max-w-none">
-                    <Streamdown>{brainstormResult}</Streamdown>
-                  </div>
-                  <div className="pt-4 border-t">
-                    <p className="text-sm text-muted-foreground mb-3">
-                      看到喜歡的主題？複製到下方繼續發展
-                    </p>
-                    <Button
-                      variant="outline"
+                <CardContent className="space-y-3">
+                  {brainstormResult.map((topic, index) => (
+                    <div
+                      key={index}
+                      className="border rounded-lg p-4 hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-pointer"
                       onClick={() => {
+                        // 帶入主題到「有素材」模式
+                        setMaterial(topic.title);
+                        setSelectedContentType(topic.contentType);
+                        setSelectedAngle(topic.hook);
                         setMode('material');
-                        toast.success('已切換到「有素材」模式，請貼上你的主題');
+                        setStep(2); // 跳過輸入素材步驟
+                        toast.success(`已選擇「${topic.title}」，請繼續完善內容`);
                       }}
-                      className="w-full"
                     >
-                      <ChevronRight className="w-4 h-4 mr-2" />
-                      繼續發展這個主題
-                    </Button>
-                  </div>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 space-y-2">
+                          <div className="font-medium text-primary">{topic.title}</div>
+                          <div className="text-sm text-muted-foreground">
+                            <span className="inline-flex items-center gap-1">
+                              <Users className="w-3 h-3" />
+                              {topic.audience}
+                            </span>
+                            <span className="mx-2">·</span>
+                            <Badge variant="secondary" className="text-xs">
+                              {topic.contentType === 'knowledge' && '知識型'}
+                              {topic.contentType === 'summary' && '懶人包'}
+                              {topic.contentType === 'story' && '故事型'}
+                              {topic.contentType === 'viewpoint' && '觀點型'}
+                              {topic.contentType === 'contrast' && '反差型'}
+                              {topic.contentType === 'casual' && '日常閃文'}
+                              {topic.contentType === 'dialogue' && '對話型'}
+                              {topic.contentType === 'question' && '提問型'}
+                              {topic.contentType === 'poll' && '投票型'}
+                              {topic.contentType === 'quote' && '金句型'}
+                            </Badge>
+                          </div>
+                          <div className="text-sm italic text-muted-foreground">
+                            「{topic.hook}」
+                          </div>
+                        </div>
+                        <Button size="sm" variant="outline">
+                          選擇這個
+                          <ChevronRight className="w-4 h-4 ml-1" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
             )}
@@ -629,7 +659,7 @@ export default function WritingStudio() {
             </Card>
 
             {/* Step 2: Angles Result */}
-            {step >= 2 && anglesResult && (
+            {step >= 2 && anglesResult && anglesResult.length > 0 && (
               <Card className="elegant-card">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -639,49 +669,73 @@ export default function WritingStudio() {
                     選擇切角
                   </CardTitle>
                   <CardDescription>
-                    AI 分析了三種不同的切角方向，點擊「使用此切角」直接帶入
+                    AI 分析了三種不同的切角方向，點擊卡片選擇你想用的切角
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* 切角結果 - 可點擊帶入 */}
-                  <div className="space-y-3">
-                    {anglesResult.split('---').filter(Boolean).map((angle, index) => {
-                      // 解析切角內容
-                      const lines = angle.trim().split('\n').filter(Boolean);
-                      const titleMatch = lines[0]?.match(/【(.+)】/);
-                      const title = titleMatch ? titleMatch[1] : `切角 ${index + 1}`;
-                      const hookMatch = lines.find(l => l.includes('開頭示範'));
-                      const hook = hookMatch?.replace(/開頭示範：/, '').trim() || '';
-                      
-                      return (
-                        <div 
-                          key={index}
-                          className="border rounded-lg p-4 hover:border-primary/50 transition-colors"
-                        >
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1 space-y-2">
-                              <div className="font-medium text-primary">{title}</div>
-                              <div className="text-sm text-muted-foreground">
-                                <Streamdown>{angle.trim()}</Streamdown>
-                              </div>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedAngle(hook || angle.trim());
-                                toast.success(`已選擇「${title}」切角`);
-                              }}
-                              className="shrink-0"
-                            >
-                              <Zap className="w-3 h-3 mr-1" />
-                              使用此切角
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
+                  {/* 切角結果 - 表格化呈現 */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-muted/50">
+                          <th className="text-left p-3 font-medium text-sm border-b">切角類型</th>
+                          <th className="text-left p-3 font-medium text-sm border-b">說明</th>
+                          <th className="text-left p-3 font-medium text-sm border-b">開頭示範</th>
+                          <th className="text-left p-3 font-medium text-sm border-b">互動引導</th>
+                          <th className="text-center p-3 font-medium text-sm border-b">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {anglesResult.map((angle, index) => (
+                          <tr 
+                            key={index} 
+                            className={`hover:bg-muted/30 transition-colors cursor-pointer ${selectedAngle === angle.hook ? 'bg-primary/10 border-l-4 border-l-primary' : ''}`}
+                            onClick={() => {
+                              setSelectedAngle(angle.hook);
+                              toast.success(`已選擇「${angle.name}」切角`);
+                            }}
+                          >
+                            <td className="p-3 border-b">
+                              <div className="font-medium text-primary">{angle.name}</div>
+                            </td>
+                            <td className="p-3 border-b">
+                              <div className="text-sm text-muted-foreground">{angle.description}</div>
+                            </td>
+                            <td className="p-3 border-b">
+                              <div className="text-sm italic">「{angle.hook}」</div>
+                            </td>
+                            <td className="p-3 border-b">
+                              <div className="text-sm text-muted-foreground">{angle.cta}</div>
+                            </td>
+                            <td className="p-3 border-b text-center">
+                              <Button
+                                size="sm"
+                                variant={selectedAngle === angle.hook ? "default" : "outline"}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedAngle(angle.hook);
+                                  toast.success(`已選擇「${angle.name}」切角`);
+                                }}
+                              >
+                                {selectedAngle === angle.hook ? (
+                                  <>✓ 已選擇</>
+                                ) : (
+                                  <>選擇</>
+                                )}
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
+                  
+                  {selectedAngle && (
+                    <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                      <div className="text-sm font-medium text-primary mb-1">已選擇的開頭：</div>
+                      <div className="text-sm italic">「{selectedAngle}」</div>
+                    </div>
+                  )}
                   
                   <div className="space-y-3">
                     <Label>選擇內容類型</Label>
@@ -743,6 +797,40 @@ export default function WritingStudio() {
                     );
                   })()}
 
+                  {/* 動態輸入欄位 - 根據內容類型顯示不同欄位 */}
+                  {selectedContentType && (() => {
+                    const selectedType = CONTENT_TYPES_WITH_VIRAL_ELEMENTS.find(t => t.id === selectedContentType);
+                    if (!selectedType) return null;
+                    const inputFields = selectedType.inputFields || ['material'];
+                    
+                    return (
+                      <div className="space-y-4 bg-muted/30 rounded-lg p-4">
+                        <div className="text-sm font-medium text-muted-foreground">
+                          📝 補充資料（讓內容更精準）
+                        </div>
+                        {inputFields.map((fieldId: string) => {
+                          const field = FLEXIBLE_INPUT_FIELDS[fieldId];
+                          if (!field) return null;
+                          return (
+                            <div key={fieldId} className="space-y-2">
+                              <Label className="flex items-center gap-2">
+                                {field.label}
+                                {field.required && <span className="text-red-500 text-xs">*</span>}
+                              </Label>
+                              <Textarea
+                                placeholder={field.placeholder}
+                                value={flexibleInputs[fieldId] || ''}
+                                onChange={(e) => setFlexibleInputs(prev => ({ ...prev, [fieldId]: e.target.value }))}
+                                rows={2}
+                              />
+                              <p className="text-xs text-muted-foreground">{field.description}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+
                   <div className="space-y-2">
                     <Label>補充切角方向（選填）</Label>
                     <Textarea
@@ -789,6 +877,61 @@ export default function WritingStudio() {
                   chatEndRef={chatEndRef}
                 />
                 
+                {/* 補充資料建議卡片 - 根據內容類型顯示 */}
+                {selectedContentType && (() => {
+                  const selectedType = CONTENT_TYPES_WITH_VIRAL_ELEMENTS.find(t => t.id === selectedContentType);
+                  if (!selectedType) return null;
+                  const inputFields = selectedType.inputFields || ['material'];
+                  const missingFields = inputFields.filter((fieldId: string) => !flexibleInputs[fieldId]);
+                  
+                  if (missingFields.length === 0) return null;
+                  
+                  return (
+                    <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center gap-2 text-blue-800 text-base">
+                          <Lightbulb className="w-5 h-5" />
+                          讓內容更好的小建議
+                        </CardTitle>
+                        <CardDescription className="text-blue-700">
+                          補充以下資料，讓 AI 產出更符合你風格的內容
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="space-y-2">
+                          {missingFields.map((fieldId: string) => {
+                            const field = FLEXIBLE_INPUT_FIELDS[fieldId];
+                            if (!field) return null;
+                            return (
+                              <div key={fieldId} className="flex items-center gap-2 p-2 bg-white/60 rounded-lg">
+                                <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
+                                  <Info className="w-3 h-3 text-blue-600" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-sm text-blue-900">
+                                    補充「{field.label}」可以讓內容更精準
+                                  </p>
+                                </div>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
+                                  onClick={() => {
+                                    setStep(2);
+                                    toast.info(`請在上方補充「${field.label}」`);
+                                  }}
+                                >
+                                  去補充
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })()}
+
                 {/* IP 未完善提醒卡片 */}
                 {(missingIpItems.length > 0 || missingProductInfo.length > 0) && (
                   <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50">
