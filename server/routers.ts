@@ -929,6 +929,132 @@ ${audienceContext || '未設定'}
         };
       }),
 
+    // 生成 Hook 選項（先 Hook 再全文）
+    generateHooks: protectedProcedure
+      .input(z.object({
+        contentType: z.string(),
+        topic: z.string(),
+        hookStyle: z.string().optional(), // 指定的 Hook 風格
+        // 專屬輸入欄位（根據類型不同）
+        inputs: z.record(z.string(), z.string()).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const profile = await db.getIpProfileByUserId(ctx.user.id);
+        const audiences = await db.getAudienceSegmentsByUserId(ctx.user.id);
+        
+        // 建構 IP 地基資訊
+        let ipContext = '';
+        if (profile?.occupation) ipContext += `職業/身份：${profile.occupation}\n`;
+        if (profile?.voiceTone) ipContext += `語氣風格：${profile.voiceTone}\n`;
+        if (profile?.personaExpertise) ipContext += `專業權威：${profile.personaExpertise}\n`;
+        if (profile?.personaEmotion) ipContext += `情感共鳴：${profile.personaEmotion}\n`;
+        if (profile?.personaViewpoint) ipContext += `獨特觀點：${profile.personaViewpoint}\n`;
+        
+        // 受眾資訊
+        let audienceContext = '';
+        if (audiences && audiences.length > 0) {
+          audienceContext = audiences.map(a => 
+            `- ${a.segmentName}：痛點是「${a.painPoint || '未設定'}」`
+          ).join('\n');
+        }
+        
+        // Hook 風格說明
+        const hookStyleGuide: Record<string, string> = {
+          mirror: '鏡像開頭：直接說出受眾的心聲，讓他們覺得「這就是在說我」。例：「你是不是也常常...」',
+          contrast: '反差開頭：打破預期的陳述，製造認知衝突。例：「很多人以為...但其實...」',
+          scene: '場景開頭：描繪具體畫面，讓讀者身歷其境。例：「昨天晚上，我坐在電腦前...」',
+          question: '提問開頭：直接拋出問題，引發讀者思考。例：「你有沒有想過...」',
+          data: '數據開頭：用數字吸引注意，建立權威感。例：「90%的人都不知道...」',
+          dialogue: '對話開頭：用真實對話開場，增加真實感。例：「「你怎麼知道...」朋友問我。」',
+        };
+        
+        const selectedStyle = input.hookStyle ? hookStyleGuide[input.hookStyle] : '請給出多種不同風格的 Hook';
+        
+        const systemPrompt = `${SYSTEM_PROMPTS.contentGeneration}
+
+=== 創作者 IP 地基 ===
+${ipContext || '未設定'}
+
+=== 目標受眾 ===
+${audienceContext || '未設定'}
+
+=== Hook 風格指南 ===
+${selectedStyle}
+
+=== 重要指示 ===
+1. 每個 Hook 不超過 30 字
+2. Hook 要能讓人停下來想繼續看
+3. 符合創作者的語氣風格
+4. 針對受眾的痛點`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `請為以下主題生成 5 個不同的 Hook（開頭）：
+
+主題：${input.topic}
+貼文類型：${input.contentType}
+補充資訊：${JSON.stringify(input.inputs || {})}
+
+請用以下 JSON 格式回覆（只輸出 JSON，不要其他文字）：
+
+{
+  "hooks": [
+    {
+      "style": "mirror",
+      "styleName": "鏡像式",
+      "content": "你是不是也常常...",
+      "reason": "這個開頭能讓受眾立刻產生共鳴"
+    }
+  ]
+}` }
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "hooks_response",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  hooks: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        style: { type: "string", description: "Hook 風格 ID" },
+                        styleName: { type: "string", description: "Hook 風格名稱" },
+                        content: { type: "string", description: "Hook 內容" },
+                        reason: { type: "string", description: "為什麼這個 Hook 有效" }
+                      },
+                      required: ["style", "styleName", "content", "reason"],
+                      additionalProperties: false
+                    }
+                  }
+                },
+                required: ["hooks"],
+                additionalProperties: false
+              }
+            }
+          }
+        });
+
+        await db.logApiUsage(ctx.user.id, 'generateHooks', 'llm', 300, 400);
+        
+        let hooksData: { hooks: Array<{ style: string; styleName: string; content: string; reason: string }> } = { hooks: [] };
+        try {
+          const rawContent = response.choices[0]?.message?.content;
+          const content = typeof rawContent === 'string' ? rawContent : '{}';
+          hooksData = JSON.parse(content);
+        } catch (e) {
+          console.error('Failed to parse hooks JSON:', e);
+        }
+        
+        return {
+          hooks: hooksData.hooks || [],
+        };
+      }),
+
     // 生成草稿 - 靈活化版本
     generateDraft: protectedProcedure
       .input(z.object({

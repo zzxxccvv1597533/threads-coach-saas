@@ -32,11 +32,14 @@ import {
   Star,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GuidedWritingFlow } from "@/components/GuidedWritingFlow";
 
 import { FLEXIBLE_INPUT_FIELDS, CONTENT_TYPES_WITH_VIRAL_ELEMENTS } from "@shared/knowledge-base";
+import { CONTENT_TYPES_V2, ALL_CONTENT_TYPES_V2, HOOK_STYLES_V2 } from "@shared/content-types-v2";
 
-// 導流內容類型定義
+// 導流內容類型定義 - 整合產品矩陣概念
 const monetizationContentTypes = [
+  // 基礎導流
   {
     id: "profile_intro",
     name: "首頁自介文",
@@ -44,14 +47,8 @@ const monetizationContentTypes = [
     icon: <User className="w-4 h-4" />,
     badge: "置頂推薦",
     badgeColor: "bg-amber-500",
-  },
-  {
-    id: "service_intro",
-    name: "服務介紹文",
-    description: "說明你能幫什麼忙",
-    icon: <ShoppingBag className="w-4 h-4" />,
-    badge: null,
-    badgeColor: "",
+    category: "base",
+    inputFields: ["unique_value", "target_audience", "cta_action"],
   },
   {
     id: "plus_one",
@@ -60,32 +57,163 @@ const monetizationContentTypes = [
     icon: <MessageSquare className="w-4 h-4" />,
     badge: "高轉換",
     badgeColor: "bg-emerald-500",
+    category: "base",
+    inputFields: ["offer_content", "target_pain"],
+  },
+  // 引流品（低價/免費）
+  {
+    id: "lead_magnet",
+    name: "引流品推廣",
+    description: "低門檻服務邀請，吸引潛在客戶",
+    icon: <Target className="w-4 h-4" />,
+    badge: "引流品",
+    badgeColor: "bg-blue-500",
+    category: "lead",
+    inputFields: ["product_name", "product_benefit", "urgency"],
   },
   {
     id: "free_value",
     name: "免費價值文",
     description: "提供免費資源吸引關注",
     icon: <Gift className="w-4 h-4" />,
-    badge: null,
-    badgeColor: "",
+    badge: "引流品",
+    badgeColor: "bg-blue-500",
+    category: "lead",
+    inputFields: ["free_content", "target_pain"],
+  },
+  // 核心品（主力產品）
+  {
+    id: "service_intro",
+    name: "核心服務介紹",
+    description: "說明你的主力產品/服務",
+    icon: <ShoppingBag className="w-4 h-4" />,
+    badge: "核心品",
+    badgeColor: "bg-purple-500",
+    category: "core",
+    inputFields: ["service_detail", "transformation", "social_proof"],
   },
   {
     id: "success_story",
     name: "成功案例故事",
-    description: "用故事展現價值",
+    description: "用故事展現價值，建立信任",
     icon: <Star className="w-4 h-4" />,
-    badge: null,
-    badgeColor: "",
+    badge: "核心品",
+    badgeColor: "bg-purple-500",
+    category: "core",
+    inputFields: ["case_background", "case_transformation", "case_result"],
   },
+  // VIP 品（高價服務）
   {
-    id: "lead_magnet",
-    name: "引流品推廣",
-    description: "低門檻服務邀請",
-    icon: <Target className="w-4 h-4" />,
-    badge: null,
-    badgeColor: "",
+    id: "vip_service",
+    name: "VIP 服務推廣",
+    description: "高價服務的軟性推廣",
+    icon: <Star className="w-4 h-4" />,
+    badge: "VIP 品",
+    badgeColor: "bg-amber-600",
+    category: "vip",
+    inputFields: ["vip_benefit", "exclusivity", "transformation"],
+  },
+  // 被動品（數位產品）
+  {
+    id: "passive_product",
+    name: "數位產品推廣",
+    description: "電子書、課程、模板等被動收入",
+    icon: <Gift className="w-4 h-4" />,
+    badge: "被動品",
+    badgeColor: "bg-teal-500",
+    category: "passive",
+    inputFields: ["product_name", "product_benefit", "target_pain"],
   },
 ];
+
+// 變現內容輸入欄位定義
+const monetizeInputFields: Record<string, { label: string; placeholder: string; description: string }> = {
+  unique_value: {
+    label: "你的獨特價值",
+    placeholder: "例如：我幫助女性創業者找到自己的定位...",
+    description: "你能幫受眾解決什麼問題？",
+  },
+  target_audience: {
+    label: "目標受眾",
+    placeholder: "例如：想經營個人品牌的女性創業者...",
+    description: "你想吸引誰？",
+  },
+  cta_action: {
+    label: "行動呼籲",
+    placeholder: "例如：追蹤我獲得更多創業干貨...",
+    description: "你希望讀者採取什麼行動？",
+  },
+  offer_content: {
+    label: "提供的內容",
+    placeholder: "例如：免費的《Threads 經營指南》電子書...",
+    description: "留言 +1 後會得到什麼？",
+  },
+  target_pain: {
+    label: "目標痛點",
+    placeholder: "例如：不知道怎麼開始經營社群...",
+    description: "這個內容解決什麼痛點？",
+  },
+  product_name: {
+    label: "產品名稱",
+    placeholder: "例如：Threads 內容經營工作坊...",
+    description: "你要推廣的產品/服務名稱",
+  },
+  product_benefit: {
+    label: "產品效益",
+    placeholder: "例如：學會如何寫出爆款貼文...",
+    description: "買了會得到什麼結果？",
+  },
+  urgency: {
+    label: "緊迫感",
+    placeholder: "例如：限時優惠、只剩 5 個名額...",
+    description: "為什麼要現在行動？（選填）",
+  },
+  free_content: {
+    label: "免費內容",
+    placeholder: "例如：免費的 30 分鐘諮詢...",
+    description: "你提供什麼免費價值？",
+  },
+  service_detail: {
+    label: "服務內容",
+    placeholder: "例如：1對1 品牌諮詢，包含...",
+    description: "你的服務包含什麼？",
+  },
+  transformation: {
+    label: "轉變結果",
+    placeholder: "例如：從不知道要發什麼，到每天都有靈感...",
+    description: "客戶會得到什麼轉變？",
+  },
+  social_proof: {
+    label: "社會證明",
+    placeholder: "例如：已幫助 100+ 學員開始經營...",
+    description: "你有什麼成績可以展示？（選填）",
+  },
+  case_background: {
+    label: "案例背景",
+    placeholder: "例如：她是一個全職媽媽，想開始副業...",
+    description: "這個客戶原本的狀況？",
+  },
+  case_transformation: {
+    label: "轉變過程",
+    placeholder: "例如：透過 3 個月的諮詢，她...",
+    description: "你幫她做了什麼？",
+  },
+  case_result: {
+    label: "最終結果",
+    placeholder: "例如：現在每月有穩定的副業收入...",
+    description: "客戶最後得到什麼結果？",
+  },
+  vip_benefit: {
+    label: "VIP 專屬權益",
+    placeholder: "例如：無限次 1對1 諮詢、專屬群組...",
+    description: "VIP 客戶有什麼獨家權益？",
+  },
+  exclusivity: {
+    label: "稀缺性",
+    placeholder: "例如：每月只收 3 位新學員...",
+    description: "為什麼這個服務很稀有？",
+  },
+};
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -131,6 +259,17 @@ export default function WritingStudio() {
   const [draftResult, setDraftResult] = useState(() => getStoredState("draftResult", ""));
   const [draftId, setDraftId] = useState<number | null>(() => getStoredState("draftId", null));
   const [flexibleInputs, setFlexibleInputs] = useState<Record<string, string>>(() => getStoredState("flexibleInputs", {}));
+  
+  // Hook 選擇相關 state
+  const [selectedHookStyle, setSelectedHookStyle] = useState(() => getStoredState("selectedHookStyle", ""));
+  const [hookOptions, setHookOptions] = useState<Array<{ style: string; styleName: string; content: string; reason: string }>>(() => {
+    const stored = getStoredState("hookOptions", []);
+    return Array.isArray(stored) ? stored : [];
+  });
+  const [selectedHook, setSelectedHook] = useState(() => getStoredState("selectedHook", ""));
+  
+  // 新版專屬輸入欄位（根據 content-types-v2）
+  const [typeInputs, setTypeInputs] = useState<Record<string, string>>(() => getStoredState("typeInputs", {}));
 
   // 對話修改功能
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => getStoredState("chatMessages", []));
@@ -159,7 +298,11 @@ export default function WritingStudio() {
     saveState("draftId", draftId);
     saveState("chatMessages", chatMessages);
     saveState("flexibleInputs", flexibleInputs);
-  }, [mode, material, selectedContentType, selectedMonetizeType, selectedAngle, step, brainstormResult, anglesResult, draftResult, draftId, chatMessages, flexibleInputs]);
+    saveState("selectedHookStyle", selectedHookStyle);
+    saveState("hookOptions", hookOptions);
+    saveState("selectedHook", selectedHook);
+    saveState("typeInputs", typeInputs);
+  }, [mode, material, selectedContentType, selectedMonetizeType, selectedAngle, step, brainstormResult, anglesResult, draftResult, draftId, chatMessages, flexibleInputs, selectedHookStyle, hookOptions, selectedHook, typeInputs]);
 
   // 處理 URL 參數（從痛點矩陣或其他頁面跳轉過來）
   const searchString = useSearch();
@@ -211,6 +354,17 @@ export default function WritingStudio() {
     },
     onError: () => {
       toast.error("分析失敗，請稍後再試");
+    },
+  });
+
+  // 生成 Hook 選項
+  const generateHooks = trpc.ai.generateHooks.useMutation({
+    onSuccess: (data) => {
+      setHookOptions(Array.isArray(data.hooks) ? data.hooks : []);
+      toast.success("Hook 選項已生成！");
+    },
+    onError: () => {
+      toast.error("生成 Hook 失敗，請稍後再試");
     },
   });
 
@@ -325,6 +479,10 @@ export default function WritingStudio() {
     setDraftId(null);
     setChatMessages([]);
     setFlexibleInputs({});
+    setSelectedHookStyle("");
+    setHookOptions([]);
+    setSelectedHook("");
+    setTypeInputs({});
   };
 
   // Check if IP profile is complete enough
@@ -429,36 +587,45 @@ export default function WritingStudio() {
           <div className="bg-muted p-1 rounded-lg grid grid-cols-3 gap-1">
             <button
               onClick={() => setMode("brainstorm")}
-              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              className={`flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
                 mode === "brainstorm"
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Lightbulb className="w-4 h-4" />
-              沒靈感
+              <div className="flex items-center gap-1">
+                <Lightbulb className="w-4 h-4" />
+                引導模式
+              </div>
+              <span className="text-[10px] opacity-70">新手推薦</span>
             </button>
             <button
               onClick={() => setMode("material")}
-              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              className={`flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
                 mode === "material"
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Zap className="w-4 h-4" />
-              有素材
+              <div className="flex items-center gap-1">
+                <Zap className="w-4 h-4" />
+                進階模式
+              </div>
+              <span className="text-[10px] opacity-70">直接與 AI 對話</span>
             </button>
             <button
               onClick={() => setMode("monetize")}
-              className={`relative flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              className={`relative flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
                 mode === "monetize"
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <ShoppingBag className="w-4 h-4" />
-              變現內容
+              <div className="flex items-center gap-1">
+                <ShoppingBag className="w-4 h-4" />
+                變現內容
+              </div>
+              <span className="text-[10px] opacity-70">導流與銷售</span>
               {hasCoreProduct && (
                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full" />
               )}
@@ -466,141 +633,24 @@ export default function WritingStudio() {
           </div>
 
           {/* Brainstorm Mode */}
+          {/* Brainstorm Mode - 完整引導流程 */}
           {mode === "brainstorm" && (
-          <div className="space-y-6">
-            {/* IP 地基狀態提示 */}
-            {ipProfile && (
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <Info className="w-5 h-5 text-amber-600 mt-0.5" />
-                  <div className="space-y-1">
-                    <div className="font-medium text-amber-800">AI 將根據你的 IP 地基生成主題</div>
-                    <div className="text-sm text-amber-700">
-                      {ipProfile.occupation ? `職業：${ipProfile.occupation}` : '未設定職業'}
-                      {ipProfile.personaExpertise && ` · 專業：${ipProfile.personaExpertise.slice(0, 20)}...`}
-                    </div>
-                    {(!ipProfile.occupation || !ipProfile.personaExpertise) && (
-                      <Button 
-                        variant="link" 
-                        size="sm" 
-                        className="h-auto p-0 text-amber-600"
-                        onClick={() => setLocation('/ip-profile')}
-                      >
-                        完善 IP 地基可讓主題更精準 →
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <Card className="elegant-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Lightbulb className="w-5 h-5 text-amber-500" />
-                  腦力激盪
-                </CardTitle>
-                <CardDescription>
-                  AI 會根據你的人設、受眾痛點、專業領域，給你今天可以發的主題
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>參考方向（選填）</Label>
-                  <Textarea
-                    placeholder="例如：最近想聊聊關於自我懷疑的話題..."
-                    value={material}
-                    onChange={(e) => setMaterial(e.target.value)}
-                    rows={3}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    不填寫也沒關係，AI 會根據你的 IP 地基自動推薦主題
-                  </p>
-                </div>
-                <Button 
-                  onClick={handleBrainstorm}
-                  disabled={brainstorm.isPending}
-                  className="w-full"
-                >
-                  {brainstorm.isPending ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      根據你的人設思考中...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      給我靈感
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Brainstorm Result - 卡片式選擇 */}
-            {brainstormResult && brainstormResult.length > 0 && (
-              <Card className="elegant-card">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-amber-500" />
-                    選擇主題
-                  </CardTitle>
-                  <CardDescription>
-                    AI 根據你的 IP 地基生成了 {brainstormResult.length} 個主題，點擊選擇你想發展的主題
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {brainstormResult.map((topic, index) => (
-                    <div
-                      key={index}
-                      className="border rounded-lg p-4 hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-pointer"
-                      onClick={() => {
-                        // 帶入主題到「有素材」模式
-                        setMaterial(topic.title);
-                        setSelectedContentType(topic.contentType);
-                        setSelectedAngle(topic.hook);
-                        setMode('material');
-                        setStep(2); // 跳過輸入素材步驟
-                        toast.success(`已選擇「${topic.title}」，請繼續完善內容`);
-                      }}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 space-y-2">
-                          <div className="font-medium text-primary">{topic.title}</div>
-                          <div className="text-sm text-muted-foreground">
-                            <span className="inline-flex items-center gap-1">
-                              <Users className="w-3 h-3" />
-                              {topic.audience}
-                            </span>
-                            <span className="mx-2">·</span>
-                            <Badge variant="secondary" className="text-xs">
-                              {topic.contentType === 'knowledge' && '知識型'}
-                              {topic.contentType === 'summary' && '懶人包'}
-                              {topic.contentType === 'story' && '故事型'}
-                              {topic.contentType === 'viewpoint' && '觀點型'}
-                              {topic.contentType === 'contrast' && '反差型'}
-                              {topic.contentType === 'casual' && '日常閃文'}
-                              {topic.contentType === 'dialogue' && '對話型'}
-                              {topic.contentType === 'question' && '提問型'}
-                              {topic.contentType === 'poll' && '投票型'}
-                              {topic.contentType === 'quote' && '金句型'}
-                            </Badge>
-                          </div>
-                          <div className="text-sm italic text-muted-foreground">
-                            「{topic.hook}」
-                          </div>
-                        </div>
-                        <Button size="sm" variant="outline">
-                          選擇這個
-                          <ChevronRight className="w-4 h-4 ml-1" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-          </div>
+            <GuidedWritingFlow
+              ipProfile={ipProfile ? {
+                occupation: ipProfile.occupation || undefined,
+                personaExpertise: ipProfile.personaExpertise || undefined,
+                personaEmotion: ipProfile.personaEmotion || undefined,
+                personaViewpoint: ipProfile.personaViewpoint || undefined,
+                voiceTone: ipProfile.voiceTone || undefined,
+              } : null}
+              onComplete={(newDraftId, content) => {
+                setDraftId(newDraftId);
+                setDraftResult(content);
+                toast.success("已儲存到草稿庫！");
+                setLocation('/drafts');
+              }}
+              onNavigateToIp={() => setLocation('/ip-profile')}
+            />
           )}
 
           {/* Material Mode */}
@@ -1040,25 +1090,24 @@ export default function WritingStudio() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="grid gap-3 md:grid-cols-2">
-                      {monetizationContentTypes.map((type) => (
-                        <div
-                          key={type.id}
-                          className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                            selectedMonetizeType === type.id
-                              ? 'border-primary bg-primary/5'
-                              : 'border-border/50 hover:border-primary/50'
-                          }`}
-                          onClick={() => setSelectedMonetizeType(type.id)}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className={`p-2 rounded-lg ${
-                              selectedMonetizeType === type.id ? 'bg-primary/10' : 'bg-muted'
-                            }`}>
-                              {type.icon}
-                            </div>
-                            <div className="flex-1">
+                    {/* 產品矩陣分類顯示 */}
+                    <div className="space-y-4">
+                      {/* 基礎導流 */}
+                      <div>
+                        <div className="text-sm font-medium text-muted-foreground mb-2">🎯 基礎導流</div>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          {monetizationContentTypes.filter(t => t.category === 'base').map((type) => (
+                            <div
+                              key={type.id}
+                              className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                                selectedMonetizeType === type.id
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-border/50 hover:border-primary/50'
+                              }`}
+                              onClick={() => setSelectedMonetizeType(type.id)}
+                            >
                               <div className="flex items-center gap-2">
+                                {type.icon}
                                 <span className="font-medium text-sm">{type.name}</span>
                                 {type.badge && (
                                   <Badge className={`text-xs ${type.badgeColor} text-white`}>
@@ -1066,22 +1115,125 @@ export default function WritingStudio() {
                                   </Badge>
                                 )}
                               </div>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {type.description}
-                              </p>
+                              <p className="text-xs text-muted-foreground mt-1 ml-6">{type.description}</p>
                             </div>
-                          </div>
+                          ))}
                         </div>
-                      ))}
+                      </div>
+                      
+                      {/* 引流品 */}
+                      <div>
+                        <div className="text-sm font-medium text-muted-foreground mb-2">🎁 引流品（低價/免費）</div>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          {monetizationContentTypes.filter(t => t.category === 'lead').map((type) => (
+                            <div
+                              key={type.id}
+                              className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                                selectedMonetizeType === type.id
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-border/50 hover:border-primary/50'
+                              }`}
+                              onClick={() => setSelectedMonetizeType(type.id)}
+                            >
+                              <div className="flex items-center gap-2">
+                                {type.icon}
+                                <span className="font-medium text-sm">{type.name}</span>
+                                <Badge className={`text-xs ${type.badgeColor} text-white`}>{type.badge}</Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1 ml-6">{type.description}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* 核心品 */}
+                      <div>
+                        <div className="text-sm font-medium text-muted-foreground mb-2">💼 核心品（主力產品）</div>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          {monetizationContentTypes.filter(t => t.category === 'core').map((type) => (
+                            <div
+                              key={type.id}
+                              className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                                selectedMonetizeType === type.id
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-border/50 hover:border-primary/50'
+                              }`}
+                              onClick={() => setSelectedMonetizeType(type.id)}
+                            >
+                              <div className="flex items-center gap-2">
+                                {type.icon}
+                                <span className="font-medium text-sm">{type.name}</span>
+                                <Badge className={`text-xs ${type.badgeColor} text-white`}>{type.badge}</Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1 ml-6">{type.description}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* VIP 品 & 被動品 */}
+                      <div>
+                        <div className="text-sm font-medium text-muted-foreground mb-2">⭐ 高價服務 & 被動收入</div>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          {monetizationContentTypes.filter(t => t.category === 'vip' || t.category === 'passive').map((type) => (
+                            <div
+                              key={type.id}
+                              className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                                selectedMonetizeType === type.id
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-border/50 hover:border-primary/50'
+                              }`}
+                              onClick={() => setSelectedMonetizeType(type.id)}
+                            >
+                              <div className="flex items-center gap-2">
+                                {type.icon}
+                                <span className="font-medium text-sm">{type.name}</span>
+                                <Badge className={`text-xs ${type.badgeColor} text-white`}>{type.badge}</Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1 ml-6">{type.description}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
 
+                    {/* 動態輸入欄位 - 根據選擇的類型顯示 */}
+                    {selectedMonetizeType && (() => {
+                      const selectedType = monetizationContentTypes.find(t => t.id === selectedMonetizeType);
+                      if (!selectedType?.inputFields) return null;
+                      
+                      return (
+                        <div className="space-y-4 bg-muted/30 rounded-lg p-4">
+                          <div className="text-sm font-medium text-muted-foreground">
+                            📝 補充資料（讓內容更精準）
+                          </div>
+                          {selectedType.inputFields.map((fieldId: string) => {
+                            const field = monetizeInputFields[fieldId];
+                            if (!field) return null;
+                            return (
+                              <div key={fieldId} className="space-y-2">
+                                <Label>{field.label}</Label>
+                                <Textarea
+                                  placeholder={field.placeholder}
+                                  value={flexibleInputs[fieldId] || ''}
+                                  onChange={(e) => setFlexibleInputs(prev => ({ ...prev, [fieldId]: e.target.value }))}
+                                  rows={2}
+                                />
+                                <p className="text-xs text-muted-foreground">{field.description}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+
                     <div className="space-y-2">
-                      <Label>補充說明（選填）</Label>
+                      <Label>其他補充說明（選填）</Label>
                       <Textarea
                         placeholder="例如：我想強調我的服務特色是...、最近有個成功案例想分享..."
                         value={material}
                         onChange={(e) => setMaterial(e.target.value)}
-                        rows={3}
+                        rows={2}
                       />
                     </div>
 
