@@ -312,13 +312,21 @@ export default function WritingStudio() {
       const urlMaterial = params.get('material');
       const urlMode = params.get('mode');
       const urlAngle = params.get('angle');
+      const urlTopic = params.get('topic');
       
       if (urlMaterial) {
         setMaterial(decodeURIComponent(urlMaterial));
         setStep(1);
         
-        // 設定模式
-        if (urlMode === 'material' || urlMode === 'brainstorm' || urlMode === 'monetize') {
+        // 設定模式 - 支援 guided 模式
+        if (urlMode === 'guided') {
+          // 引導模式：切換到引導模式 Tab
+          setMode('brainstorm');
+          // 如果有帶入選題，設定為選中的切角
+          if (urlTopic) {
+            setSelectedAngle(decodeURIComponent(urlTopic));
+          }
+        } else if (urlMode === 'material' || urlMode === 'brainstorm' || urlMode === 'monetize') {
           setMode(urlMode);
         } else {
           setMode('material');
@@ -643,6 +651,8 @@ export default function WritingStudio() {
                 personaViewpoint: ipProfile.personaViewpoint || undefined,
                 voiceTone: ipProfile.voiceTone || undefined,
               } : null}
+              initialTopic={selectedAngle || undefined}
+              initialMaterial={material || undefined}
               onComplete={(newDraftId, content) => {
                 setDraftId(newDraftId);
                 setDraftResult(content);

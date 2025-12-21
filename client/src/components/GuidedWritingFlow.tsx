@@ -39,6 +39,8 @@ interface GuidedWritingFlowProps {
     personaViewpoint?: string;
     voiceTone?: string;
   } | null;
+  initialTopic?: string;
+  initialMaterial?: string;
   onComplete: (draftId: number | null, content: string) => void;
   onNavigateToIp: () => void;
 }
@@ -60,12 +62,12 @@ const FLOW_STEPS = [
   { id: 8, name: "人味潤飾", description: "加入個人風格" },
 ];
 
-export function GuidedWritingFlow({ ipProfile, onComplete, onNavigateToIp }: GuidedWritingFlowProps) {
+export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, onComplete, onNavigateToIp }: GuidedWritingFlowProps) {
   // 流程狀態
   const [currentStep, setCurrentStep] = useState(1);
   
   // Step 1: 選題
-  const [topicHint, setTopicHint] = useState("");
+  const [topicHint, setTopicHint] = useState(initialTopic || "");
   const [selectedTopic, setSelectedTopic] = useState<{ title: string; audience: string; contentType: string; hook: string } | null>(null);
   const [topicSuggestions, setTopicSuggestions] = useState<Array<{ title: string; audience: string; contentType: string; hook: string }>>([]);
   
