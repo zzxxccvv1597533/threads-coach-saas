@@ -7,6 +7,7 @@ import { TRPCError } from "@trpc/server";
 import { invokeLLM } from "./_core/llm";
 import * as db from "./db";
 import { KNOWLEDGE_BASE, SYSTEM_PROMPTS, CONTENT_TYPES_WITH_VIRAL_ELEMENTS, FORBIDDEN_PHRASES, THREADS_STYLE_GUIDE, FOUR_LENS_FRAMEWORK } from "../shared/knowledge-base";
+import { executeContentHealthCheck, MAX_SCORES, DIMENSION_NAMES } from "./content-health-check";
 
 // Admin procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -2017,6 +2018,16 @@ ${input.text}` }
         return {
           content: optimizedContent,
         };
+      }),
+
+    // 文案健檢 V2 - 審計制（Boolean 檢查 + 程式碼計分）
+    contentHealthCheck: protectedProcedure
+      .input(z.object({
+        text: z.string(),
+        draftId: z.number().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return executeContentHealthCheck(ctx.user.id, input.text);
       }),
 
     // 「聽得懂」檢查

@@ -22,9 +22,167 @@ import {
   RefreshCw,
   TrendingUp,
   Wand2,
+  Check,
+  X,
+  AlertCircle,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+
+// 健檢結果類型定義
+interface HealthCheckResult {
+  hook: {
+    hasContrastOpener: boolean;
+    hasObservationQuestion: boolean;
+    hasSuspense: boolean;
+    openerType: string;
+    openerContent: string;
+    deductionReason: string;
+    advice: string;
+  };
+  tagging: {
+    hasMBTI: boolean;
+    hasConstellation: boolean;
+    hasMetaphysics: boolean;
+    hasIdentityTag: boolean;
+    detectedKeywords: string[];
+    isCoreTopic: boolean;
+    deductionReason: string;
+    advice: string;
+  };
+  translation: {
+    hasJargon: boolean;
+    hasBrilliantMetaphor: boolean;
+    hasSimpleExplanation: boolean;
+    metaphorExample: string;
+    jargonList: string[];
+    deductionReason: string;
+    advice: string;
+  };
+  tone: {
+    hasInterjections: boolean;
+    hasBreathingSpace: boolean;
+    isHumanLike: boolean;
+    detectedInterjections: string[];
+    deductionReason: string;
+    advice: string;
+  };
+  cta: {
+    ctaType: string;
+    hasTargetAudienceCall: boolean;
+    ctaContent: string;
+    deductionReason: string;
+    advice: string;
+  };
+  scores: {
+    hook: number;
+    tagging: number;
+    translation: number;
+    tone: number;
+    cta: number;
+  };
+  maxScores: {
+    hook: number;
+    tagging: number;
+    translation: number;
+    tone: number;
+    cta: number;
+  };
+  totalScore: number;
+  overallAdvice: string;
+}
+
+// 流量密碼 Badge 組件
+const ViralBadge = ({ label, detected }: { label: string; detected: boolean }) => (
+  <span className={`px-2 py-1 rounded text-xs ${detected ? 'bg-purple-100 text-purple-800 font-bold border border-purple-300' : 'bg-gray-100 text-gray-400'}`}>
+    {detected ? `✅ 命中：${label}` : `⚪ 未使用：${label}`}
+  </span>
+);
+
+// 檢查項目組件
+const CheckItem = ({ label, passed, detail }: { label: string; passed: boolean; detail?: string }) => (
+  <div className="flex items-start gap-2 text-sm">
+    {passed ? (
+      <Check className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+    ) : (
+      <X className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+    )}
+    <div>
+      <span className={passed ? 'text-emerald-700' : 'text-red-600'}>{label}</span>
+      {detail && <span className="text-muted-foreground ml-1">：{detail}</span>}
+    </div>
+  </div>
+);
+
+// 維度評分卡片組件
+const DimensionCard = ({ 
+  title, 
+  score, 
+  maxScore, 
+  icon, 
+  children,
+  advice,
+  deductionReason,
+}: { 
+  title: string; 
+  score: number; 
+  maxScore: number; 
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  advice?: string;
+  deductionReason?: string;
+}) => {
+  const percentage = (score / maxScore) * 100;
+  const getScoreColor = () => {
+    if (percentage >= 80) return 'text-emerald-600';
+    if (percentage >= 50) return 'text-amber-600';
+    return 'text-red-500';
+  };
+
+  return (
+    <div className="border rounded-lg p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {icon}
+          <span className="font-medium">{title}</span>
+        </div>
+        <span className={`font-bold ${getScoreColor()}`}>
+          {score}/{maxScore}
+        </span>
+      </div>
+      
+      {/* 進度條 */}
+      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div 
+          className={`h-full transition-all ${
+            percentage >= 80 ? 'bg-emerald-500' : 
+            percentage >= 50 ? 'bg-amber-500' : 'bg-red-400'
+          }`}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+
+      {/* 檢查項目 */}
+      <div className="space-y-1.5">
+        {children}
+      </div>
+
+      {/* 扣分原因 */}
+      {deductionReason && score < maxScore && (
+        <div className="bg-red-50 border border-red-100 rounded p-2 text-sm text-red-700">
+          <strong>扣分原因：</strong>{deductionReason}
+        </div>
+      )}
+
+      {/* 改進建議 */}
+      {advice && score < maxScore && (
+        <div className="bg-amber-50 border border-amber-100 rounded p-2 text-sm text-amber-800">
+          <strong>改進建議：</strong>{advice}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function DraftDetail() {
   const params = useParams<{ id: string }>();
@@ -117,8 +275,8 @@ export default function DraftDetail() {
 
   const [showCTAs, setShowCTAs] = useState(false);
   const [ctas, setCTAs] = useState<string[]>([]);
-  const [showOptimize, setShowOptimize] = useState(false);
-  const [optimizeResult, setOptimizeResult] = useState("");
+  const [showHealthCheck, setShowHealthCheck] = useState(false);
+  const [healthCheckResult, setHealthCheckResult] = useState<HealthCheckResult | null>(null);
   const [autoFixResult, setAutoFixResult] = useState("");
 
   const generateCTA = trpc.draft.generateCTA.useMutation({
@@ -143,10 +301,11 @@ export default function DraftDetail() {
     },
   });
 
-  const optimize = trpc.ai.optimize.useMutation({
+  // 新版健檢 API
+  const contentHealthCheck = trpc.ai.contentHealthCheck.useMutation({
     onSuccess: (data) => {
-      setOptimizeResult(typeof data.result === 'string' ? data.result : '');
-      setShowOptimize(true);
+      setHealthCheckResult(data as HealthCheckResult);
+      setShowHealthCheck(true);
       toast.success("文案健檢完成！");
     },
     onError: () => {
@@ -207,6 +366,22 @@ export default function DraftDetail() {
     });
   };
 
+  // 取得總分顏色
+  const getTotalScoreColor = (score: number) => {
+    if (score >= 80) return 'text-emerald-600';
+    if (score >= 60) return 'text-amber-600';
+    return 'text-red-500';
+  };
+
+  // 取得總分評語
+  const getTotalScoreLabel = (score: number) => {
+    if (score >= 90) return '🔥 爆款潛力';
+    if (score >= 80) return '✨ 優秀';
+    if (score >= 60) return '👍 及格';
+    if (score >= 40) return '⚠️ 需改進';
+    return '❌ 重寫建議';
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -236,7 +411,6 @@ export default function DraftDetail() {
   const draftStatus = draft.status || 'draft';
   const draftContentType = draft.contentType || '';
   const draftCreatedAt = draft.createdAt;
-  const draftBody = draft.body || '';
 
   return (
     <DashboardLayout>
@@ -259,7 +433,7 @@ export default function DraftDetail() {
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={handleCopy}>
               <Copy className="w-4 h-4 mr-2" />
               複製
@@ -303,12 +477,12 @@ export default function DraftDetail() {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => optimize.mutate({ text: editedBody })}
-              disabled={optimize.isPending}
+              onClick={() => contentHealthCheck.mutate({ text: editedBody })}
+              disabled={contentHealthCheck.isPending}
               className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
             >
               <TrendingUp className="w-4 h-4 mr-2" />
-              {optimize.isPending ? "健檢中..." : "文案健檢"}
+              {contentHealthCheck.isPending ? "健檢中..." : "文案健檢"}
             </Button>
             <Button 
               variant="outline" 
@@ -326,57 +500,49 @@ export default function DraftDetail() {
                 標記已發布
               </Button>
             )}
-            <Button 
-              variant="destructive" 
-              size="sm" 
-              onClick={handleDelete}
-            >
+            <Button variant="outline" size="sm" onClick={handleDelete} className="text-red-500 hover:text-red-600">
               <Trash2 className="w-4 h-4 mr-2" />
               刪除
             </Button>
           </div>
         </div>
 
-        {/* Content */}
+        {/* 編輯區 */}
         <Card className="elegant-card">
           <CardHeader>
-            <CardTitle>草稿內容</CardTitle>
+            <CardTitle>文案內容</CardTitle>
             <CardDescription>
-              點擊內容區域可以編輯
+              點擊編輯後記得儲存
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <Textarea
               value={editedBody}
               onChange={(e) => {
                 setEditedBody(e.target.value);
                 setIsEditing(true);
               }}
-              className="min-h-[400px] text-base leading-relaxed"
-              placeholder="草稿內容..."
+              className="min-h-[300px] font-sans"
+              placeholder="輸入你的文案..."
             />
-            
             {isEditing && (
-              <div className="flex justify-end gap-2 mt-4">
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setEditedBody(draftBody);
-                    setIsEditing(false);
-                  }}
-                >
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => {
+                  setEditedBody(cleanMarkdown(draft.body || ''));
+                  setIsEditing(false);
+                }}>
                   取消
                 </Button>
                 <Button onClick={handleSave} disabled={updateDraft.isPending}>
                   <Save className="w-4 h-4 mr-2" />
-                  {updateDraft.isPending ? "儲存中..." : "儲存變更"}
+                  {updateDraft.isPending ? "儲存中..." : "儲存"}
                 </Button>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Hook 優化器結果 */}
+        {/* Hook 優化選項 */}
         {showHooks && hooks.length > 0 && (
           <Card className="elegant-card border-amber-500/30 bg-amber-500/5">
             <CardHeader>
@@ -384,7 +550,7 @@ export default function DraftDetail() {
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-amber-500" />
-                    Hook 優化器
+                    Hook 優化選項
                   </CardTitle>
                   <CardDescription>
                     選擇一個你喜歡的開頭，點擊即可替換
@@ -465,8 +631,8 @@ export default function DraftDetail() {
           </Card>
         )}
 
-        {/* 文案健檢結果 */}
-        {showOptimize && optimizeResult && (
+        {/* 文案健檢結果 V2 */}
+        {showHealthCheck && healthCheckResult && (
           <Card className="elegant-card border-emerald-500/30 bg-emerald-500/5">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -476,17 +642,169 @@ export default function DraftDetail() {
                     文案健檢結果
                   </CardTitle>
                   <CardDescription>
-                    根據 Hook、說人話、CTA、結構四大維度評分
+                    根據 Threads 演算法偏好進行審計式評分
                   </CardDescription>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => setShowOptimize(false)}>
+                <Button variant="ghost" size="sm" onClick={() => setShowHealthCheck(false)}>
                   收起
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap">
-                {optimizeResult}
+            <CardContent className="space-y-6">
+              {/* 總分顯示 */}
+              <div className="text-center p-6 bg-white/60 dark:bg-gray-800/60 rounded-lg">
+                <div className={`text-5xl font-bold ${getTotalScoreColor(healthCheckResult.totalScore)}`}>
+                  {healthCheckResult.totalScore}
+                  <span className="text-2xl text-muted-foreground">/100</span>
+                </div>
+                <div className="text-lg mt-2">
+                  {getTotalScoreLabel(healthCheckResult.totalScore)}
+                </div>
+              </div>
+
+              {/* 五大維度詳細評分 */}
+              <div className="grid gap-4">
+                {/* Hook 鉤子強度 */}
+                <DimensionCard
+                  title="🎣 Hook 鉤子強度"
+                  score={healthCheckResult.scores.hook}
+                  maxScore={healthCheckResult.maxScores.hook}
+                  icon={<Sparkles className="w-5 h-5 text-amber-500" />}
+                  deductionReason={healthCheckResult.hook.deductionReason}
+                  advice={healthCheckResult.hook.advice}
+                >
+                  <CheckItem 
+                    label="反直覺開場" 
+                    passed={healthCheckResult.hook.hasContrastOpener}
+                    detail={healthCheckResult.hook.hasContrastOpener ? healthCheckResult.hook.openerContent : undefined}
+                  />
+                  <CheckItem 
+                    label="觀察+提問句型" 
+                    passed={healthCheckResult.hook.hasObservationQuestion}
+                  />
+                  <CheckItem 
+                    label="有懸念" 
+                    passed={healthCheckResult.hook.hasSuspense}
+                  />
+                </DimensionCard>
+
+                {/* Tagging 流量密碼 */}
+                <DimensionCard
+                  title="🏷️ Tagging 流量密碼"
+                  score={healthCheckResult.scores.tagging}
+                  maxScore={healthCheckResult.maxScores.tagging}
+                  icon={<TrendingUp className="w-5 h-5 text-purple-500" />}
+                  deductionReason={healthCheckResult.tagging.deductionReason}
+                  advice={healthCheckResult.tagging.advice}
+                >
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    <ViralBadge label="MBTI" detected={healthCheckResult.tagging.hasMBTI} />
+                    <ViralBadge label="星座" detected={healthCheckResult.tagging.hasConstellation} />
+                    <ViralBadge label="玄學/能量" detected={healthCheckResult.tagging.hasMetaphysics} />
+                    <ViralBadge label="身分標籤" detected={healthCheckResult.tagging.hasIdentityTag} />
+                  </div>
+                  {healthCheckResult.tagging.detectedKeywords.length > 0 && (
+                    <div className="text-sm text-muted-foreground">
+                      偵測到：{healthCheckResult.tagging.detectedKeywords.join('、')}
+                    </div>
+                  )}
+                  <CheckItem 
+                    label="流量密碼為核心主題" 
+                    passed={healthCheckResult.tagging.isCoreTopic}
+                  />
+                </DimensionCard>
+
+                {/* Translation 翻譯機 */}
+                <DimensionCard
+                  title="🔄 Translation 翻譯機"
+                  score={healthCheckResult.scores.translation}
+                  maxScore={healthCheckResult.maxScores.translation}
+                  icon={<RefreshCw className="w-5 h-5 text-blue-500" />}
+                  deductionReason={healthCheckResult.translation.deductionReason}
+                  advice={healthCheckResult.translation.advice}
+                >
+                  <CheckItem 
+                    label="有精彩比喻" 
+                    passed={healthCheckResult.translation.hasBrilliantMetaphor}
+                    detail={healthCheckResult.translation.metaphorExample || undefined}
+                  />
+                  <CheckItem 
+                    label="白話易懂（五年級能懂）" 
+                    passed={healthCheckResult.translation.hasSimpleExplanation}
+                  />
+                  {healthCheckResult.translation.hasJargon && (
+                    <CheckItem 
+                      label="有專業術語未解釋" 
+                      passed={false}
+                      detail={healthCheckResult.translation.jargonList.join('、')}
+                    />
+                  )}
+                </DimensionCard>
+
+                {/* Tone 閱讀體感 */}
+                <DimensionCard
+                  title="💬 Tone 閱讀體感"
+                  score={healthCheckResult.scores.tone}
+                  maxScore={healthCheckResult.maxScores.tone}
+                  icon={<AlertCircle className="w-5 h-5 text-cyan-500" />}
+                  deductionReason={healthCheckResult.tone.deductionReason}
+                  advice={healthCheckResult.tone.advice}
+                >
+                  <CheckItem 
+                    label="有語助詞（真的、欸、啊）" 
+                    passed={healthCheckResult.tone.hasInterjections}
+                    detail={healthCheckResult.tone.detectedInterjections.length > 0 ? healthCheckResult.tone.detectedInterjections.join('、') : undefined}
+                  />
+                  <CheckItem 
+                    label="排版有呼吸感" 
+                    passed={healthCheckResult.tone.hasBreathingSpace}
+                  />
+                  <CheckItem 
+                    label="像真人說話" 
+                    passed={healthCheckResult.tone.isHumanLike}
+                  />
+                </DimensionCard>
+
+                {/* CTA 互動召喚 */}
+                <DimensionCard
+                  title="📢 CTA 互動召喚"
+                  score={healthCheckResult.scores.cta}
+                  maxScore={healthCheckResult.maxScores.cta}
+                  icon={<Send className="w-5 h-5 text-emerald-500" />}
+                  deductionReason={healthCheckResult.cta.deductionReason}
+                  advice={healthCheckResult.cta.advice}
+                >
+                  <div className="text-sm">
+                    <span className="font-medium">CTA 類型：</span>
+                    <Badge variant="outline" className="ml-2">
+                      {healthCheckResult.cta.ctaType === 'tribe_call' && '召喚同類 ✅'}
+                      {healthCheckResult.cta.ctaType === 'binary_choice' && '二選一 ✅'}
+                      {healthCheckResult.cta.ctaType === 'open_question' && '開放式提問 ⚠️'}
+                      {healthCheckResult.cta.ctaType === 'lecture' && '說教結尾 ❌'}
+                      {healthCheckResult.cta.ctaType === 'none' && '無 CTA ❌'}
+                    </Badge>
+                  </div>
+                  <CheckItem 
+                    label="召喚特定族群" 
+                    passed={healthCheckResult.cta.hasTargetAudienceCall}
+                  />
+                  {healthCheckResult.cta.ctaContent && (
+                    <div className="text-sm text-muted-foreground mt-1">
+                      結尾內容：「{healthCheckResult.cta.ctaContent}」
+                    </div>
+                  )}
+                </DimensionCard>
+              </div>
+
+              {/* 總結建議 */}
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+                  <div>
+                    <div className="font-medium text-amber-800 mb-1">優化重點</div>
+                    <p className="text-sm text-amber-700">{healthCheckResult.overallAdvice}</p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
