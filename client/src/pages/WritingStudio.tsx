@@ -118,8 +118,16 @@ export default function WritingStudio() {
   const [selectedAngle, setSelectedAngle] = useState(() => getStoredState("selectedAngle", ""));
   const [step, setStep] = useState(() => getStoredState("step", 1));
   
-  const [brainstormResult, setBrainstormResult] = useState<Array<{ title: string; audience: string; contentType: string; hook: string }>>(() => getStoredState("brainstormResult", []));
-  const [anglesResult, setAnglesResult] = useState<Array<{ name: string; type: string; description: string; hook: string; cta: string }>>(() => getStoredState("anglesResult", []));
+  const [brainstormResult, setBrainstormResult] = useState<Array<{ title: string; audience: string; contentType: string; hook: string }>>(() => {
+    const stored = getStoredState("brainstormResult", []);
+    // 確保是陣列格式，如果是舊的字串格式則返回空陣列
+    return Array.isArray(stored) ? stored : [];
+  });
+  const [anglesResult, setAnglesResult] = useState<Array<{ name: string; type: string; description: string; hook: string; cta: string }>>(() => {
+    const stored = getStoredState("anglesResult", []);
+    // 確保是陣列格式，如果是舊的字串格式則返回空陣列
+    return Array.isArray(stored) ? stored : [];
+  });
   const [draftResult, setDraftResult] = useState(() => getStoredState("draftResult", ""));
   const [draftId, setDraftId] = useState<number | null>(() => getStoredState("draftId", null));
   const [flexibleInputs, setFlexibleInputs] = useState<Record<string, string>>(() => getStoredState("flexibleInputs", {}));
