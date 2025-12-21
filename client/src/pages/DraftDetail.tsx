@@ -25,11 +25,15 @@ import {
   Check,
   X,
   AlertCircle,
+  Heart,
+  User,
+  Layout,
+  Target,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
-// 健檢結果類型定義
+// 健檢結果類型定義（新版：移除 tagging，新增 fourLens）
 interface HealthCheckResult {
   hook: {
     hasContrastOpener: boolean;
@@ -37,16 +41,6 @@ interface HealthCheckResult {
     hasSuspense: boolean;
     openerType: string;
     openerContent: string;
-    deductionReason: string;
-    advice: string;
-  };
-  tagging: {
-    hasMBTI: boolean;
-    hasConstellation: boolean;
-    hasMetaphysics: boolean;
-    hasIdentityTag: boolean;
-    detectedKeywords: string[];
-    isCoreTopic: boolean;
     deductionReason: string;
     advice: string;
   };
@@ -74,30 +68,61 @@ interface HealthCheckResult {
     deductionReason: string;
     advice: string;
   };
+  fourLens: {
+    emotion: {
+      isDesireOriented: boolean;
+      emotionType: string;
+      deductionReason: string;
+      advice: string;
+    };
+    persona: {
+      isConsistent: boolean;
+      hasPersonalTouch: boolean;
+      deductionReason: string;
+      advice: string;
+    };
+    structure: {
+      isEasyToAbsorb: boolean;
+      hasLogicalFlow: boolean;
+      deductionReason: string;
+      advice: string;
+    };
+    conversion: {
+      hasNextStep: boolean;
+      isActionable: boolean;
+      deductionReason: string;
+      advice: string;
+    };
+  };
   scores: {
     hook: number;
-    tagging: number;
     translation: number;
     tone: number;
     cta: number;
+    fourLens: number;
+  };
+  fourLensScores: {
+    emotion: number;
+    persona: number;
+    structure: number;
+    conversion: number;
   };
   maxScores: {
     hook: number;
-    tagging: number;
     translation: number;
     tone: number;
     cta: number;
+    fourLens: number;
+  };
+  fourLensMaxScores: {
+    emotion: number;
+    persona: number;
+    structure: number;
+    conversion: number;
   };
   totalScore: number;
   overallAdvice: string;
 }
-
-// 流量密碼 Badge 組件
-const ViralBadge = ({ label, detected }: { label: string; detected: boolean }) => (
-  <span className={`px-2 py-1 rounded text-xs ${detected ? 'bg-purple-100 text-purple-800 font-bold border border-purple-300' : 'bg-gray-100 text-gray-400'}`}>
-    {detected ? `✅ 命中：${label}` : `⚪ 未使用：${label}`}
-  </span>
-);
 
 // 檢查項目組件
 const CheckItem = ({ label, passed, detail }: { label: string; passed: boolean; detail?: string }) => (
@@ -178,6 +203,58 @@ const DimensionCard = ({
       {advice && score < maxScore && (
         <div className="bg-amber-50 border border-amber-100 rounded p-2 text-sm text-amber-800">
           <strong>改進建議：</strong>{advice}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// 四透鏡子維度卡片
+const FourLensSubCard = ({
+  title,
+  score,
+  maxScore,
+  icon,
+  iconBg,
+  children,
+  advice,
+  deductionReason,
+}: {
+  title: string;
+  score: number;
+  maxScore: number;
+  icon: React.ReactNode;
+  iconBg: string;
+  children: React.ReactNode;
+  advice?: string;
+  deductionReason?: string;
+}) => {
+  const percentage = (score / maxScore) * 100;
+  
+  return (
+    <div className="p-3 rounded-lg bg-muted/30 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className={`w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center`}>
+            {icon}
+          </div>
+          <span className="font-medium text-sm">{title}</span>
+        </div>
+        <span className={`font-bold text-sm ${percentage >= 80 ? 'text-emerald-600' : percentage >= 50 ? 'text-amber-600' : 'text-red-500'}`}>
+          {score}/{maxScore}
+        </span>
+      </div>
+      <div className="space-y-1">
+        {children}
+      </div>
+      {deductionReason && score < maxScore && (
+        <div className="text-xs text-red-600 bg-red-50 p-1.5 rounded">
+          {deductionReason}
+        </div>
+      )}
+      {advice && score < maxScore && (
+        <div className="text-xs text-amber-700 bg-amber-50 p-1.5 rounded">
+          {advice}
         </div>
       )}
     </div>
@@ -631,7 +708,7 @@ export default function DraftDetail() {
           </Card>
         )}
 
-        {/* 文案健檢結果 V2 */}
+        {/* 文案健檢結果 V2（新版：移除 Tagging，新增四透鏡） */}
         {showHealthCheck && healthCheckResult && (
           <Card className="elegant-card border-emerald-500/30 bg-emerald-500/5">
             <CardHeader>
@@ -642,7 +719,7 @@ export default function DraftDetail() {
                     文案健檢結果
                   </CardTitle>
                   <CardDescription>
-                    根據 Threads 演算法偏好進行審計式評分
+                    根據 Threads 演算法偏好 + 四透鏡框架進行審計式評分
                   </CardDescription>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => setShowHealthCheck(false)}>
@@ -662,7 +739,7 @@ export default function DraftDetail() {
                 </div>
               </div>
 
-              {/* 五大維度詳細評分 */}
+              {/* 維度詳細評分 */}
               <div className="grid gap-4">
                 {/* Hook 鉤子強度 */}
                 <DimensionCard
@@ -685,32 +762,6 @@ export default function DraftDetail() {
                   <CheckItem 
                     label="有懸念" 
                     passed={healthCheckResult.hook.hasSuspense}
-                  />
-                </DimensionCard>
-
-                {/* Tagging 流量密碼 */}
-                <DimensionCard
-                  title="🏷️ Tagging 流量密碼"
-                  score={healthCheckResult.scores.tagging}
-                  maxScore={healthCheckResult.maxScores.tagging}
-                  icon={<TrendingUp className="w-5 h-5 text-purple-500" />}
-                  deductionReason={healthCheckResult.tagging.deductionReason}
-                  advice={healthCheckResult.tagging.advice}
-                >
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    <ViralBadge label="MBTI" detected={healthCheckResult.tagging.hasMBTI} />
-                    <ViralBadge label="星座" detected={healthCheckResult.tagging.hasConstellation} />
-                    <ViralBadge label="玄學/能量" detected={healthCheckResult.tagging.hasMetaphysics} />
-                    <ViralBadge label="身分標籤" detected={healthCheckResult.tagging.hasIdentityTag} />
-                  </div>
-                  {healthCheckResult.tagging.detectedKeywords.length > 0 && (
-                    <div className="text-sm text-muted-foreground">
-                      偵測到：{healthCheckResult.tagging.detectedKeywords.join('、')}
-                    </div>
-                  )}
-                  <CheckItem 
-                    label="流量密碼為核心主題" 
-                    passed={healthCheckResult.tagging.isCoreTopic}
                   />
                 </DimensionCard>
 
@@ -794,6 +845,113 @@ export default function DraftDetail() {
                     </div>
                   )}
                 </DimensionCard>
+
+                {/* 四透鏡檢核 */}
+                <div className="border rounded-lg p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🔍</span>
+                      <span className="font-medium">四透鏡檢核</span>
+                    </div>
+                    <span className={`font-bold ${
+                      (healthCheckResult.scores.fourLens / healthCheckResult.maxScores.fourLens) >= 0.8 ? 'text-emerald-600' :
+                      (healthCheckResult.scores.fourLens / healthCheckResult.maxScores.fourLens) >= 0.5 ? 'text-amber-600' : 'text-red-500'
+                    }`}>
+                      {healthCheckResult.scores.fourLens}/{healthCheckResult.maxScores.fourLens}
+                    </span>
+                  </div>
+
+                  {/* 進度條 */}
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all ${
+                        (healthCheckResult.scores.fourLens / healthCheckResult.maxScores.fourLens) >= 0.8 ? 'bg-emerald-500' : 
+                        (healthCheckResult.scores.fourLens / healthCheckResult.maxScores.fourLens) >= 0.5 ? 'bg-amber-500' : 'bg-red-400'
+                      }`}
+                      style={{ width: `${(healthCheckResult.scores.fourLens / healthCheckResult.maxScores.fourLens) * 100}%` }}
+                    />
+                  </div>
+
+                  {/* 四透鏡子維度 */}
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {/* 心法透鏡 */}
+                    <FourLensSubCard
+                      title="心法透鏡"
+                      score={healthCheckResult.fourLensScores.emotion}
+                      maxScore={healthCheckResult.fourLensMaxScores.emotion}
+                      icon={<Heart className="w-4 h-4 text-rose-500" />}
+                      iconBg="bg-rose-500/10"
+                      deductionReason={healthCheckResult.fourLens.emotion.deductionReason}
+                      advice={healthCheckResult.fourLens.emotion.advice}
+                    >
+                      <CheckItem 
+                        label="渴望導向（非焦慮）" 
+                        passed={healthCheckResult.fourLens.emotion.isDesireOriented}
+                        detail={healthCheckResult.fourLens.emotion.emotionType}
+                      />
+                    </FourLensSubCard>
+
+                    {/* 人設透鏡 */}
+                    <FourLensSubCard
+                      title="人設透鏡"
+                      score={healthCheckResult.fourLensScores.persona}
+                      maxScore={healthCheckResult.fourLensMaxScores.persona}
+                      icon={<User className="w-4 h-4 text-blue-500" />}
+                      iconBg="bg-blue-500/10"
+                      deductionReason={healthCheckResult.fourLens.persona.deductionReason}
+                      advice={healthCheckResult.fourLens.persona.advice}
+                    >
+                      <CheckItem 
+                        label="符合人設風格" 
+                        passed={healthCheckResult.fourLens.persona.isConsistent}
+                      />
+                      <CheckItem 
+                        label="有個人特色" 
+                        passed={healthCheckResult.fourLens.persona.hasPersonalTouch}
+                      />
+                    </FourLensSubCard>
+
+                    {/* 結構透鏡 */}
+                    <FourLensSubCard
+                      title="結構透鏡"
+                      score={healthCheckResult.fourLensScores.structure}
+                      maxScore={healthCheckResult.fourLensMaxScores.structure}
+                      icon={<Layout className="w-4 h-4 text-emerald-500" />}
+                      iconBg="bg-emerald-500/10"
+                      deductionReason={healthCheckResult.fourLens.structure.deductionReason}
+                      advice={healthCheckResult.fourLens.structure.advice}
+                    >
+                      <CheckItem 
+                        label="好吸收" 
+                        passed={healthCheckResult.fourLens.structure.isEasyToAbsorb}
+                      />
+                      <CheckItem 
+                        label="有邏輯脈絡" 
+                        passed={healthCheckResult.fourLens.structure.hasLogicalFlow}
+                      />
+                    </FourLensSubCard>
+
+                    {/* 轉化透鏡 */}
+                    <FourLensSubCard
+                      title="轉化透鏡"
+                      score={healthCheckResult.fourLensScores.conversion}
+                      maxScore={healthCheckResult.fourLensMaxScores.conversion}
+                      icon={<Target className="w-4 h-4 text-amber-500" />}
+                      iconBg="bg-amber-500/10"
+                      deductionReason={healthCheckResult.fourLens.conversion.deductionReason}
+                      advice={healthCheckResult.fourLens.conversion.advice}
+                    >
+                      <CheckItem 
+                        label="有明確下一步" 
+                        passed={healthCheckResult.fourLens.conversion.hasNextStep}
+                      />
+                      <CheckItem 
+                        label="行動可執行" 
+                        passed={healthCheckResult.fourLens.conversion.isActionable}
+                      />
+                    </FourLensSubCard>
+                  </div>
+                </div>
               </div>
 
               {/* 總結建議 */}
