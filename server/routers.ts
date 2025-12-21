@@ -665,6 +665,94 @@ ${input.content}` }
           hooks,
         };
       }),
+
+    // 結尾互動 CTA 生成器
+    generateCTA: protectedProcedure
+      .input(z.object({ content: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const profile = await db.getIpProfileByUserId(ctx.user.id);
+        
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: `你是一個專業的 Threads CTA 寫手。
+
+## CTA 原則
+1. 軟性引導：不要像廣告，要像朋友分享
+2. 引導留言優先：「你覺得呢？」「你有過這種經驗嗎？」
+3. 避免硬銷：不要「快來購買」「立即預約」
+4. 創造對話感：讓讀者想回應
+
+## 創作者資料
+- 職業：${profile?.occupation || '未設定'}
+- 語氣風格：${profile?.voiceTone || '未設定'}
+
+## 輸出格式
+請生成 3 個不同風格的 CTA，每個都要：
+1. 簡短有力（一兩句話）
+2. 讓人想留言或互動
+3. 符合創作者風格
+
+用 "---" 分隔每個 CTA，不要加編號或標題。` },
+            { role: "user", content: `請為以下內容生成 3 個不同的結尾互動引導：
+
+${input.content}` }
+          ],
+        });
+
+        await db.logApiUsage(ctx.user.id, 'generateCTA', 'llm', 300, 400);
+        
+        const ctaContent = response.choices[0]?.message?.content || '';
+        const ctas = typeof ctaContent === 'string'
+          ? ctaContent.split('---').map((c: string) => c.trim()).filter((c: string) => c.length > 0)
+          : [];
+        
+        return { ctas };
+      }),
+
+    // 加入 Emoji 潤飾
+    addEmoji: protectedProcedure
+      .input(z.object({ content: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: `你是一個專業的 Threads 文案潤飾師。
+
+## Emoji 使用原則
+1. 適度使用：不要太多，每段最多 1-2 個
+2. 放在重點：強調情緒或重要訊息
+3. 符合語境：選擇與內容情緒相符的 Emoji
+4. 不要幼稚：避免過於可愛或幼稚的 Emoji
+
+## 常用 Emoji 分類
+- 情緒：😊 😢 😤 🤔 💪
+- 強調：✨ 🔥 💡 ❤️ 🌟
+- 指引：👇 👉 ☝️
+- 列點：✅ ❌ 📌
+
+## 輸出格式
+直接輸出加入 Emoji 後的完整文案，不要加任何說明。
+不要加入任何 Markdown 格式符號，保持純文字格式。` },
+            { role: "user", content: `請為以下文案適度加入 Emoji，並移除所有 Markdown 格式符號：
+
+${input.content}` }
+          ],
+        });
+
+        await db.logApiUsage(ctx.user.id, 'addEmoji', 'llm', 400, 500);
+        
+        let result = response.choices[0]?.message?.content || input.content;
+        
+        // 清理 Markdown 符號
+        if (typeof result === 'string') {
+          result = result
+            .replace(/\*\*/g, '') // 移除粗體符號
+            .replace(/\*/g, '')   // 移除斜體符號
+            .replace(/^#+\s/gm, '') // 移除標題符號
+            .replace(/`/g, '');    // 移除代碼符號
+        }
+        
+        return { content: typeof result === 'string' ? result : input.content };
+      }),
   }),
 
   // ==================== AI 功能 ====================

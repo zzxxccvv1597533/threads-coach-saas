@@ -855,36 +855,66 @@ export default function WritingStudio() {
                     );
                   })()}
 
-                  {/* 動態輸入欄位 - 根據內容類型顯示不同欄位 */}
+                  {/* 動態輸入欄位 - 根據內容類型顯示專屬欄位 (v2) */}
                   {selectedContentType && (() => {
-                    const selectedType = CONTENT_TYPES_WITH_VIRAL_ELEMENTS.find(t => t.id === selectedContentType);
-                    if (!selectedType) return null;
-                    const inputFields = selectedType.inputFields || ['material'];
+                    const selectedTypeV2 = CONTENT_TYPES_V2.find(t => t.id === selectedContentType);
+                    if (!selectedTypeV2) return null;
                     
                     return (
                       <div className="space-y-4 bg-muted/30 rounded-lg p-4">
                         <div className="text-sm font-medium text-muted-foreground">
-                          📝 補充資料（讓內容更精準）
+                          📝 填寫關鍵資訊（讓 AI 更懂你的需求）
                         </div>
-                        {inputFields.map((fieldId: string) => {
-                          const field = FLEXIBLE_INPUT_FIELDS[fieldId];
-                          if (!field) return null;
-                          return (
-                            <div key={fieldId} className="space-y-2">
-                              <Label className="flex items-center gap-2">
-                                {field.label}
-                                {field.required && <span className="text-red-500 text-xs">*</span>}
-                              </Label>
+                        
+                        {/* 故事型特殊處理：新增故事來源選擇 */}
+                        {selectedContentType === 'story' && (
+                          <div className="space-y-2">
+                            <Label>故事來源 *</Label>
+                            <RadioGroup
+                              value={flexibleInputs['story_source'] || 'case'}
+                              onValueChange={(value) => setFlexibleInputs(prev => ({ ...prev, story_source: value }))}
+                              className="flex flex-wrap gap-4"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="case" id="story_case" />
+                                <Label htmlFor="story_case" className="cursor-pointer">案例故事（個案/客戶）</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="self" id="story_self" />
+                                <Label htmlFor="story_self" className="cursor-pointer">自己的故事</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="others" id="story_others" />
+                                <Label htmlFor="story_others" className="cursor-pointer">他人的故事（朋友/同事）</Label>
+                              </div>
+                            </RadioGroup>
+                            <p className="text-xs text-muted-foreground">不同來源的故事會有不同的寫作角度</p>
+                          </div>
+                        )}
+                        
+                        {selectedTypeV2.inputFields.map((field) => (
+                          <div key={field.key} className="space-y-2">
+                            <Label className="flex items-center gap-2">
+                              {field.label}
+                              {field.required && <span className="text-red-500 text-xs">*</span>}
+                            </Label>
+                            {field.type === 'textarea' ? (
                               <Textarea
                                 placeholder={field.placeholder}
-                                value={flexibleInputs[fieldId] || ''}
-                                onChange={(e) => setFlexibleInputs(prev => ({ ...prev, [fieldId]: e.target.value }))}
-                                rows={2}
+                                value={flexibleInputs[field.key] || ''}
+                                onChange={(e) => setFlexibleInputs(prev => ({ ...prev, [field.key]: e.target.value }))}
+                                rows={3}
                               />
-                              <p className="text-xs text-muted-foreground">{field.description}</p>
-                            </div>
-                          );
-                        })}
+                            ) : (
+                              <Input
+                                placeholder={field.placeholder}
+                                value={flexibleInputs[field.key] || ''}
+                                onChange={(e) => setFlexibleInputs(prev => ({ ...prev, [field.key]: e.target.value }))}
+                              />
+                            )}
+                            <p className="text-xs text-muted-foreground">{field.description}</p>
+                          </div>
+                        ))}
                       </div>
                     );
                   })()}

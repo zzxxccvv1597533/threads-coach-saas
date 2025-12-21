@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect, useRef } from "react";
@@ -29,6 +30,8 @@ import {
   Package,
   Edit2,
   BookOpen,
+  Wand2,
+  MessageSquare,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -157,6 +160,10 @@ export default function IpProfile() {
   const [isGeneratingPainPoints, setIsGeneratingPainPoints] = useState(false);
   const [suggestedTopics, setSuggestedTopics] = useState<Array<{ name: string; description: string }>>([]);
   const [isGeneratingTopics, setIsGeneratingTopics] = useState(false);
+  
+  // 痛點矩陣選擇模式彈窗
+  const [showModeDialog, setShowModeDialog] = useState(false);
+  const [selectedPainPoint, setSelectedPainPoint] = useState<{ audience: string; theme: string; point: string } | null>(null);
 
   // 從資料庫載入資料
   useEffect(() => {
@@ -361,6 +368,7 @@ export default function IpProfile() {
   }
 
   return (
+    <>
     <DashboardLayout>
       <div className="space-y-6 max-w-4xl">
         {/* Header */}
@@ -1764,10 +1772,13 @@ export default function IpProfile() {
                                       key={j} 
                                       className="text-muted-foreground hover:text-primary cursor-pointer transition-colors hover:underline group"
                                       onClick={() => {
-                                        // 將痛點帶入發文工作室，包含完整資訊
-                                        const material = `受眾：${formData.contentMatrixAudiences.core}\n主題：${theme}\n選題：${point}\n\n請根據這個選題寫一篇貼文`;
-                                        setLocation(`/writing-studio?material=${encodeURIComponent(material)}&mode=material`);
-                                        toast.success(`已帶入選題：${point.slice(0, 20)}...`);
+                                        // 顯示模式選擇彈窗
+                                        setSelectedPainPoint({
+                                          audience: formData.contentMatrixAudiences.core,
+                                          theme: theme,
+                                          point: point
+                                        });
+                                        setShowModeDialog(true);
                                       }}
                                     >
                                       <span className="group-hover:underline">「{point}」</span>
@@ -1805,9 +1816,12 @@ export default function IpProfile() {
                                       key={j} 
                                       className="text-muted-foreground hover:text-primary cursor-pointer transition-colors hover:underline group"
                                       onClick={() => {
-                                        const material = `受眾：${formData.contentMatrixAudiences.potential}\n主題：${theme}\n選題：${point}\n\n請根據這個選題寫一篇貼文`;
-                                        setLocation(`/writing-studio?material=${encodeURIComponent(material)}&mode=material`);
-                                        toast.success(`已帶入選題：${point.slice(0, 20)}...`);
+                                        setSelectedPainPoint({
+                                          audience: formData.contentMatrixAudiences.potential,
+                                          theme: theme,
+                                          point: point
+                                        });
+                                        setShowModeDialog(true);
                                       }}
                                     >
                                       <span className="group-hover:underline">「{point}」</span>
@@ -1846,9 +1860,12 @@ export default function IpProfile() {
                                       key={j} 
                                       className="text-muted-foreground hover:text-primary cursor-pointer transition-colors hover:underline group"
                                       onClick={() => {
-                                        const material = `受眾：${formData.contentMatrixAudiences.opportunity}\n主題：${theme}\n選題：${point}\n\n請根據這個選題寫一篇貼文`;
-                                        setLocation(`/writing-studio?material=${encodeURIComponent(material)}&mode=material`);
-                                        toast.success(`已帶入選題：${point.slice(0, 20)}...`);
+                                        setSelectedPainPoint({
+                                          audience: formData.contentMatrixAudiences.opportunity,
+                                          theme: theme,
+                                          point: point
+                                        });
+                                        setShowModeDialog(true);
                                       }}
                                     >
                                       <span className="group-hover:underline">「{point}」</span>
@@ -1883,6 +1900,76 @@ export default function IpProfile() {
         </div>
       </div>
     </DashboardLayout>
+    
+    {/* 痛點矩陣模式選擇彈窗 */}
+    <Dialog open={showModeDialog} onOpenChange={setShowModeDialog}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            選擇創作模式
+          </DialogTitle>
+          <DialogDescription>
+            選擇你想用的方式來寫這篇貼文
+          </DialogDescription>
+        </DialogHeader>
+        
+        {selectedPainPoint && (
+          <div className="space-y-4">
+            {/* 選中的選題預覽 */}
+            <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+              <p className="text-xs text-muted-foreground">已選擇的選題：</p>
+              <p className="text-sm font-medium">「{selectedPainPoint.point}」</p>
+              <p className="text-xs text-muted-foreground">
+                受眾：{selectedPainPoint.audience.split(/[\uff08\(]/)[0].trim()} · 主題：{selectedPainPoint.theme}
+              </p>
+            </div>
+            
+            {/* 模式選擇按鈕 */}
+            <div className="grid grid-cols-1 gap-3">
+              <Button
+                variant="outline"
+                className="h-auto py-4 px-4 justify-start gap-3 hover:bg-primary/5 hover:border-primary"
+                onClick={() => {
+                  const material = `受眾：${selectedPainPoint.audience}\n主題：${selectedPainPoint.theme}\n選題：${selectedPainPoint.point}\n\n請根據這個選題寫一篇貼文`;
+                  setLocation(`/writing-studio?material=${encodeURIComponent(material)}&mode=guided&topic=${encodeURIComponent(selectedPainPoint.point)}`);
+                  setShowModeDialog(false);
+                  toast.success("已進入引導模式");
+                }}
+              >
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+                  <Wand2 className="w-5 h-5 text-white" />
+                </div>
+                <div className="text-left">
+                  <div className="font-medium">引導模式</div>
+                  <div className="text-xs text-muted-foreground">適合新手，一步步帶你完成貼文</div>
+                </div>
+              </Button>
+              
+              <Button
+                variant="outline"
+                className="h-auto py-4 px-4 justify-start gap-3 hover:bg-primary/5 hover:border-primary"
+                onClick={() => {
+                  const material = `受眾：${selectedPainPoint.audience}\n主題：${selectedPainPoint.theme}\n選題：${selectedPainPoint.point}\n\n請根據這個選題寫一篇貼文`;
+                  setLocation(`/writing-studio?material=${encodeURIComponent(material)}&mode=material`);
+                  setShowModeDialog(false);
+                  toast.success("已進入進階模式");
+                }}
+              >
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                  <MessageSquare className="w-5 h-5 text-white" />
+                </div>
+                <div className="text-left">
+                  <div className="font-medium">進階模式</div>
+                  <div className="text-xs text-muted-foreground">直接與 AI 對話，快速產出貼文</div>
+                </div>
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 

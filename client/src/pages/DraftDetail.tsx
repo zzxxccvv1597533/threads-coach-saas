@@ -20,6 +20,8 @@ import {
   Sparkles,
   List,
   RefreshCw,
+  TrendingUp,
+  Wand2,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -110,6 +112,55 @@ export default function DraftDetail() {
     },
     onError: () => {
       toast.error("生成失敗");
+    },
+  });
+
+  const [showCTAs, setShowCTAs] = useState(false);
+  const [ctas, setCTAs] = useState<string[]>([]);
+  const [showOptimize, setShowOptimize] = useState(false);
+  const [optimizeResult, setOptimizeResult] = useState("");
+  const [autoFixResult, setAutoFixResult] = useState("");
+
+  const generateCTA = trpc.draft.generateCTA.useMutation({
+    onSuccess: (data) => {
+      setCTAs(data.ctas);
+      setShowCTAs(true);
+      toast.success(`已生成 ${data.ctas.length} 個 CTA 選項`);
+    },
+    onError: () => {
+      toast.error("生成失敗");
+    },
+  });
+
+  const addEmoji = trpc.draft.addEmoji.useMutation({
+    onSuccess: (data) => {
+      setEditedBody(data.content);
+      setIsEditing(true);
+      toast.success("已加入 Emoji");
+    },
+    onError: () => {
+      toast.error("加入失敗");
+    },
+  });
+
+  const optimize = trpc.ai.optimize.useMutation({
+    onSuccess: (data) => {
+      setOptimizeResult(typeof data.result === 'string' ? data.result : '');
+      setShowOptimize(true);
+      toast.success("文案健檢完成！");
+    },
+    onError: () => {
+      toast.error("健檢失敗");
+    },
+  });
+
+  const autoFix = trpc.ai.autoFix.useMutation({
+    onSuccess: (data) => {
+      setAutoFixResult(typeof data.content === 'string' ? data.content : '');
+      toast.success("AI 已幫你優化文案！");
+    },
+    onError: () => {
+      toast.error("優化失敗");
     },
   });
 
@@ -230,6 +281,44 @@ export default function DraftDetail() {
             >
               <List className="w-4 h-4 mr-2" />
               {convertToThread.isPending ? "轉換中..." : "轉為串文"}
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => generateCTA.mutate({ content: editedBody })}
+              disabled={generateCTA.isPending}
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              {generateCTA.isPending ? "生成中..." : "結尾 CTA"}
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => addEmoji.mutate({ content: editedBody })}
+              disabled={addEmoji.isPending}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              {addEmoji.isPending ? "加入中..." : "加入 Emoji"}
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => optimize.mutate({ text: editedBody })}
+              disabled={optimize.isPending}
+              className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+            >
+              <TrendingUp className="w-4 h-4 mr-2" />
+              {optimize.isPending ? "健檢中..." : "文案健檢"}
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => autoFix.mutate({ text: editedBody })}
+              disabled={autoFix.isPending}
+              className="border-purple-300 text-purple-700 hover:bg-purple-50"
+            >
+              <Wand2 className="w-4 h-4 mr-2" />
+              {autoFix.isPending ? "優化中..." : "AI 優化"}
             </Button>
             {draftStatus !== 'published' && (
               <Button variant="outline" size="sm" onClick={handleMarkPublished}>
@@ -370,6 +459,113 @@ export default function DraftDetail() {
                       <Copy className="w-4 h-4" />
                     </Button>
                   </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 文案健檢結果 */}
+        {showOptimize && optimizeResult && (
+          <Card className="elegant-card border-emerald-500/30 bg-emerald-500/5">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-emerald-500" />
+                    文案健檢結果
+                  </CardTitle>
+                  <CardDescription>
+                    根據 Hook、說人話、CTA、結構四大維度評分
+                  </CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setShowOptimize(false)}>
+                  收起
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap">
+                {optimizeResult}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* AI 優化結果 */}
+        {autoFixResult && (
+          <Card className="elegant-card border-purple-500/30 bg-purple-500/5">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wand2 className="w-5 h-5 text-purple-500" />
+                    AI 優化版本
+                  </CardTitle>
+                  <CardDescription>
+                    AI 已根據爆款元素優化你的文案
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setEditedBody(autoFixResult);
+                      setIsEditing(true);
+                      setAutoFixResult("");
+                      toast.success("已套用優化版本");
+                    }}
+                    className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                  >
+                    套用這版
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setAutoFixResult("")}>
+                    收起
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-white/60 dark:bg-gray-800/60 p-4 rounded-lg">
+                <pre className="whitespace-pre-wrap font-sans text-sm">{autoFixResult}</pre>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* CTA 選項 */}
+        {showCTAs && ctas.length > 0 && (
+          <Card className="elegant-card border-emerald-500/30 bg-emerald-500/5">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-emerald-500" />
+                    結尾互動 CTA
+                  </CardTitle>
+                  <CardDescription>
+                    選擇一個你喜歡的結尾，點擊即可加到文章末尾
+                  </CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setShowCTAs(false)}>
+                  收起
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {ctas.map((cta, index) => (
+                <div 
+                  key={index}
+                  className="p-4 rounded-lg border border-border/50 hover:border-emerald-500/50 hover:bg-emerald-500/5 cursor-pointer transition-all"
+                  onClick={() => {
+                    // 加到文章末尾
+                    setEditedBody(editedBody.trim() + '\n\n' + cta);
+                    setIsEditing(true);
+                    toast.success("已加入結尾 CTA");
+                  }}
+                >
+                  <p className="text-sm">{cta}</p>
                 </div>
               ))}
             </CardContent>
