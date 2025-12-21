@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { useState, useRef, useEffect } from "react";
-import { useSearch } from "wouter";
+import { useSearch, useLocation } from "wouter";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 import { 
@@ -90,6 +90,7 @@ interface ChatMessage {
 }
 
 export default function WritingStudio() {
+  const [, setLocation] = useLocation();
   const { data: contentTypes } = trpc.knowledge.contentTypesWithViralElements.useQuery();
   const { data: ipProfile } = trpc.ipProfile.get.useQuery();
   const { data: userProducts } = trpc.userProduct.list.useQuery();
@@ -147,24 +148,31 @@ export default function WritingStudio() {
     saveState("chatMessages", chatMessages);
   }, [mode, material, selectedContentType, selectedMonetizeType, selectedAngle, step, brainstormResult, anglesResult, draftResult, draftId, chatMessages]);
 
-  // 處理 URL 參數（從痛點矩陣跳轉過來）
+  // 處理 URL 參數（從痛點矩陣或其他頁面跳轉過來）
   const searchString = useSearch();
   useEffect(() => {
     if (searchString) {
       const params = new URLSearchParams(searchString);
       const urlMaterial = params.get('material');
+      const urlMode = params.get('mode');
       const urlAngle = params.get('angle');
       
       if (urlMaterial) {
         setMaterial(decodeURIComponent(urlMaterial));
-        setMode('material');
         setStep(1);
+        
+        // 設定模式
+        if (urlMode === 'material' || urlMode === 'brainstorm' || urlMode === 'monetize') {
+          setMode(urlMode);
+        } else {
+          setMode('material');
+        }
         
         if (urlAngle) {
           setSelectedAngle(decodeURIComponent(urlAngle));
         }
         
-        toast.success('已從痛點矩陣帶入素材，可以開始生成文案！');
+        toast.success('已帶入選題，可以直接生成文案！');
         
         // 清除 URL 參數，避免重複處理
         window.history.replaceState({}, '', '/writing-studio');
@@ -446,6 +454,32 @@ export default function WritingStudio() {
           {/* Brainstorm Mode */}
           {mode === "brainstorm" && (
           <div className="space-y-6">
+            {/* IP 地基狀態提示 */}
+            {ipProfile && (
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Info className="w-5 h-5 text-amber-600 mt-0.5" />
+                  <div className="space-y-1">
+                    <div className="font-medium text-amber-800">AI 將根據你的 IP 地基生成主題</div>
+                    <div className="text-sm text-amber-700">
+                      {ipProfile.occupation ? `職業：${ipProfile.occupation}` : '未設定職業'}
+                      {ipProfile.personaExpertise && ` · 專業：${ipProfile.personaExpertise.slice(0, 20)}...`}
+                    </div>
+                    {(!ipProfile.occupation || !ipProfile.personaExpertise) && (
+                      <Button 
+                        variant="link" 
+                        size="sm" 
+                        className="h-auto p-0 text-amber-600"
+                        onClick={() => setLocation('/ip-profile')}
+                      >
+                        完善 IP 地基可讓主題更精準 →
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <Card className="elegant-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -453,7 +487,7 @@ export default function WritingStudio() {
                   腦力激盪
                 </CardTitle>
                 <CardDescription>
-                  讓 AI 根據你的人設和受眾，給你今天可以發的主題建議
+                  AI 會根據你的人設、受眾痛點、專業領域，給你今天可以發的主題
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -465,6 +499,9 @@ export default function WritingStudio() {
                     onChange={(e) => setMaterial(e.target.value)}
                     rows={3}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    不填寫也沒關係，AI 會根據你的 IP 地基自動推薦主題
+                  </p>
                 </div>
                 <Button 
                   onClick={handleBrainstorm}
@@ -474,7 +511,7 @@ export default function WritingStudio() {
                   {brainstorm.isPending ? (
                     <>
                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      思考中...
+                      根據你的人設思考中...
                     </>
                   ) : (
                     <>
@@ -502,9 +539,25 @@ export default function WritingStudio() {
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <div className="prose prose-sm max-w-none">
                     <Streamdown>{brainstormResult}</Streamdown>
+                  </div>
+                  <div className="pt-4 border-t">
+                    <p className="text-sm text-muted-foreground mb-3">
+                      看到喜歡的主題？複製到下方繼續發展
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setMode('material');
+                        toast.success('已切換到「有素材」模式，請貼上你的主題');
+                      }}
+                      className="w-full"
+                    >
+                      <ChevronRight className="w-4 h-4 mr-2" />
+                      繼續發展這個主題
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -586,12 +639,48 @@ export default function WritingStudio() {
                     選擇切角
                   </CardTitle>
                   <CardDescription>
-                    AI 分析了三種不同的切角方向，選一個你喜歡的
+                    AI 分析了三種不同的切角方向，點擊「使用此切角」直接帶入
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="prose prose-sm max-w-none bg-muted/30 p-4 rounded-lg">
-                    <Streamdown>{anglesResult}</Streamdown>
+                  {/* 切角結果 - 可點擊帶入 */}
+                  <div className="space-y-3">
+                    {anglesResult.split('---').filter(Boolean).map((angle, index) => {
+                      // 解析切角內容
+                      const lines = angle.trim().split('\n').filter(Boolean);
+                      const titleMatch = lines[0]?.match(/【(.+)】/);
+                      const title = titleMatch ? titleMatch[1] : `切角 ${index + 1}`;
+                      const hookMatch = lines.find(l => l.includes('開頭示範'));
+                      const hook = hookMatch?.replace(/開頭示範：/, '').trim() || '';
+                      
+                      return (
+                        <div 
+                          key={index}
+                          className="border rounded-lg p-4 hover:border-primary/50 transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 space-y-2">
+                              <div className="font-medium text-primary">{title}</div>
+                              <div className="text-sm text-muted-foreground">
+                                <Streamdown>{angle.trim()}</Streamdown>
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedAngle(hook || angle.trim());
+                                toast.success(`已選擇「${title}」切角`);
+                              }}
+                              className="shrink-0"
+                            >
+                              <Zap className="w-3 h-3 mr-1" />
+                              使用此切角
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                   
                   <div className="space-y-3">
@@ -1006,9 +1095,9 @@ function DraftResultWithChat({
       </CardHeader>
       <CardContent className="p-0">
         {/* ChatGPT 風格對話區域 */}
-        <div className="flex flex-col h-[500px]">
-          {/* 對話歷史區 */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        <div className="flex flex-col">
+          {/* 對話歷史區 - 自適應高度 */}
+          <div className="px-4 py-4 space-y-4">
             {/* AI 初始回覆 - 生成的草稿 */}
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shrink-0">

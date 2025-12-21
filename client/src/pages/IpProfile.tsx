@@ -1601,6 +1601,12 @@ export default function IpProfile() {
                             emotion: formData.personaEmotion,
                             uniqueness: formData.personaViewpoint,
                           },
+                          heroJourney: {
+                            origin: formData.heroJourneyOrigin,
+                            process: formData.heroJourneyProcess,
+                            hero: formData.heroJourneyHero,
+                            mission: formData.heroJourneyMission,
+                          },
                           products: userProducts?.map(p => ({
                             name: p.name,
                             type: p.productType,
@@ -1668,14 +1674,16 @@ export default function IpProfile() {
                                   {painPoints.map((point: string, j: number) => (
                                     <li 
                                       key={j} 
-                                      className="text-muted-foreground hover:text-primary cursor-pointer transition-colors hover:underline"
+                                      className="text-muted-foreground hover:text-primary cursor-pointer transition-colors hover:underline group"
                                       onClick={() => {
-                                        // 將痛點帶入發文工作室
-                                        const material = `受眾：${formData.contentMatrixAudiences.core}\n主題：${theme}\n痛點：${point}`;
-                                        setLocation(`/writing-studio?material=${encodeURIComponent(material)}&angle=${encodeURIComponent(point)}`);
+                                        // 將痛點帶入發文工作室，包含完整資訊
+                                        const material = `受眾：${formData.contentMatrixAudiences.core}\n主題：${theme}\n選題：${point}\n\n請根據這個選題寫一篇貼文`;
+                                        setLocation(`/writing-studio?material=${encodeURIComponent(material)}&mode=material`);
+                                        toast.success(`已帶入選題：${point.slice(0, 20)}...`);
                                       }}
                                     >
-                                      「{point}」
+                                      <span className="group-hover:underline">「{point}」</span>
+                                      <span className="text-xs text-primary opacity-0 group-hover:opacity-100 ml-1">→ 寫文</span>
                                     </li>
                                   ))}
                                 </ul>
@@ -1707,13 +1715,15 @@ export default function IpProfile() {
                                   {painPoints.map((point: string, j: number) => (
                                     <li 
                                       key={j} 
-                                      className="text-muted-foreground hover:text-primary cursor-pointer transition-colors hover:underline"
+                                      className="text-muted-foreground hover:text-primary cursor-pointer transition-colors hover:underline group"
                                       onClick={() => {
-                                        const material = `受眾：${formData.contentMatrixAudiences.potential}\n主題：${theme}\n痛點：${point}`;
-                                        setLocation(`/writing-studio?material=${encodeURIComponent(material)}&angle=${encodeURIComponent(point)}`);
+                                        const material = `受眾：${formData.contentMatrixAudiences.potential}\n主題：${theme}\n選題：${point}\n\n請根據這個選題寫一篇貼文`;
+                                        setLocation(`/writing-studio?material=${encodeURIComponent(material)}&mode=material`);
+                                        toast.success(`已帶入選題：${point.slice(0, 20)}...`);
                                       }}
                                     >
-                                      「{point}」
+                                      <span className="group-hover:underline">「{point}」</span>
+                                      <span className="text-xs text-primary opacity-0 group-hover:opacity-100 ml-1">→ 寫文</span>
                                     </li>
                                   ))}
                                 </ul>
@@ -1746,13 +1756,15 @@ export default function IpProfile() {
                                   {painPoints.map((point: string, j: number) => (
                                     <li 
                                       key={j} 
-                                      className="text-muted-foreground hover:text-primary cursor-pointer transition-colors hover:underline"
+                                      className="text-muted-foreground hover:text-primary cursor-pointer transition-colors hover:underline group"
                                       onClick={() => {
-                                        const material = `受眾：${formData.contentMatrixAudiences.opportunity}\n主題：${theme}\n痛點：${point}`;
-                                        setLocation(`/writing-studio?material=${encodeURIComponent(material)}&angle=${encodeURIComponent(point)}`);
+                                        const material = `受眾：${formData.contentMatrixAudiences.opportunity}\n主題：${theme}\n選題：${point}\n\n請根據這個選題寫一篇貼文`;
+                                        setLocation(`/writing-studio?material=${encodeURIComponent(material)}&mode=material`);
+                                        toast.success(`已帶入選題：${point.slice(0, 20)}...`);
                                       }}
                                     >
-                                      「{point}」
+                                      <span className="group-hover:underline">「{point}」</span>
+                                      <span className="text-xs text-primary opacity-0 group-hover:opacity-100 ml-1">→ 寫文</span>
                                     </li>
                                   ))}
                                 </ul>
