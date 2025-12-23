@@ -289,9 +289,21 @@ ${themes.map((t, i) => `${i + 1}. ${t}`).join('\n')}
 === 重要規則 ===
 1. 不要給泛泛的標題（如：如何做行銷），要具體的痛點
 2. 用受眾心裡的 OS 來寫，像是他們真的會說出口的話
-3. 用第一人稱「我」來表達
+3. 可以用各種人稱視角（第一人稱「我」、第二人稱「你」、觀察者視角）
 4. 帶有情緒（困惑、焦慮、無奈、期待、自我懷疑等）
 5. 可以直接作為發文的開頭 Hook
+6. 可以植入流量密碼（見下方說明）
+
+=== 流量密碼參考（可選擇性植入） ===
+- MBTI/星座/玄學：「ENFP 的人是不是都...」「天蠅座最近...」
+- 數字清單：「3 個徵兆」「5 種人」「90% 的人都不知道」
+- 反差對比：「明明...卻...」「以為...結果...」
+- 情緒共鳴詞：「救命」「天啊」「笑死」「傻眼」「崩潰」
+- 身體感受：「雞皮疑疒」「心臟漏跳一拍」
+- 關係標籤：「前任」「曖昧對象」「塑膠姊妹」「毒親」
+- 生活場景：「深夜」「下班後」「週一症候群」
+- 身分標籤：「二寶媽」「想離職的人」「創業第三年」
+- 時事熱點：節日、社會議題、熱門事件
 
 === 範例（請根據創作者領域調整） ===
 - 「拍了影片卻沒人看，覺得自己很像小丑」
@@ -446,6 +458,168 @@ ${randomSeed}
                         description: { type: "string", description: "主題說明" }
                       },
                       required: ["name", "description"],
+                      additionalProperties: false
+                    }
+                  }
+                },
+                required: ["topics"],
+                additionalProperties: false
+              }
+            }
+          }
+        });
+
+        const rawContent = response.choices[0]?.message?.content;
+        const content = typeof rawContent === 'string' ? rawContent : '{}';
+        
+        try {
+          const result = JSON.parse(content);
+          return { topics: result.topics || [] };
+        } catch {
+          return { topics: [] };
+        }
+      }),
+
+    // 從矩陣生成選題（第四步：套用流量密碼生成標題）
+    generateTopicFromMatrix: protectedProcedure
+      .input(z.object({
+        audience: z.string(), // 選中的受眾
+        subTopic: z.string(), // 選中的子主題
+        painPoint: z.string(), // 選中的痛點
+        occupation: z.string().optional(),
+        voiceTone: z.string().optional(),
+        contentPillars: z.object({
+          authority: z.string().optional(),
+          emotion: z.string().optional(),
+          uniqueness: z.string().optional(),
+        }).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { audience, subTopic, painPoint, occupation, voiceTone, contentPillars } = input;
+        
+        // 建構 IP 地基資訊
+        let ipContext = '';
+        if (occupation) ipContext += `職業/身份：${occupation}\n`;
+        if (voiceTone) ipContext += `語氣風格：${voiceTone}\n`;
+        if (contentPillars) {
+          if (contentPillars.authority) ipContext += `專業權威：${contentPillars.authority}\n`;
+          if (contentPillars.emotion) ipContext += `情感共鳴：${contentPillars.emotion}\n`;
+          if (contentPillars.uniqueness) ipContext += `獨特觀點：${contentPillars.uniqueness}\n`;
+        }
+        
+        const randomSeed = Math.random().toString(36).substring(7);
+        
+        const prompt = `你是一位 Threads 爆款內容專家。請根據以下「受眾 × 子主題 × 痛點」的交叉點，生成 3 個爆款選題。
+
+=== 創作者 IP 地基 ===
+${ipContext || '未設定'}
+
+=== 矩陣交叉點 ===
+- 受眾 (Y軸)：${audience}
+- 子主題 (X軸)：${subTopic}
+- 交叉痛點：${painPoint}
+
+=== 選題生成規則 ===
+
+1. 「像真人發文」而不是廣告標語
+   - 用口語化的語氣
+   - 帶有情緒（「天啊」「救命」「笑死」「傻眼」）
+   - 像是在跟朋友分享
+
+2. 使用「觀察+提問」或「反差」句式
+   - 「有沒有人發現...」
+   - 「明明...卻...」
+   - 「以為...結果...」
+   - 「好奇問一下...」
+
+3. 植入流量密碼（至少使用 1-2 種）
+   - MBTI/星座：「ENFP 的人是不是都...」「天蠅座最近...」
+   - 數字清單：「3 個徵兆」「5 種人」
+   - 反差對比：「明明很努力，卻...」
+   - 情緒共鳴詞：「救命」「崩潰」「心累」
+   - 身分標籤：「想離職的人」「二寶媽」
+   - 關係標籤：「前任」「曖昧對象」「塑膠姊妹」
+   - 生活場景：「深夜」「下班後」「週一症候群」
+   - 翻譯機：把專業術語翻成大白話
+
+4. 結尾要有互動感
+   - 召喚同類：「舉手我看看我不孤單🙋‍♀️」
+   - 二選一提問：「你是 A 還是 B？」
+   - 引導留言：「留言告訴我...」
+
+=== 範例參考 ===
+
+如果交叉點是：
+- 受眾：遇到瓶頸的資深命理師
+- 子主題：高價產品設計
+- 痛點：服務很好但價格拉不高，不敢漲價
+
+應該生成類似這樣的選題：
+
+選題一（結合 MBTI）：
+「INFJ 的命理師是不是都有『金錢羞恥症』？
+明明算得很準，客人問價格時卻想躲起來...
+其實你不是貪財，你是需要被肯定。」
+
+選題二（結合反差+翻譯機）：
+「『收費便宜是在幫客戶』這句話其實是在害他？
+用大白話講：免費的建議沒人聽，收 3600 他才會把你當神拜。
+這是我悟出的血淚教訓...」
+
+選題三（結合提問型）：
+「好奇問一下，有多少老師跟我一樣，
+明明實力很強，但看到別的『半桶水』收費比自己高，
+心裡超不平衡？
+舉手我看看我不孤單🙋‍♀️」
+
+=== 隨機種子 ===
+${randomSeed}
+
+=== 輸出格式 ===
+請用 JSON 格式回應：
+{
+  "topics": [
+    {
+      "title": "選題標題（完整的發文開頭）",
+      "viralElements": ["使用的流量密碼1", "使用的流量密碼2"],
+      "hookType": "hook 類型（鏡像/反差/提問/場景）",
+      "targetEmotion": "目標情緒（共鳴/好奇/焦慮/渴望）",
+      "suggestedCTA": "建議的 CTA"
+    }
+  ]
+}
+
+只輸出 JSON，不要其他文字。`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: "你是一位專業的 Threads 爆款內容專家，擅長生成能打中人心的選題和標題。" },
+            { role: "user", content: prompt }
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "topics_response",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  topics: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string", description: "選題標題" },
+                        viralElements: { 
+                          type: "array", 
+                          items: { type: "string" },
+                          description: "使用的流量密碼" 
+                        },
+                        hookType: { type: "string", description: "Hook 類型" },
+                        targetEmotion: { type: "string", description: "目標情緒" },
+                        suggestedCTA: { type: "string", description: "建議的 CTA" }
+                      },
+                      required: ["title", "viralElements", "hookType", "targetEmotion", "suggestedCTA"],
                       additionalProperties: false
                     }
                   }
@@ -1092,10 +1266,11 @@ ${audienceContext || '未設定'}
 ${selectedStyle}
 
 === 重要指示 ===
-1. 每個 Hook 不超過 30 字
+1. 每個 Hook 不超過 15 字（理想 10 字）
 2. Hook 要能讓人停下來想繼續看
 3. 符合創作者的語氣風格
-4. 針對受眾的痛點`;
+4. 針對受眾的痛點
+5. 用短句抓注意力，像真人說話`;
 
         const response = await invokeLLM({
           messages: [
@@ -1426,12 +1601,19 @@ ${viralElementsPrompt}
 - 每個抽象概念都要有具體的比喻或場景
 
 === Threads 爆款風格（最重要） ===
-1. 【簡潔有力】每句話不超過 20 字，一句一行，快節奏推進
-2. 【分段呼吸】每 2-3 行空一行，讓讀者有呼吸感
-3. 【口語化】像跟朋友聊天，不是寫文章
-4. 【有溫度】快節奏但不冷漠，要讓人感受到你的真誠
-5. 【轉折詞】多用「但是」「沒想到」「結果」「後來」推動情緒
-6. 【語助詞】加入「真的」「欹」「啊」等語助詞增加人味
+
+### 呼吸感排版（必須嚴格執行）
+1. 【句子長度】每句不超過 15 字（理想 10 字）
+2. 【換行規則】每句獨立成行
+3. 【空行規則】每 2-3 句必須空一行
+4. 【禁止文字牆】禁止連續超過 3 行不空行
+5. 【節奏感】長短句交錯，開頭用短句抓注意力，結尾用短句收尾
+
+### 語氣風格
+1. 【口語化】像跟朋友聊天，不是寫文章
+2. 【有溫度】快節奏但不冷漠，要讓人感受到你的真誠
+3. 【轉折詞】多用「但是」「沒想到」「結果」「後來」推動情緒
+4. 【語助詞】加入「真的」「欹」「啊」「吧」「呢」增加人味
 
 === 重要指示（必須嚴格遵守） ===
 1. 【語氣風格】必須使用創作者的語氣風格來寫作，如果沒有設定則用溫暖真誠的風格
@@ -1750,12 +1932,19 @@ ${aiMemory}` : ''}
 - 每個抽象概念都要有具體的比喻或場景
 
 === Threads 爆款風格（最重要） ===
-1. 【簡潔有力】每句話不超過 20 字，一句一行，快節奏推進
-2. 【分段呼吸】每 2-3 行空一行，讓讀者有呼吸感
-3. 【口語化】像跟朋友聊天，不是寫文章
-4. 【有溫度】快節奏但不冷漠，要讓人感受到你的真誠
-5. 【轉折詞】多用「但是」「沒想到」「結果」「後來」推動情緒
-6. 【語助詞】加入「真的」「欹」「啊」等語助詞增加人味
+
+### 呼吸感排版（必須嚴格執行）
+1. 【句子長度】每句不超過 15 字（理想 10 字）
+2. 【換行規則】每句獨立成行
+3. 【空行規則】每 2-3 句必須空一行
+4. 【禁止文字牆】禁止連續超過 3 行不空行
+5. 【節奏感】長短句交錯，開頭用短句抓注意力，結尾用短句收尾
+
+### 語氣風格
+1. 【口語化】像跟朋友聊天，不是寫文章
+2. 【有溫度】快節奏但不冷漠，要讓人感受到你的真誠
+3. 【轉折詞】多用「但是」「沒想到」「結果」「後來」推動情緒
+4. 【語助詞】加入「真的」「欹」「啊」「吧」「呢」增加人味
 
 === 重要指示（必須嚴格遵守） ===
 1. 【語氣風格】必須使用創作者的語氣風格來寫作
@@ -1890,11 +2079,18 @@ ${aiMemory}` : ''}
 - 有明確的行動呼籲
 
 === Threads 爆款風格（修改時必須保持） ===
-1. 簡潔有力：每句話不超過 20 字，一句一行
-2. 分段呼吸：每 2-3 行空一行
-3. 口語化：像跟朋友聊天
-4. 有溫度：快節奏但不冷漠
-5. 語助詞：加入「真的」「欹」「啊」增加人味
+
+### 呼吸感排版（最重要）
+1. 每句不超過 15 字（理想 10 字）
+2. 每句獨立成行
+3. 每 2-3 句必須空一行
+4. 禁止連續超過 3 行不空行
+5. 長短句交錯，創造節奏感
+
+### 語氣風格
+1. 口語化：像跟朋友聊天
+2. 有溫度：快節奏但不冷漠
+3. 語助詞：加入「真的」「欹」「啊」「吧」「呢」增加人味
 
 === 重要原則 ===
 1. 保持創作者的語氣風格
@@ -1988,7 +2184,13 @@ ${input.currentDraft}` },
 - 9-10分：結構清晰，段落適中，很好吸收
 - 7-8分：結構還可以，但有優化空間
 - 5-6分：結構有點亂，段落太長或太短
-- 1-4分：結構混亂，難以閱讀`;
+- 1-4分：結構混亂，難以閱讀
+
+### 呼吸感排版評分標準：
+- 9-10分：每句不超過 15 字，每句獨立成行，每 2-3 句空一行，節奏感強
+- 7-8分：大部分符合呼吸感規則，但有少數句子太長
+- 5-6分：部分段落像文字牆，連續多行不空行
+- 1-4分：完全是文字牆，沒有呼吸感`;
 
         const response = await invokeLLM({
           messages: [
@@ -2087,9 +2289,22 @@ ${input.currentDraft}` },
 - 小學五年級都能懂的程度
 
 ## 維度三：Tone 閱讀體感（15分）
-- 加入語助詞：「真的」「欹」「啊」「FK」「WTF」
-- 呼吸感排版：每 2-3 行空一行，不是文字牆
+
+### 呼吸感排版（最重要）
+- 每句不超過 15 字（理想 10 字）
+- 每句獨立成行
+- 每 2-3 句必須空一行
+- 禁止連續超過 3 行不空行
+- 長短句交錯，創造節奏感
+
+### 語氣詞
+- 加入語助詞：「真的」「欹」「啊」「吧」「呢」
 - 像真人說話，不是 AI 或官方文章
+
+### 節奏感範例
+開頭用短句（5-10 字）抓注意力
+中間用稍長句展開
+結尾用短句收尾
 
 ## 維度四：CTA 互動召喚（10分）
 優先使用這兩種 CTA：
