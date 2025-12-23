@@ -267,22 +267,22 @@ export const appRouter = router({
         const emotionAngles = ['焦慮型', '困惑型', '無奈型', '渴望型', '自我懷疑型', '比較心態型'];
         const selectedEmotions = emotionAngles.sort(() => Math.random() - 0.5).slice(0, 3);
         
-        // 流量密碼類型（三選一強制植入）
-        const trafficKeywordTypes = ['MBTI', '星座', '身分標籤'];
+        // 流量密碼類型（三選一強制植入，使用通用身分標籤，不需要專業知識）
+        const trafficKeywordTypes = ['職業身分', '生活狀態', '情緒狀態'];
         const selectedTrafficType = trafficKeywordTypes[Math.floor(Math.random() * trafficKeywordTypes.length)];
         
         // 黃金鉤子句型
         const hookPatterns = ['觀察+提問型', '反直覺型'];
         const selectedHookPattern = hookPatterns[Math.floor(Math.random() * hookPatterns.length)];
         
-        // 建構流量密碼提示
+        // 建構流量密碼提示（全部使用通用身分標籤）
         let trafficKeywordPrompt = '';
-        if (selectedTrafficType === 'MBTI') {
-          trafficKeywordPrompt = '- 使用 MBTI 類型：INFJ、ENFP、INTJ、ISFP 等\n- 句式：「給那些 XXXX 的人」「XXXX 是不是都...」';
-        } else if (selectedTrafficType === '星座') {
-          trafficKeywordPrompt = '- 使用星座標籤：天蠍座、雙魚座、處女座等\n- 句式：「天蠍座最近是不是...」「雙魚座的人懂」';
+        if (selectedTrafficType === '職業身分') {
+          trafficKeywordPrompt = '- 使用職業/角色標籤：創業者、自由接案者、全職媽媽、上班族、老師、設計師、小編、老闆等\n- 句式：「給那些 XXX 的人」「XXX 是不是都...」';
+        } else if (selectedTrafficType === '生活狀態') {
+          trafficKeywordPrompt = '- 使用生活狀態標籤：創業第三年、二寶媽、想離職的人、30歲單身、剛結婚的人、剛換工作的人、遠距離工作者等\n- 句式：「給那些 XXX 的人」「XXX 的人是不是都...」';
         } else {
-          trafficKeywordPrompt = '- 使用身分標籤：高敏人、創業第三年、二寶媽、想離職的人、30歲單身女等\n- 句式：「給那些 XXX 的人」「XXX 的人是不是都...」';
+          trafficKeywordPrompt = '- 使用情緒/狀態標籤：高敏人、容易想太多的人、容易累的人、不敢拒絕的人、完美主義者、內向者等\n- 句式：「給那些 XXX 的人」「XXX 的人是不是都...」';
         }
         
         // 建構黃金鉤子提示
@@ -313,11 +313,11 @@ ${themes.map((t, i) => `${i + 1}. ${t}`).join('\n')}
 
 ❌ 日記型（錯誤示範）：
 「我好累，醫生說沒事，我是不是玻璃心？」
-「命盤上說我就是勞碌命，是不是我再怎麼努力也逃不過宿命？」
+「我就是勞碌命，是不是我再怎麼努力也逃不過？」
 
 ✅ 爆款型（正確示範）：
-「給那些『查不出病因』的 INFJ 女生：你的肩膀痠痛，其實是因為你幫別人背了太久的責任。」
-「紫微斗數裡的『勞碌命』，翻譯成白話文其實是『能者多勞的詛咒』？為什麼命帶魁罡的女生，總是活得像個女戰士？」
+「給那些『查不出病因』的高敏人：你的肩膀痠痛，其實是因為你幫別人背了太久的責任。」
+「給那些『明明很努力卻總是很累』的創業者：你不是能力不足，你是把別人的責任都背在自己身上了。」
 
 === 流量化轉譯三要素 ===
 
@@ -595,22 +595,22 @@ ${randomSeed}
         
         const randomSeed = Math.random().toString(36).substring(7);
         
-        // 流量密碼類型（三選一強制植入）
-        const trafficKeywordTypes = ['MBTI', '星座', '身分標籤'];
+        // 流量密碼類型（三選一強制植入，使用通用身分標籤，不需要專業知識）
+        const trafficKeywordTypes = ['職業身分', '生活狀態', '情緒狀態'];
         const selectedTrafficType = trafficKeywordTypes[Math.floor(Math.random() * trafficKeywordTypes.length)];
         
         // 黃金鉤子句型
         const hookPatterns = ['觀察+提問型', '反直覺型'];
         const selectedHookPattern = hookPatterns[Math.floor(Math.random() * hookPatterns.length)];
         
-        // 建構流量密碼提示
+        // 建構流量密碼提示（全部使用通用身分標籤）
         let trafficKeywordPrompt = '';
-        if (selectedTrafficType === 'MBTI') {
-          trafficKeywordPrompt = '- 使用 MBTI 類型：INFJ、ENFP、INTJ、ISFP 等\n- 句式：「給那些 XXXX 的人」「XXXX 是不是都...」';
-        } else if (selectedTrafficType === '星座') {
-          trafficKeywordPrompt = '- 使用星座標籤：天蠍座、雙魚座、處女座等\n- 句式：「天蠍座最近是不是...」「雙魚座的人懂」';
+        if (selectedTrafficType === '職業身分') {
+          trafficKeywordPrompt = '- 使用職業/角色標籤：創業者、自由接案者、全職媽媽、上班族、老師、設計師、小編、老闆等\n- 句式：「給那些 XXX 的人」「XXX 是不是都...」';
+        } else if (selectedTrafficType === '生活狀態') {
+          trafficKeywordPrompt = '- 使用生活狀態標籤：創業第三年、二寶媽、想離職的人、30歲單身、剛結婚的人、剛換工作的人、遠距離工作者等\n- 句式：「給那些 XXX 的人」「XXX 的人是不是都...」';
         } else {
-          trafficKeywordPrompt = '- 使用身分標籤：高敏人、創業第三年、二寶媽、想離職的人、30歲單身女等\n- 句式：「給那些 XXX 的人」「XXX 的人是不是都...」';
+          trafficKeywordPrompt = '- 使用情緒/狀態標籤：高敏人、容易想太多的人、容易累的人、不敢拒絕的人、完美主義者、內向者等\n- 句式：「給那些 XXX 的人」「XXX 的人是不是都...」';
         }
         
         // 建構黃金鉤子提示
@@ -639,7 +639,7 @@ ${ipContext || '未設定'}
 「我好累，醫生說沒事，我是不是玻璃心？」
 
 ✅ 爆款型（正確示範）：
-「給那些『查不出病因』的 INFJ 女生：你的肩膀痠痛，其實是因為你幫別人背了太久的責任。」
+「給那些『查不出病因』的高敏人：你的肩膀痠痛，其實是因為你幫別人背了太久的責任。」
 
 === 流量化轉譯三要素 ===
 
@@ -664,24 +664,24 @@ ${hookPatternPrompt}
 === 範例參考 ===
 
 如果交叉點是：
-- 受眾：遇到瓶頸的資深命理師
+- 受眾：遇到瓶頸的自由接案者
 - 子主題：高價產品設計
 - 痛點：服務很好但價格拉不高，不敢漲價
 
 應該生成類似這樣的選題：
 
-選題一（結合 MBTI + 翻譯機）：
-「給那些『算得很準卻不敢收高價』的 INFJ 命理師：
+選題一（結合情緒狀態 + 翻譯機）：
+「給那些『明明很專業卻不敢收高價』的完美主義者：
 你不是貪財，你是需要被肯定。
 當你開始重視自己的價值，客人才會開始重視你的服務。」
 
-選題二（結合身分標籤 + 反直覺）：
-「給那些『收費便宜是在幫客戶』的身心靈工作者：
+選題二（結合職業身分 + 反直覺）：
+「給那些『收費便宜是在幫客戶』的自由接案者：
 其實你是在害他。
 用大白話講：免費的建議沒人聽，收 3600 他才會把你當神拜。」
 
 選題三（結合觀察+提問 + 翻譯機）：
-「有沒有人發現，很有實力的老師通常收費最便宜？
+「有沒有人發現，很有實力的創業者通常收費最便宜？
 因為他們有『能力者的謙虛』，總覺得自己還不夠好。
 但其實，你的『不敢收高價』就是你最大的問題。」
 
