@@ -3185,7 +3185,8 @@ ${input.context ? `貼文內容是關於：${input.context}` : ''}
   writingStyle: router({
     // 獲取用戶風格分析
     get: protectedProcedure.query(async ({ ctx }) => {
-      return db.getUserWritingStyle(ctx.user.id);
+      const style = await db.getUserWritingStyle(ctx.user.id);
+      return style || null;
     }),
     
     // 新增爆款貼文樣本

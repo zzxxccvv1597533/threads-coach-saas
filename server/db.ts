@@ -1054,18 +1054,18 @@ export async function getAllUsersWithActivation(): Promise<(typeof users.$inferS
 
 // ==================== 用戶風格分析 ====================
 
-export async function getUserWritingStyle(userId: number): Promise<UserWritingStyle | undefined> {
+export async function getUserWritingStyle(userId: number): Promise<UserWritingStyle | null> {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) return null;
   const result = await db.select().from(userWritingStyles)
     .where(eq(userWritingStyles.userId, userId))
     .limit(1);
-  return result[0];
+  return result[0] || null;
 }
 
-export async function upsertUserWritingStyle(style: InsertUserWritingStyle): Promise<UserWritingStyle | undefined> {
+export async function upsertUserWritingStyle(style: InsertUserWritingStyle): Promise<UserWritingStyle | null> {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) return null;
   
   const existing = await getUserWritingStyle(style.userId);
   

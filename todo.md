@@ -790,3 +790,8 @@
 - [ ] 優化從痛點矩陣的資料傳遞
 - [ ] 加入「快速模式」選項
 
+
+
+## Bug 修復 - writingStyle.get API 錯誤 (2024-12-24)
+- [x] 修復 writingStyle.get API 返回 undefined 導致前端錯誤
+
