@@ -1767,7 +1767,10 @@ export default function IpProfile() {
                             <td key={i} className="p-3 border border-border text-sm align-top">
                               {painPoints.length > 0 ? (
                                 <ul className="space-y-1">
-                                  {painPoints.map((point: string, j: number) => (
+                                  {painPoints.map((point: string | { 情緒角度?: string; OS?: string }, j: number) => {
+                                    // 處理可能的物件格式
+                                    const displayText = typeof point === 'string' ? point : (point.OS || JSON.stringify(point));
+                                    return (
                                     <li 
                                       key={j} 
                                       className="text-muted-foreground hover:text-primary cursor-pointer transition-colors hover:underline group"
@@ -1776,15 +1779,15 @@ export default function IpProfile() {
                                         setSelectedPainPoint({
                                           audience: formData.contentMatrixAudiences.core,
                                           theme: theme,
-                                          point: point
+                                          point: displayText
                                         });
                                         setShowModeDialog(true);
                                       }}
                                     >
-                                      <span className="group-hover:underline">「{point}」</span>
+                                      <span className="group-hover:underline">「{displayText}」</span>
                                       <span className="text-xs text-primary opacity-0 group-hover:opacity-100 ml-1">→ 寫文</span>
                                     </li>
-                                  ))}
+                                  );})}
                                 </ul>
                               ) : (
                                 <span className="text-muted-foreground/50 text-xs">
@@ -1811,7 +1814,9 @@ export default function IpProfile() {
                             <td key={i} className="p-3 border border-border text-sm align-top">
                               {painPoints.length > 0 ? (
                                 <ul className="space-y-1">
-                                  {painPoints.map((point: string, j: number) => (
+                                  {painPoints.map((point: string | { 情緒角度?: string; OS?: string }, j: number) => {
+                                    const displayText = typeof point === 'string' ? point : (point.OS || JSON.stringify(point));
+                                    return (
                                     <li 
                                       key={j} 
                                       className="text-muted-foreground hover:text-primary cursor-pointer transition-colors hover:underline group"
@@ -1819,15 +1824,15 @@ export default function IpProfile() {
                                         setSelectedPainPoint({
                                           audience: formData.contentMatrixAudiences.potential,
                                           theme: theme,
-                                          point: point
+                                          point: displayText
                                         });
                                         setShowModeDialog(true);
                                       }}
                                     >
-                                      <span className="group-hover:underline">「{point}」</span>
+                                      <span className="group-hover:underline">「{displayText}」</span>
                                       <span className="text-xs text-primary opacity-0 group-hover:opacity-100 ml-1">→ 寫文</span>
                                     </li>
-                                  ))}
+                                  );})}
                                 </ul>
                               ) : (
                                 <span className="text-muted-foreground/50 text-xs">
@@ -1855,7 +1860,9 @@ export default function IpProfile() {
                             <td key={i} className="p-3 border border-border text-sm align-top">
                               {painPoints.length > 0 ? (
                                 <ul className="space-y-1">
-                                  {painPoints.map((point: string, j: number) => (
+                                  {painPoints.map((point: string | { 情緒角度?: string; OS?: string }, j: number) => {
+                                    const displayText = typeof point === 'string' ? point : (point.OS || JSON.stringify(point));
+                                    return (
                                     <li 
                                       key={j} 
                                       className="text-muted-foreground hover:text-primary cursor-pointer transition-colors hover:underline group"
@@ -1863,15 +1870,15 @@ export default function IpProfile() {
                                         setSelectedPainPoint({
                                           audience: formData.contentMatrixAudiences.opportunity,
                                           theme: theme,
-                                          point: point
+                                          point: displayText
                                         });
                                         setShowModeDialog(true);
                                       }}
                                     >
-                                      <span className="group-hover:underline">「{point}」</span>
+                                      <span className="group-hover:underline">「{displayText}」</span>
                                       <span className="text-xs text-primary opacity-0 group-hover:opacity-100 ml-1">→ 寫文</span>
                                     </li>
-                                  ))}
+                                  );})}
                                 </ul>
                               ) : (
                                 <span className="text-muted-foreground/50 text-xs">
