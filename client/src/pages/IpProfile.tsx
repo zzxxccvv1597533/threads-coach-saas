@@ -1767,9 +1767,20 @@ export default function IpProfile() {
                             <td key={i} className="p-3 border border-border text-sm align-top">
                               {painPoints.length > 0 ? (
                                 <ul className="space-y-1">
-                                  {painPoints.map((point: string | { 情緒角度?: string; OS?: string }, j: number) => {
-                                    // 處理可能的物件格式
-                                    const displayText = typeof point === 'string' ? point : (point.OS || JSON.stringify(point));
+                                  {painPoints.map((point: string | { 情緒角度?: string; OS?: string; hook?: string; translation?: string }, j: number) => {
+                                    // 處理可能的物件格式（支援新的 hook/translation 格式）
+                                    let displayText = '';
+                                    if (typeof point === 'string') {
+                                      displayText = point;
+                                    } else if (point.hook) {
+                                      // 新格式：只顯示 hook，不顯示欄位名稱
+                                      displayText = point.hook;
+                                    } else if (point.OS) {
+                                      // 舊格式
+                                      displayText = point.OS;
+                                    } else {
+                                      displayText = JSON.stringify(point);
+                                    }
                                     return (
                                     <li 
                                       key={j} 
@@ -1814,8 +1825,18 @@ export default function IpProfile() {
                             <td key={i} className="p-3 border border-border text-sm align-top">
                               {painPoints.length > 0 ? (
                                 <ul className="space-y-1">
-                                  {painPoints.map((point: string | { 情緒角度?: string; OS?: string }, j: number) => {
-                                    const displayText = typeof point === 'string' ? point : (point.OS || JSON.stringify(point));
+                                  {painPoints.map((point: string | { 情緒角度?: string; OS?: string; hook?: string; translation?: string }, j: number) => {
+                                    // 處理可能的物件格式（支援新的 hook/translation 格式）
+                                    let displayText = '';
+                                    if (typeof point === 'string') {
+                                      displayText = point;
+                                    } else if (point.hook) {
+                                      displayText = point.hook;
+                                    } else if (point.OS) {
+                                      displayText = point.OS;
+                                    } else {
+                                      displayText = JSON.stringify(point);
+                                    }
                                     return (
                                     <li 
                                       key={j} 
@@ -1860,8 +1881,18 @@ export default function IpProfile() {
                             <td key={i} className="p-3 border border-border text-sm align-top">
                               {painPoints.length > 0 ? (
                                 <ul className="space-y-1">
-                                  {painPoints.map((point: string | { 情緒角度?: string; OS?: string }, j: number) => {
-                                    const displayText = typeof point === 'string' ? point : (point.OS || JSON.stringify(point));
+                                  {painPoints.map((point: string | { 情緒角度?: string; OS?: string; hook?: string; translation?: string }, j: number) => {
+                                    // 處理可能的物件格式（支援新的 hook/translation 格式）
+                                    let displayText = '';
+                                    if (typeof point === 'string') {
+                                      displayText = point;
+                                    } else if (point.hook) {
+                                      displayText = point.hook;
+                                    } else if (point.OS) {
+                                      displayText = point.OS;
+                                    } else {
+                                      displayText = JSON.stringify(point);
+                                    }
                                     return (
                                     <li 
                                       key={j} 
