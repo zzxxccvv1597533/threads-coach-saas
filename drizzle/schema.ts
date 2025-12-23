@@ -492,3 +492,43 @@ export const userGrowthMetrics = mysqlTable("user_growth_metrics", {
 
 export type UserGrowthMetric = typeof userGrowthMetrics.$inferSelect;
 export type InsertUserGrowthMetric = typeof userGrowthMetrics.$inferInsert;
+
+
+// ==================== 用戶風格分析 ====================
+
+export const userWritingStyles = mysqlTable("user_writing_styles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  // 語氣特徵
+  toneStyle: varchar("toneStyle", { length: 50 }), // 溫暖真誠 / 犀利直接 / 幽默風趣
+  // 常用句式（JSON 陣列）
+  commonPhrases: json("commonPhrases").$type<string[]>(), // 例如：["你有沒有發現...", "說真的..."]
+  // 口頭禪（JSON 陣列）
+  catchphrases: json("catchphrases").$type<string[]>(), // 例如：["真的", "欸", "吧"]
+  // Hook 風格偏好
+  hookStylePreference: varchar("hookStylePreference", { length: 50 }), // 反差型 / 提問型 / 場景型
+  // 比喻風格
+  metaphorStyle: varchar("metaphorStyle", { length: 50 }), // 生活化比喻 / 專業術語白話
+  // 情緒節奏
+  emotionRhythm: varchar("emotionRhythm", { length: 50 }), // 快節奏短句 / 娓娓道來長句
+  // 爆款元素（JSON 物件）
+  viralElements: json("viralElements").$type<{
+    identityTags: string[]; // 常用身分標籤
+    emotionWords: string[]; // 常用情緒詞
+    ctaStyles: string[]; // 常用 CTA 類型
+  }>(),
+  // 原始爆款貼文（用於分析的素材）
+  samplePosts: json("samplePosts").$type<Array<{
+    content: string;
+    engagement?: number; // 互動數（可選）
+    addedAt: string; // 新增時間
+  }>>(),
+  // 分析狀態
+  analysisStatus: mysqlEnum("analysisStatus", ["pending", "analyzing", "completed", "failed"]).default("pending"),
+  lastAnalyzedAt: timestamp("lastAnalyzedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserWritingStyle = typeof userWritingStyles.$inferSelect;
+export type InsertUserWritingStyle = typeof userWritingStyles.$inferInsert;

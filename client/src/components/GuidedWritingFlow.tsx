@@ -98,6 +98,13 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
   const [catchphrases, setCatchphrases] = useState("");
   const [speakingStyle, setSpeakingStyle] = useState("");
   const [finalContent, setFinalContent] = useState("");
+  
+  // 診斷結果
+  const [diagnosis, setDiagnosis] = useState<{
+    strengths: Array<{ label: string; description: string }>;
+    improvements: Array<{ label: string; description: string; action?: string }>;
+    score: number;
+  } | null>(null);
 
   // API mutations
   const brainstorm = trpc.ai.brainstorm.useMutation({
@@ -125,6 +132,10 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
     onSuccess: (data) => {
       setDraftContent(typeof data.content === 'string' ? data.content : '');
       setDraftId(data.draftId || null);
+      // 設定診斷結果
+      if (data.diagnosis) {
+        setDiagnosis(data.diagnosis);
+      }
       setCurrentStep(7);
       toast.success("草稿已生成！");
     },
@@ -266,25 +277,47 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium">創作進度</span>
           <span className="text-sm text-muted-foreground">
-            {currentStep} / {FLOW_STEPS.length}
+            Step {currentStep} / {FLOW_STEPS.length}
           </span>
         </div>
         <div className="flex gap-1">
           {FLOW_STEPS.map((step) => (
-            <div
+            <button
               key={step.id}
+              onClick={() => {
+                // 只允許跳回已完成的步驟
+                if (step.id < currentStep) {
+                  setCurrentStep(step.id);
+                }
+              }}
+              disabled={step.id > currentStep}
               className={`flex-1 h-2 rounded-full transition-colors ${
                 step.id < currentStep
-                  ? "bg-emerald-500"
+                  ? "bg-emerald-500 hover:bg-emerald-400 cursor-pointer"
                   : step.id === currentStep
                   ? "bg-primary"
-                  : "bg-muted"
+                  : "bg-muted cursor-not-allowed"
               }`}
+              title={step.id < currentStep ? `跳回 ${step.name}` : step.name}
             />
           ))}
         </div>
-        <div className="mt-2 text-sm text-muted-foreground">
-          {FLOW_STEPS[currentStep - 1]?.name}：{FLOW_STEPS[currentStep - 1]?.description}
+        <div className="flex items-center justify-between mt-2">
+          <div className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{FLOW_STEPS[currentStep - 1]?.name}</span>
+            ：{FLOW_STEPS[currentStep - 1]?.description}
+          </div>
+          {currentStep > 1 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCurrentStep(currentStep - 1)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              上一步
+            </Button>
+          )}
         </div>
       </div>
 
@@ -691,6 +724,61 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* 診斷結果卡片 */}
+            {diagnosis && (
+              <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg p-4 border border-primary/20">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    <span className="font-medium">生成診斷</span>
+                  </div>
+                  <Badge variant="outline" className="bg-primary/10">
+                    預估分數 {diagnosis.score}分
+                  </Badge>
+                </div>
+                
+                {/* 優勢 */}
+                {diagnosis.strengths.length > 0 && (
+                  <div className="mb-3">
+                    <div className="text-xs text-muted-foreground mb-1">✅ 優勢</div>
+                    <div className="flex flex-wrap gap-2">
+                      {diagnosis.strengths.map((s, i) => (
+                        <Badge key={i} variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-400">
+                          {s.label}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* 可加強 */}
+                {diagnosis.improvements.length > 0 && (
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">⚠️ 可加強</div>
+                    <div className="flex flex-wrap gap-2">
+                      {diagnosis.improvements.map((imp, i) => (
+                        <Badge 
+                          key={i} 
+                          variant="outline" 
+                          className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 cursor-pointer hover:bg-yellow-500/20"
+                          onClick={() => {
+                            if (imp.action) {
+                              setChatInput(`請幫我${imp.action}`);
+                            }
+                          }}
+                        >
+                          {imp.label}
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-2">
+                      💡 點擊標籤可快速填入修改指令
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
             {/* 草稿內容 */}
             <div className="bg-muted/30 rounded-lg p-4">
               <div className="flex justify-between items-start mb-2">

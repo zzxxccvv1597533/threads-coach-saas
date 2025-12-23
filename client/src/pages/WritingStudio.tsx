@@ -276,6 +276,13 @@ export default function WritingStudio() {
   const [chatInput, setChatInput] = useState("");
   const [isChatting, setIsChatting] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  
+  // 診斷結果
+  const [diagnosis, setDiagnosis] = useState<{
+    strengths: Array<{ label: string; description: string }>;
+    improvements: Array<{ label: string; description: string; action?: string }>;
+    score: number;
+  } | null>(null);
 
   // 保存狀態到 localStorage
   useEffect(() => {
@@ -380,6 +387,10 @@ export default function WritingStudio() {
     onSuccess: (data) => {
       setDraftResult(typeof data.content === 'string' ? data.content : '');
       setDraftId(data.draftId || null);
+      // 設定診斷結果
+      if (data.diagnosis) {
+        setDiagnosis(data.diagnosis);
+      }
       setStep(3);
       setChatMessages([]); // 重置對話歷史
       toast.success("草稿已生成！");
@@ -982,6 +993,7 @@ export default function WritingStudio() {
                   onChatSubmit={handleChatSubmit}
                   onCopy={handleCopy}
                   chatEndRef={chatEndRef}
+                  diagnosis={diagnosis}
                 />
                 
                 {/* 補充資料建議卡片 - 根據內容類型顯示 */}
@@ -1427,6 +1439,7 @@ export default function WritingStudio() {
                       onChatSubmit={handleChatSubmit}
                       onCopy={handleCopy}
                       chatEndRef={chatEndRef}
+                      diagnosis={diagnosis}
                     />
                     
                     {/* IP 未完善提醒卡片 - 變現內容 */}
@@ -1492,6 +1505,11 @@ interface DraftResultWithChatProps {
   onChatSubmit: () => void;
   onCopy: (text: string) => void;
   chatEndRef: React.RefObject<HTMLDivElement | null>;
+  diagnosis?: {
+    strengths: Array<{ label: string; description: string }>;
+    improvements: Array<{ label: string; description: string; action?: string }>;
+    score: number;
+  } | null;
 }
 
 function DraftResultWithChat({
@@ -1504,6 +1522,7 @@ function DraftResultWithChat({
   onChatSubmit,
   onCopy,
   chatEndRef,
+  diagnosis,
 }: DraftResultWithChatProps) {
   return (
     <Card className="elegant-card border-primary/20">
@@ -1547,6 +1566,62 @@ function DraftResultWithChat({
               </div>
               <div className="flex-1 space-y-2">
                 <div className="text-sm font-medium text-muted-foreground">幕創 AI</div>
+                
+                {/* 診斷結果卡片 */}
+                {diagnosis && (
+                  <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-2xl p-4 border border-primary/20 mb-3">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-primary" />
+                        <span className="font-medium text-sm">生成診斷</span>
+                      </div>
+                      <Badge variant="outline" className="bg-primary/10">
+                        預估分數 {diagnosis.score}分
+                      </Badge>
+                    </div>
+                    
+                    {/* 優勢 */}
+                    {diagnosis.strengths.length > 0 && (
+                      <div className="mb-3">
+                        <div className="text-xs text-muted-foreground mb-1">✅ 優勢</div>
+                        <div className="flex flex-wrap gap-2">
+                          {diagnosis.strengths.map((s, i) => (
+                            <Badge key={i} variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-400">
+                              {s.label}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* 可加強 */}
+                    {diagnosis.improvements.length > 0 && (
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">⚠️ 可加強</div>
+                        <div className="flex flex-wrap gap-2">
+                          {diagnosis.improvements.map((imp, i) => (
+                            <Badge 
+                              key={i} 
+                              variant="outline" 
+                              className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 cursor-pointer hover:bg-yellow-500/20"
+                              onClick={() => {
+                                if (imp.action) {
+                                  onChatInputChange(`請幫我${imp.action}`);
+                                }
+                              }}
+                            >
+                              {imp.label}
+                            </Badge>
+                          ))}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-2">
+                          💡 點擊標籤可快速填入修改指令
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 <div className="bg-muted/50 rounded-2xl rounded-tl-sm p-4">
                   <div className="prose prose-sm max-w-none text-foreground">
                     <Streamdown>{draftResult}</Streamdown>

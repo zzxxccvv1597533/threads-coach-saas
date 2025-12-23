@@ -23,6 +23,7 @@ import {
   conversationMessages,
   rawMaterials,
   invitationCodes, InsertInvitationCode, InvitationCode,
+  userWritingStyles, InsertUserWritingStyle, UserWritingStyle,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1051,3 +1052,104 @@ export async function getAllUsersWithActivation(): Promise<(typeof users.$inferS
 }
 
 
+// ==================== 用戶風格分析 ====================
+
+export async function getUserWritingStyle(userId: number): Promise<UserWritingStyle | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(userWritingStyles)
+    .where(eq(userWritingStyles.userId, userId))
+    .limit(1);
+  return result[0];
+}
+
+export async function upsertUserWritingStyle(style: InsertUserWritingStyle): Promise<UserWritingStyle | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const existing = await getUserWritingStyle(style.userId);
+  
+  if (existing) {
+    await db.update(userWritingStyles)
+      .set({ ...style, updatedAt: new Date() })
+      .where(eq(userWritingStyles.id, existing.id));
+    return { ...existing, ...style } as UserWritingStyle;
+  } else {
+    await db.insert(userWritingStyles).values(style);
+    return getUserWritingStyle(style.userId);
+  }
+}
+
+export async function addSamplePost(userId: number, content: string, engagement?: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  const existing = await getUserWritingStyle(userId);
+  const newPost = {
+    content,
+    engagement,
+    addedAt: new Date().toISOString(),
+  };
+  
+  if (existing) {
+    const currentPosts = existing.samplePosts || [];
+    await db.update(userWritingStyles)
+      .set({ 
+        samplePosts: [...currentPosts, newPost],
+        analysisStatus: 'pending', // 新增貼文後需要重新分析
+        updatedAt: new Date(),
+      })
+      .where(eq(userWritingStyles.id, existing.id));
+  } else {
+    await db.insert(userWritingStyles).values({
+      userId,
+      samplePosts: [newPost],
+      analysisStatus: 'pending',
+    });
+  }
+  
+  return true;
+}
+
+export async function removeSamplePost(userId: number, index: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  const existing = await getUserWritingStyle(userId);
+  if (!existing || !existing.samplePosts) return false;
+  
+  const updatedPosts = [...existing.samplePosts];
+  updatedPosts.splice(index, 1);
+  
+  await db.update(userWritingStyles)
+    .set({ 
+      samplePosts: updatedPosts,
+      analysisStatus: 'pending', // 移除貼文後需要重新分析
+      updatedAt: new Date(),
+    })
+    .where(eq(userWritingStyles.id, existing.id));
+  
+  return true;
+}
+
+export async function updateWritingStyleAnalysis(
+  userId: number, 
+  analysis: Partial<InsertUserWritingStyle>
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  const existing = await getUserWritingStyle(userId);
+  if (!existing) return false;
+  
+  await db.update(userWritingStyles)
+    .set({ 
+      ...analysis,
+      analysisStatus: 'completed',
+      lastAnalyzedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(userWritingStyles.id, existing.id));
+  
+  return true;
+}

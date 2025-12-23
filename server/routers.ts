@@ -17,6 +17,130 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   return next({ ctx });
 });
 
+// 生成後快速診斷函數（不額外調用 LLM）
+function generateQuickDiagnosis(
+  content: string, 
+  profile: any, 
+  contentTypeInfo: any
+): {
+  strengths: Array<{ label: string; description: string }>;
+  improvements: Array<{ label: string; description: string; action?: string }>;
+  score: number;
+} {
+  const strengths: Array<{ label: string; description: string }> = [];
+  const improvements: Array<{ label: string; description: string; action?: string }> = [];
+  let score = 70; // 基礎分數
+  
+  // 檢查 Hook 強度
+  const firstLines = content.split('\n').slice(0, 3).join('\n');
+  const hookPatterns = [
+    { pattern: /很多人|大家都|你是不是|有沒有過/, label: '鏡像式開頭', desc: '說出受眾心聲' },
+    { pattern: /但其實|沒想到|結果|其實/, label: '反差式開頭', desc: '打破預期製造詚異' },
+    { pattern: /昨天|上週|有一次|那天/, label: '場景式開頭', desc: '用故事帶入' },
+    { pattern: /\d+個|第一|最後/, label: '數字式開頭', desc: '用數字抓注意力' },
+  ];
+  
+  let hookFound = false;
+  for (const hp of hookPatterns) {
+    if (hp.pattern.test(firstLines)) {
+      strengths.push({ label: hp.label, description: hp.desc });
+      hookFound = true;
+      score += 5;
+      break;
+    }
+  }
+  
+  if (!hookFound) {
+    improvements.push({ 
+      label: 'Hook 可加強', 
+      description: '開頭可以更有衝擊力，試試「很多人以為...」或「你是不是也...」',
+      action: '優化開頭'
+    });
+  }
+  
+  // 檢查翻譯機（比喻）
+  const metaphorPatterns = /就像|好比|彷彟|一樣|那種感覺/;
+  if (metaphorPatterns.test(content)) {
+    strengths.push({ label: '翻譯機', description: '有使用比喻，讓抽象概念更具體' });
+    score += 5;
+  } else {
+    improvements.push({ 
+      label: '可加入比喻', 
+      description: '試試用「就像...」讓抽象概念更容易理解',
+      action: '加入比喻'
+    });
+  }
+  
+  // 檢查呼吸感排版
+  const lines = content.split('\n');
+  const emptyLineCount = lines.filter(l => l.trim() === '').length;
+  const avgParagraphLength = content.length / Math.max(emptyLineCount + 1, 1);
+  
+  if (emptyLineCount >= 3 && avgParagraphLength < 150) {
+    strengths.push({ label: '呼吸感排版', description: '段落分明，閱讀體驗好' });
+    score += 5;
+  } else if (emptyLineCount < 2) {
+    improvements.push({ 
+      label: '排版可優化', 
+      description: '建議每 2-4 行空一行，讓視覺更有呼吸空間',
+      action: '優化排版'
+    });
+  }
+  
+  // 檢查 CTA
+  const ctaPatterns = /你們覺得|你會選|留言告訴|想聽聽|你也是這樣|有沒有人/;
+  if (ctaPatterns.test(content)) {
+    strengths.push({ label: 'CTA 互動召喚', description: '有引導讀者互動' });
+    score += 5;
+  } else {
+    improvements.push({ 
+      label: '可加入 CTA', 
+      description: '結尾加入「你們也是這樣嗎？」或「你會選 A 還是 B？」',
+      action: '加入 CTA'
+    });
+  }
+  
+  // 檢查語氣詞
+  const tonePatterns = /真的|欹|啊|吧|呢|嗯/;
+  if (tonePatterns.test(content)) {
+    strengths.push({ label: '口語化語氣', description: '有使用語助詞，像真人說話' });
+    score += 3;
+  }
+  
+  // 檢查身分標籤
+  const identityPatterns = /創業者|上班族|娽娽|老師|自由接案|全職娽娽|\d+歲|第三年/;
+  if (identityPatterns.test(content)) {
+    strengths.push({ label: '身分標籤', description: '有使用身分標籤，增加共鳴' });
+    score += 3;
+  } else {
+    improvements.push({ 
+      label: '可加入身分標籤', 
+      description: '加入「創業第三年」「30歲」等標籤增加共鳴',
+      action: '加入身分標籤'
+    });
+  }
+  
+  // 檢查是否引用英雄旅程
+  if (profile?.heroJourneyOrigin || profile?.heroJourneyProcess) {
+    const storyPatterns = /我以前|我曾經|後來我|那時候的我/;
+    if (storyPatterns.test(content)) {
+      strengths.push({ label: '個人故事', description: '有引用個人經歷，增加真實感' });
+      score += 5;
+    } else {
+      improvements.push({ 
+        label: '可加入個人故事', 
+        description: '試試用「我以前也...」帶入你的英雄旅程',
+        action: '加入個人故事'
+      });
+    }
+  }
+  
+  // 確保分數在合理範圍
+  score = Math.min(Math.max(score, 60), 95);
+  
+  return { strengths, improvements, score };
+}
+
 export const appRouter = router({
   system: systemRouter,
   
@@ -1410,6 +1534,7 @@ ${selectedStyle}
         const profile = await db.getIpProfileByUserId(ctx.user.id);
         const audiences = await db.getAudienceSegmentsByUserId(ctx.user.id);
         const contentPillars = await db.getContentPillarsByUserId(ctx.user.id);
+        const userStyle = await db.getUserWritingStyle(ctx.user.id);
         
         const contentTypeInfo = CONTENT_TYPES_WITH_VIRAL_ELEMENTS.find(t => t.id === input.contentType) as any;
         
@@ -1446,13 +1571,32 @@ ${selectedStyle}
             parts.push(`【核心信念】${profile.viewpointStatement}`);
           }
           
-          // 英雄旅程故事（如果有的話，可以引用）
+          // 英雄旅程故事（強化版 - 必須在內容中展現）
           if (profile?.heroJourneyOrigin || profile?.heroJourneyProcess || profile?.heroJourneyHero || profile?.heroJourneyMission) {
-            parts.push(`【你的故事 - 可以引用】`);
-            if (profile?.heroJourneyOrigin) parts.push(`  • 緣起：${profile.heroJourneyOrigin}`);
-            if (profile?.heroJourneyProcess) parts.push(`  • 過程：${profile.heroJourneyProcess}`);
-            if (profile?.heroJourneyHero) parts.push(`  • 轉折：${profile.heroJourneyHero}`);
-            if (profile?.heroJourneyMission) parts.push(`  • 使命：${profile.heroJourneyMission}`);
+            parts.push(`【你的英雄旅程故事 - 必須在內容中展現】`);
+            parts.push(`這是你的真實故事，請根據內容類型選擇性引用：`);
+            if (profile?.heroJourneyOrigin) {
+              parts.push(`  • 緣起（為什麼開始這條路）：${profile.heroJourneyOrigin}`);
+              parts.push(`    → 可用於：自我介紹、故事型內容、建立共鳴`);
+            }
+            if (profile?.heroJourneyProcess) {
+              parts.push(`  • 過程（遇到什麼困難）：${profile.heroJourneyProcess}`);
+              parts.push(`    → 可用於：展現同理心、讓讀者感受「你懂我」`);
+            }
+            if (profile?.heroJourneyHero) {
+              parts.push(`  • 轉折（什麼改變了你）：${profile.heroJourneyHero}`);
+              parts.push(`    → 可用於：展現專業權威、證明你的方法有效`);
+            }
+            if (profile?.heroJourneyMission) {
+              parts.push(`  • 使命（現在想幫助誰）：${profile.heroJourneyMission}`);
+              parts.push(`    → 可用於：變現內容、CTA、建立使命感`);
+            }
+            parts.push(``);
+            parts.push(`【如何引用英雄旅程】`);
+            parts.push(`- 故事型內容：可以完整引用或片段引用`);
+            parts.push(`- 知識型內容：用「我以前也...」帶入過程或轉折`);
+            parts.push(`- 觀點型內容：用「因為我經歷過...」支撐觀點`);
+            parts.push(`- 變現內容：用使命感引導行動`);
           }
           
           // 身份標籤
@@ -1487,6 +1631,50 @@ ${selectedStyle}
           
           const pillarLines = contentPillars.map(p => `  • ${p.title || '未命名'}：${p.description || ''}`).join('\n');
           return `【內容支柱 - 你的專業領域】\n${pillarLines}`;
+        };
+        
+        // 建構用戶風格資料（從 AI 分析結果）
+        const buildUserStyleContext = () => {
+          if (!userStyle?.analysisResult) {
+            return '';
+          }
+          
+          const result = userStyle.analysisResult as any;
+          const parts: string[] = [];
+          
+          parts.push(`【用戶寫作風格分析 - 必須模仿】`);
+          
+          if (result.toneStyle) {
+            parts.push(`  • 語氣風格：${result.toneStyle}`);
+          }
+          if (result.sentencePatterns && result.sentencePatterns.length > 0) {
+            parts.push(`  • 常用句式：${result.sentencePatterns.slice(0, 3).join('、')}`);
+          }
+          if (result.catchphrases && result.catchphrases.length > 0) {
+            parts.push(`  • 口頭禪：${result.catchphrases.slice(0, 5).join('、')}`);
+          }
+          if (result.hookStyle) {
+            parts.push(`  • Hook 風格：${result.hookStyle}`);
+          }
+          if (result.metaphorStyle) {
+            parts.push(`  • 比喻風格：${result.metaphorStyle}`);
+          }
+          if (result.emotionRhythm) {
+            parts.push(`  • 情緒節奏：${result.emotionRhythm}`);
+          }
+          if (result.viralElements && result.viralElements.length > 0) {
+            parts.push(`  • 爆款元素：${result.viralElements.slice(0, 3).join('、')}`);
+          }
+          
+          if (parts.length > 1) {
+            parts.push(``);
+            parts.push(`【如何應用用戶風格】`);
+            parts.push(`- 使用用戶的口頭禪和常用句式`);
+            parts.push(`- 模仿用戶的語氣風格和情緒節奏`);
+            parts.push(`- 參考用戶的 Hook 和比喻風格`);
+          }
+          
+          return parts.join('\n');
         };
         
         // 根據內容類型生成不同的提示詞
@@ -1597,6 +1785,7 @@ ${selectedStyle}
         const ipContext = buildIpContext();
         const audienceContext = buildAudienceContext();
         const contentPillarsContext = buildContentPillarsContext();
+        const userStyleContext = buildUserStyleContext();
         
         // 取得爆款元素提示
         const viralElements = contentTypeInfo?.viralElements;
@@ -1615,6 +1804,8 @@ ${ipContext || '未設定 IP 地基，請用通用風格寫作。'}
 ${audienceContext}
 
 ${contentPillarsContext}
+
+${userStyleContext}
 
 === 內容類型 ===
 類型：${contentTypeInfo?.name || input.contentType}
@@ -1693,16 +1884,22 @@ ${viralElementsPrompt}
 
         await db.logApiUsage(ctx.user.id, 'generateDraft', 'llm', 600, 800);
         
+        const generatedContent = typeof response.choices[0]?.message?.content === 'string' ? response.choices[0].message.content : '';
+        
         // 創建草稿
         const draft = await db.createDraft({
           userId: ctx.user.id,
           contentType: input.contentType as any,
-          body: typeof response.choices[0]?.message?.content === 'string' ? response.choices[0].message.content : '',
+          body: generatedContent,
         });
+        
+        // 生成後診斷結果（快速版 - 不額外調用 LLM）
+        const quickDiagnosis = generateQuickDiagnosis(generatedContent, profile, contentTypeInfo);
 
         return {
-          content: response.choices[0]?.message?.content || '',
+          content: generatedContent,
           draftId: draft?.id,
+          diagnosis: quickDiagnosis,
         };
       }),
 
@@ -1915,13 +2112,32 @@ ${viralElementsPrompt}
           ipContextParts.push(`【核心信念】${profile.viewpointStatement}`);
         }
         
-        // 英雄旅程故事
+        // 英雄旅程故事（強化版 - 變現內容必須引用）
         if (profile?.heroJourneyOrigin || profile?.heroJourneyProcess || profile?.heroJourneyHero || profile?.heroJourneyMission) {
-          ipContextParts.push(`【你的故事 - 可以引用】`);
-          if (profile?.heroJourneyOrigin) ipContextParts.push(`  • 緣起：${profile.heroJourneyOrigin}`);
-          if (profile?.heroJourneyProcess) ipContextParts.push(`  • 過程：${profile.heroJourneyProcess}`);
-          if (profile?.heroJourneyHero) ipContextParts.push(`  • 轉折：${profile.heroJourneyHero}`);
-          if (profile?.heroJourneyMission) ipContextParts.push(`  • 使命：${profile.heroJourneyMission}`);
+          ipContextParts.push(`【你的英雄旅程故事 - 變現內容必須引用】`);
+          ipContextParts.push(`這是你的真實故事，讓讀者感受你的真誠和專業：`);
+          if (profile?.heroJourneyOrigin) {
+            ipContextParts.push(`  • 緣起（為什麼開始這條路）：${profile.heroJourneyOrigin}`);
+            ipContextParts.push(`    → 自我介紹文必用：建立「我懂你」的共鳴`);
+          }
+          if (profile?.heroJourneyProcess) {
+            ipContextParts.push(`  • 過程（遇到什麼困難）：${profile.heroJourneyProcess}`);
+            ipContextParts.push(`    → 展現同理心：「我也曾經...」`);
+          }
+          if (profile?.heroJourneyHero) {
+            ipContextParts.push(`  • 轉折（什麼改變了你）：${profile.heroJourneyHero}`);
+            ipContextParts.push(`    → 證明方法有效：「後來我發現...」`);
+          }
+          if (profile?.heroJourneyMission) {
+            ipContextParts.push(`  • 使命（現在想幫助誰）：${profile.heroJourneyMission}`);
+            ipContextParts.push(`    → 引導行動：「所以我現在...」`);
+          }
+          ipContextParts.push(``);
+          ipContextParts.push(`【變現內容引用指南】`);
+          ipContextParts.push(`- 自我介紹文：完整引用四階段，展現你的旅程`);
+          ipContextParts.push(`- 服務介紹文：引用轉折+使命，證明你為什麼能幫助他們`);
+          ipContextParts.push(`- 免費價值文：引用過程，展現你懂他們的痛`);
+          ipContextParts.push(`- 成功案例文：對比你的轉折和學員的轉折`);
         }
         
         // 身份標籤
@@ -2963,6 +3179,163 @@ ${input.context ? `貼文內容是關於：${input.context}` : ''}
       .mutation(async ({ input }) => {
         return db.revokeInvitationCode(input.id);
       }),
+  }),
+
+  // ==================== 用戶風格分析 ====================
+  writingStyle: router({
+    // 獲取用戶風格分析
+    get: protectedProcedure.query(async ({ ctx }) => {
+      return db.getUserWritingStyle(ctx.user.id);
+    }),
+    
+    // 新增爆款貼文樣本
+    addSample: protectedProcedure
+      .input(z.object({
+        content: z.string().min(50, "貼文內容至少需要 50 字"),
+        engagement: z.number().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const existing = await db.getUserWritingStyle(ctx.user.id);
+        const currentCount = existing?.samplePosts?.length || 0;
+        
+        if (currentCount >= 10) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: '最多只能新增 10 篇樣本貼文',
+          });
+        }
+        
+        return db.addSamplePost(ctx.user.id, input.content, input.engagement);
+      }),
+    
+    // 移除樣本貼文
+    removeSample: protectedProcedure
+      .input(z.object({ index: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.removeSamplePost(ctx.user.id, input.index);
+      }),
+    
+    // AI 分析用戶風格
+    analyze: protectedProcedure.mutation(async ({ ctx }) => {
+      const style = await db.getUserWritingStyle(ctx.user.id);
+      
+      if (!style?.samplePosts || style.samplePosts.length < 3) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: '請至少提供 3 篇爆款貼文才能進行分析',
+        });
+      }
+      
+      // 更新狀態為分析中
+      await db.upsertUserWritingStyle({
+        userId: ctx.user.id,
+        analysisStatus: 'analyzing',
+      });
+      
+      const sampleTexts = style.samplePosts.map((p, i) => `[貼文 ${i + 1}]\n${p.content}`).join('\n\n---\n\n');
+      
+      const prompt = `你是一位專業的文案風格分析師。請分析以下 ${style.samplePosts.length} 篇 Threads 貼文，提取作者的寫作風格特徵。
+
+${sampleTexts}
+
+請分析並輸出 JSON 格式：`;
+      
+      try {
+        const response = await invokeLLM({
+          messages: [
+            { role: 'system', content: '你是一位專業的文案風格分析師，擅長分析 Threads 貼文的寫作風格。' },
+            { role: 'user', content: prompt },
+          ],
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'writing_style_analysis',
+              strict: true,
+              schema: {
+                type: 'object',
+                properties: {
+                  toneStyle: {
+                    type: 'string',
+                    description: '語氣風格，例如：溫暖真誠、犹利直接、幽默風趣、理性分析、感性共鳴',
+                  },
+                  commonPhrases: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: '常用句式，例如：你有沒有發現...、說真的...、後來我才發現...',
+                  },
+                  catchphrases: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: '口頭禪，例如：真的、欸、吧、啦、其實',
+                  },
+                  hookStylePreference: {
+                    type: 'string',
+                    description: 'Hook 風格偏好，例如：反差型、提問型、場景型、故事型、數字型',
+                  },
+                  metaphorStyle: {
+                    type: 'string',
+                    description: '比喻風格，例如：生活化比喻、專業術語白話、場景化描述',
+                  },
+                  emotionRhythm: {
+                    type: 'string',
+                    description: '情緒節奏，例如：快節奏短句、娓娓道來長句、短長交替',
+                  },
+                  identityTags: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: '常用身分標籤，例如：創業者、娽娽、上班族',
+                  },
+                  emotionWords: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: '常用情緒詞，例如：累、崩潰、釋懷、感動',
+                  },
+                  ctaStyles: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: '常用 CTA 類型，例如：召喚同類、留言互動、引導點擊',
+                  },
+                },
+                required: ['toneStyle', 'commonPhrases', 'catchphrases', 'hookStylePreference', 'metaphorStyle', 'emotionRhythm', 'identityTags', 'emotionWords', 'ctaStyles'],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+        
+        const analysisResult = JSON.parse(response.choices[0].message.content || '{}');
+        
+        // 更新分析結果
+        await db.updateWritingStyleAnalysis(ctx.user.id, {
+          toneStyle: analysisResult.toneStyle,
+          commonPhrases: analysisResult.commonPhrases,
+          catchphrases: analysisResult.catchphrases,
+          hookStylePreference: analysisResult.hookStylePreference,
+          metaphorStyle: analysisResult.metaphorStyle,
+          emotionRhythm: analysisResult.emotionRhythm,
+          viralElements: {
+            identityTags: analysisResult.identityTags,
+            emotionWords: analysisResult.emotionWords,
+            ctaStyles: analysisResult.ctaStyles,
+          },
+        });
+        
+        return {
+          success: true,
+          analysis: analysisResult,
+        };
+      } catch (error) {
+        // 更新狀態為失敗
+        await db.upsertUserWritingStyle({
+          userId: ctx.user.id,
+          analysisStatus: 'failed',
+        });
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: '分析失敗，請稍後再試',
+        });
+      }
+    }),
   }),
 });
 

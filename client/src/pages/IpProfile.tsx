@@ -153,7 +153,36 @@ export default function IpProfile() {
 
   const [showProductForm, setShowProductForm] = useState(false);
   const [showStoryForm, setShowStoryForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<"basic" | "pillars" | "audience" | "products" | "story" | "matrix">("basic");
+  const [activeTab, setActiveTab] = useState<"basic" | "pillars" | "audience" | "products" | "story" | "matrix" | "style">("basic");
+  
+  // 用戶風格分析
+  const { data: writingStyle, isLoading: styleLoading } = trpc.writingStyle.get.useQuery();
+  const [newSamplePost, setNewSamplePost] = useState("");
+  const addSamplePost = trpc.writingStyle.addSample.useMutation({
+    onSuccess: () => {
+      utils.writingStyle.get.invalidate();
+      setNewSamplePost("");
+      toast.success("樣本貼文已新增");
+    },
+    onError: (error) => {
+      toast.error(error.message || "新增失敗");
+    },
+  });
+  const removeSamplePost = trpc.writingStyle.removeSample.useMutation({
+    onSuccess: () => {
+      utils.writingStyle.get.invalidate();
+      toast.success("樣本貼文已移除");
+    },
+  });
+  const analyzeStyle = trpc.writingStyle.analyze.useMutation({
+    onSuccess: () => {
+      utils.writingStyle.get.invalidate();
+      toast.success("風格分析完成！");
+    },
+    onError: (error) => {
+      toast.error(error.message || "分析失敗");
+    },
+  });
   const [newIdentityTag, setNewIdentityTag] = useState("");
   const [newTheme, setNewTheme] = useState("");
   const [painPointMatrix, setPainPointMatrix] = useState<Record<string, Record<string, string[]>>>({});
@@ -510,6 +539,16 @@ export default function IpProfile() {
               }`}
             >
               內容矩陣
+            </button>
+            <button
+              onClick={() => setActiveTab("style")}
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeTab === "style"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              我的風格
             </button>
           </div>
 
@@ -1899,6 +1938,222 @@ export default function IpProfile() {
 💡 提示：這些是「受眾會說的話」，點擊任一句可以直接帶入發文工作室作為開頭 Hook
                   </p>
                 )}
+              </CardContent>
+            </Card>
+            )}
+          </div>
+          )}
+
+          {/* 我的風格 Tab */}
+          {activeTab === "style" && (
+          <div className="space-y-6">
+            {/* 爆款貼文樣本 */}
+            <Card className="elegant-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  爆款貼文樣本
+                </CardTitle>
+                <CardDescription>
+                  貼入 3-10 篇你過去表現最好的貼文，讓 AI 學習你的風格
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* 已新增的樣本 */}
+                {writingStyle?.samplePosts && writingStyle.samplePosts.length > 0 && (
+                  <div className="space-y-3">
+                    {writingStyle.samplePosts.map((post, index) => (
+                      <div key={index} className="bg-muted/30 rounded-lg p-4 relative group">
+                        <div className="text-sm whitespace-pre-wrap line-clamp-5">
+                          {post.content}
+                        </div>
+                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
+                          <span className="text-xs text-muted-foreground">
+                            新增於 {new Date(post.addedAt).toLocaleDateString()}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                            onClick={() => removeSamplePost.mutate({ index })}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* 新增樣本 */}
+                <div className="space-y-2">
+                  <Label>新增爆款貼文</Label>
+                  <Textarea
+                    placeholder="貼入你表現最好的貼文內容..."
+                    value={newSamplePost}
+                    onChange={(e) => setNewSamplePost(e.target.value)}
+                    rows={6}
+                  />
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      已新增 {writingStyle?.samplePosts?.length || 0}/10 篇
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={() => addSamplePost.mutate({ content: newSamplePost })}
+                      disabled={!newSamplePost.trim() || newSamplePost.length < 50 || addSamplePost.isPending}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      新增樣本
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* 分析按鈕 */}
+                {(writingStyle?.samplePosts?.length || 0) >= 3 && (
+                  <Button
+                    className="w-full"
+                    onClick={() => analyzeStyle.mutate()}
+                    disabled={analyzeStyle.isPending || writingStyle?.analysisStatus === 'analyzing'}
+                  >
+                    {analyzeStyle.isPending || writingStyle?.analysisStatus === 'analyzing' ? (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2 animate-spin" />
+                        分析中...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        AI 分析我的風格
+                      </>
+                    )}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* 風格分析結果 */}
+            {writingStyle?.analysisStatus === 'completed' && (
+            <Card className="elegant-card border-primary/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  你的寫作風格
+                </CardTitle>
+                <CardDescription>
+                  根據 {writingStyle.samplePosts?.length || 0} 篇爆款貼文分析得出
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* 語氣風格 */}
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">語氣風格</Label>
+                  <div className="text-lg font-medium">{writingStyle.toneStyle}</div>
+                </div>
+                
+                {/* Hook 風格偏好 */}
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Hook 風格偏好</Label>
+                  <div className="text-lg font-medium">{writingStyle.hookStylePreference}</div>
+                </div>
+                
+                {/* 情緒節奏 */}
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">情緒節奏</Label>
+                  <div className="text-lg font-medium">{writingStyle.emotionRhythm}</div>
+                </div>
+                
+                {/* 比喻風格 */}
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">比喻風格</Label>
+                  <div className="text-lg font-medium">{writingStyle.metaphorStyle}</div>
+                </div>
+                
+                {/* 常用句式 */}
+                {writingStyle.commonPhrases && writingStyle.commonPhrases.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">常用句式</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {writingStyle.commonPhrases.map((phrase, i) => (
+                      <Badge key={i} variant="secondary">「{phrase}」</Badge>
+                    ))}
+                  </div>
+                </div>
+                )}
+                
+                {/* 口頭禪 */}
+                {writingStyle.catchphrases && writingStyle.catchphrases.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">口頭禪</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {writingStyle.catchphrases.map((word, i) => (
+                      <Badge key={i} variant="outline">{word}</Badge>
+                    ))}
+                  </div>
+                </div>
+                )}
+                
+                {/* 爆款元素 */}
+                {writingStyle.viralElements && (
+                <div className="space-y-4 pt-4 border-t border-border">
+                  <Label className="text-muted-foreground">爆款元素</Label>
+                  
+                  {writingStyle.viralElements.identityTags?.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-sm text-muted-foreground">常用身分標籤</span>
+                    <div className="flex flex-wrap gap-2">
+                      {writingStyle.viralElements.identityTags.map((tag, i) => (
+                        <Badge key={i} className="bg-blue-500/10 text-blue-700 dark:text-blue-400">{tag}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                  )}
+                  
+                  {writingStyle.viralElements.emotionWords?.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-sm text-muted-foreground">常用情緒詞</span>
+                    <div className="flex flex-wrap gap-2">
+                      {writingStyle.viralElements.emotionWords.map((word, i) => (
+                        <Badge key={i} className="bg-pink-500/10 text-pink-700 dark:text-pink-400">{word}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                  )}
+                  
+                  {writingStyle.viralElements.ctaStyles?.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-sm text-muted-foreground">常用 CTA 類型</span>
+                    <div className="flex flex-wrap gap-2">
+                      {writingStyle.viralElements.ctaStyles.map((cta, i) => (
+                        <Badge key={i} className="bg-amber-500/10 text-amber-700 dark:text-amber-400">{cta}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                  )}
+                </div>
+                )}
+                
+                {/* 最後分析時間 */}
+                {writingStyle.lastAnalyzedAt && (
+                <div className="text-xs text-muted-foreground pt-4 border-t border-border">
+                  最後分析時間：{new Date(writingStyle.lastAnalyzedAt).toLocaleString()}
+                </div>
+                )}
+              </CardContent>
+            </Card>
+            )}
+            
+            {/* 提示卡片 */}
+            {(!writingStyle?.samplePosts || writingStyle.samplePosts.length < 3) && (
+            <Card className="border-dashed border-2 border-muted-foreground/20">
+              <CardContent className="py-8 text-center">
+                <Info className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">
+                  請至少新增 3 篇爆款貼文，讓 AI 學習你的寫作風格
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  分析完成後，AI 生成的文案會更符合你的語氣和風格
+                </p>
               </CardContent>
             </Card>
             )}
