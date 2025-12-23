@@ -267,7 +267,33 @@ export const appRouter = router({
         const emotionAngles = ['焦慮型', '困惑型', '無奈型', '渴望型', '自我懷疑型', '比較心態型'];
         const selectedEmotions = emotionAngles.sort(() => Math.random() - 0.5).slice(0, 3);
         
-        const prompt = `你是一位 Threads 內容策略專家。請根據以下資訊，進行「Y軸（受眾）× X軸（子主題）」的交叉分析，生成痛點矩陣。
+        // 流量密碼類型（三選一強制植入）
+        const trafficKeywordTypes = ['MBTI', '星座', '身分標籤'];
+        const selectedTrafficType = trafficKeywordTypes[Math.floor(Math.random() * trafficKeywordTypes.length)];
+        
+        // 黃金鉤子句型
+        const hookPatterns = ['觀察+提問型', '反直覺型'];
+        const selectedHookPattern = hookPatterns[Math.floor(Math.random() * hookPatterns.length)];
+        
+        // 建構流量密碼提示
+        let trafficKeywordPrompt = '';
+        if (selectedTrafficType === 'MBTI') {
+          trafficKeywordPrompt = '- 使用 MBTI 類型：INFJ、ENFP、INTJ、ISFP 等\n- 句式：「給那些 XXXX 的人」「XXXX 是不是都...」';
+        } else if (selectedTrafficType === '星座') {
+          trafficKeywordPrompt = '- 使用星座標籤：天蠍座、雙魚座、處女座等\n- 句式：「天蠍座最近是不是...」「雙魚座的人懂」';
+        } else {
+          trafficKeywordPrompt = '- 使用身分標籤：高敏人、創業第三年、二寶媽、想離職的人、30歲單身女等\n- 句式：「給那些 XXX 的人」「XXX 的人是不是都...」';
+        }
+        
+        // 建構黃金鉤子提示
+        let hookPatternPrompt = '';
+        if (selectedHookPattern === '觀察+提問型') {
+          hookPatternPrompt = '- 句式 A：「有沒有人發現...」「好奇問一下...」\n- 句式 B：「XXX 的人是不是都...」';
+        } else {
+          hookPatternPrompt = '- 句式 A：「明明...卻...」「以為...結果...」\n- 句式 B：「XXX 其實不是 YYY，而是 ZZZ」';
+        }
+        
+        const prompt = `你是一位 Threads 爆款內容專家。請根據以下資訊，進行「Y軸（受眾）× X軸（子主題）」的交叉分析，生成【流量化轉譯版本】的痛點矩陣。
 
 === 創作者 IP 地基 ===
 ${ipContext || '未設定'}
@@ -281,49 +307,64 @@ ${cleanAudiences.map((a, i) => {
 === X軸：子主題 ===
 ${themes.map((t, i) => `${i + 1}. ${t}`).join('\n')}
 
-=== 任務說明 ===
-請模擬每一層受眾，在面對每一個子主題時，內心最真實的煩惱、焦慮、恐懼或具體疑問。
+=== 核心任務：流量化轉譯 ===
 
-本次請用「${selectedEmotions.join('、')}」的情緒角度來生成。
+你的任務不是生成「日記型抱怨」，而是生成「爆款型共鳴」。
 
-=== 重要規則 ===
-1. 不要給泛泛的標題（如：如何做行銷），要具體的痛點
-2. 用受眾心裡的 OS 來寫，像是他們真的會說出口的話
-3. 可以用各種人稱視角（第一人稱「我」、第二人稱「你」、觀察者視角）
-4. 帶有情緒（困惑、焦慮、無奈、期待、自我懷疑等）
-5. 可以直接作為發文的開頭 Hook
-6. 可以植入流量密碼（見下方說明）
+❌ 日記型（錯誤示範）：
+「我好累，醫生說沒事，我是不是玻璃心？」
+「命盤上說我就是勞碌命，是不是我再怎麼努力也逃不過宿命？」
 
-=== 流量密碼參考（可選擇性植入） ===
-- MBTI/星座/玄學：「ENFP 的人是不是都...」「天蠅座最近...」
-- 數字清單：「3 個徵兆」「5 種人」「90% 的人都不知道」
-- 反差對比：「明明...卻...」「以為...結果...」
-- 情緒共鳴詞：「救命」「天啊」「笑死」「傻眼」「崩潰」
-- 身體感受：「雞皮疑疒」「心臟漏跳一拍」
-- 關係標籤：「前任」「曖昧對象」「塑膠姊妹」「毒親」
-- 生活場景：「深夜」「下班後」「週一症候群」
-- 身分標籤：「二寶媽」「想離職的人」「創業第三年」
-- 時事熱點：節日、社會議題、熱門事件
+✅ 爆款型（正確示範）：
+「給那些『查不出病因』的 INFJ 女生：你的肩膀痠痛，其實是因為你幫別人背了太久的責任。」
+「紫微斗數裡的『勞碌命』，翻譯成白話文其實是『能者多勞的詛咒』？為什麼命帶魁罡的女生，總是活得像個女戰士？」
 
-=== 範例（請根據創作者領域調整） ===
-- 「拍了影片卻沒人看，覺得自己很像小丑」
-- 「我已經忍耐這麼久了，如果現在抽牌說要離開，我會不會後悔？」
-- 「明明很有實力，卻不敢收高價」
-- 「為什麼別人發文都有人看，我的就沒人理？」
-- 「我是不是根本不適合做這件事？」
+=== 流量化轉譯三要素 ===
 
-=== 隨機種子（確保每次生成不同結果） ===
+【1. 流量密碼（本次強制使用：${selectedTrafficType}）】
+${trafficKeywordPrompt}
+
+【2. 翻譯機（重新賦予意義）】
+- 把痛點「翻譯」成高級解釋
+- 讓讀者從「自責」變成「釋懷」
+- 給出「原來是因為這樣」的洞見
+
+範例：
+- 痛點：「我很容易累」→ 翻譯：「你不是身體差，你是情緒海綿吸飽了」
+- 痛點：「我不敢收高價」→ 翻譯：「你不是貪財，你是需要被肯定」
+- 痛點：「我總是在照顧別人」→ 翻譯：「你不是聖母，你是還沒學會把愛留給自己」
+
+【3. 黃金鉤子（本次使用：${selectedHookPattern}）】
+${hookPatternPrompt}
+
+=== 視角要求 ===
+
+使用「第三人稱觀察者/專家視角」，不是「第一人稱受害者視角」。
+
+❌ 受害者視角：「我好累，是不是我太弱了？」
+✅ 觀察者視角：「給那些總是覺得累的高敏人：你的疲憊不是因為你弱，而是因為你感受太多。」
+
+=== 本次情緒角度 ===
+${selectedEmotions.join('、')}
+
+=== 隨機種子 ===
 ${randomSeed}
 
 === 輸出格式 ===
 請用 JSON 格式回應，受眾名稱必須完全匹配以下名稱：
 ${cleanAudiences.map(a => `- "${a}"`).join('\n')}
 
+每個痛點要包含：
+- hook：爆款開頭（已套用流量密碼和黃金鉤子）
+- translation：翻譯機概念（重新賦予的意義）
+
 結構如下：
 {
   "${cleanAudiences[0] || '受眾1'}": {
-    "${themes[0] || '主題1'}": ["受眾心裡的OS1", "受眾心裡的OS2"],
-    "${themes[1] || '主題2'}": ["受眾心裡的OS1", "受眾心裡的OS2"]
+    "${themes[0] || '主題1'}": [
+      { "hook": "爆款開頭1", "translation": "翻譯機概念1" },
+      { "hook": "爆款開頭2", "translation": "翻譯機概念2" }
+    ]
   }
 }
 
@@ -554,7 +595,33 @@ ${randomSeed}
         
         const randomSeed = Math.random().toString(36).substring(7);
         
-        const prompt = `你是一位 Threads 爆款內容專家。請根據以下「受眾 × 子主題 × 痛點」的交叉點，生成 3 個爆款選題。
+        // 流量密碼類型（三選一強制植入）
+        const trafficKeywordTypes = ['MBTI', '星座', '身分標籤'];
+        const selectedTrafficType = trafficKeywordTypes[Math.floor(Math.random() * trafficKeywordTypes.length)];
+        
+        // 黃金鉤子句型
+        const hookPatterns = ['觀察+提問型', '反直覺型'];
+        const selectedHookPattern = hookPatterns[Math.floor(Math.random() * hookPatterns.length)];
+        
+        // 建構流量密碼提示
+        let trafficKeywordPrompt = '';
+        if (selectedTrafficType === 'MBTI') {
+          trafficKeywordPrompt = '- 使用 MBTI 類型：INFJ、ENFP、INTJ、ISFP 等\n- 句式：「給那些 XXXX 的人」「XXXX 是不是都...」';
+        } else if (selectedTrafficType === '星座') {
+          trafficKeywordPrompt = '- 使用星座標籤：天蠍座、雙魚座、處女座等\n- 句式：「天蠍座最近是不是...」「雙魚座的人懂」';
+        } else {
+          trafficKeywordPrompt = '- 使用身分標籤：高敏人、創業第三年、二寶媽、想離職的人、30歲單身女等\n- 句式：「給那些 XXX 的人」「XXX 的人是不是都...」';
+        }
+        
+        // 建構黃金鉤子提示
+        let hookPatternPrompt = '';
+        if (selectedHookPattern === '觀察+提問型') {
+          hookPatternPrompt = '- 句式 A：「有沒有人發現...」「好奇問一下...」\n- 句式 B：「XXX 的人是不是都...」';
+        } else {
+          hookPatternPrompt = '- 句式 A：「明明...卻...」「以為...結果...」\n- 句式 B：「XXX 其實不是 YYY，而是 ZZZ」';
+        }
+        
+        const prompt = `你是一位 Threads 爆款內容專家。請根據以下「受眾 × 子主題 × 痛點」的交叉點，生成 3 個【流量化轉譯版本】的爆款選題。
 
 === 創作者 IP 地基 ===
 ${ipContext || '未設定'}
@@ -564,33 +631,35 @@ ${ipContext || '未設定'}
 - 子主題 (X軸)：${subTopic}
 - 交叉痛點：${painPoint}
 
-=== 選題生成規則 ===
+=== 核心任務：流量化轉譯 ===
 
-1. 「像真人發文」而不是廣告標語
-   - 用口語化的語氣
-   - 帶有情緒（「天啊」「救命」「笑死」「傻眼」）
-   - 像是在跟朋友分享
+你的任務不是生成「日記型抱怨」，而是生成「爆款型共鳴」。
 
-2. 使用「觀察+提問」或「反差」句式
-   - 「有沒有人發現...」
-   - 「明明...卻...」
-   - 「以為...結果...」
-   - 「好奇問一下...」
+❌ 日記型（錯誤示範）：
+「我好累，醫生說沒事，我是不是玻璃心？」
 
-3. 植入流量密碼（至少使用 1-2 種）
-   - MBTI/星座：「ENFP 的人是不是都...」「天蠅座最近...」
-   - 數字清單：「3 個徵兆」「5 種人」
-   - 反差對比：「明明很努力，卻...」
-   - 情緒共鳴詞：「救命」「崩潰」「心累」
-   - 身分標籤：「想離職的人」「二寶媽」
-   - 關係標籤：「前任」「曖昧對象」「塑膠姊妹」
-   - 生活場景：「深夜」「下班後」「週一症候群」
-   - 翻譯機：把專業術語翻成大白話
+✅ 爆款型（正確示範）：
+「給那些『查不出病因』的 INFJ 女生：你的肩膀痠痛，其實是因為你幫別人背了太久的責任。」
 
-4. 結尾要有互動感
-   - 召喚同類：「舉手我看看我不孤單🙋‍♀️」
-   - 二選一提問：「你是 A 還是 B？」
-   - 引導留言：「留言告訴我...」
+=== 流量化轉譯三要素 ===
+
+【1. 流量密碼（本次強制使用：${selectedTrafficType}）】
+${trafficKeywordPrompt}
+
+【2. 翻譯機（重新賦予意義）】
+- 把痛點「翻譯」成高級解釋，讓讀者從「自責」變成「釋懷」
+- 給出「原來是因為這樣」的洞見
+- 範例：「你不是身體差，你是情緒海綿吸飽了」
+
+【3. 黃金鉤子（本次使用：${selectedHookPattern}）】
+${hookPatternPrompt}
+
+=== 視角要求 ===
+
+使用「第三人稱觀察者/專家視角」，不是「第一人稱受害者視角」。
+
+❌ 受害者視角：「我好累，是不是我太弱了？」
+✅ 觀察者視角：「給那些總是覺得累的高敏人：你的疲憊不是因為你弱，而是因為你感受太多。」
 
 === 範例參考 ===
 
@@ -601,21 +670,20 @@ ${ipContext || '未設定'}
 
 應該生成類似這樣的選題：
 
-選題一（結合 MBTI）：
-「INFJ 的命理師是不是都有『金錢羞恥症』？
-明明算得很準，客人問價格時卻想躲起來...
-其實你不是貪財，你是需要被肯定。」
+選題一（結合 MBTI + 翻譯機）：
+「給那些『算得很準卻不敢收高價』的 INFJ 命理師：
+你不是貪財，你是需要被肯定。
+當你開始重視自己的價值，客人才會開始重視你的服務。」
 
-選題二（結合反差+翻譯機）：
-「『收費便宜是在幫客戶』這句話其實是在害他？
-用大白話講：免費的建議沒人聽，收 3600 他才會把你當神拜。
-這是我悟出的血淚教訓...」
+選題二（結合身分標籤 + 反直覺）：
+「給那些『收費便宜是在幫客戶』的身心靈工作者：
+其實你是在害他。
+用大白話講：免費的建議沒人聽，收 3600 他才會把你當神拜。」
 
-選題三（結合提問型）：
-「好奇問一下，有多少老師跟我一樣，
-明明實力很強，但看到別的『半桶水』收費比自己高，
-心裡超不平衡？
-舉手我看看我不孤單🙋‍♀️」
+選題三（結合觀察+提問 + 翻譯機）：
+「有沒有人發現，很有實力的老師通常收費最便宜？
+因為他們有『能力者的謙虛』，總覺得自己還不夠好。
+但其實，你的『不敢收高價』就是你最大的問題。」
 
 === 隨機種子 ===
 ${randomSeed}
@@ -625,11 +693,12 @@ ${randomSeed}
 {
   "topics": [
     {
-      "title": "選題標題（完整的發文開頭）",
+      "title": "選題標題（完整的發文開頭，已套用流量密碼和黃金鉤子）",
       "viralElements": ["使用的流量密碼1", "使用的流量密碼2"],
       "hookType": "hook 類型（鏡像/反差/提問/場景）",
       "targetEmotion": "目標情緒（共鳴/好奇/焦慮/渴望）",
-      "suggestedCTA": "建議的 CTA"
+      "suggestedCTA": "建議的 CTA",
+      "translation": "翻譯機概念（重新賦予的意義）"
     }
   ]
 }
@@ -662,9 +731,10 @@ ${randomSeed}
                         },
                         hookType: { type: "string", description: "Hook 類型" },
                         targetEmotion: { type: "string", description: "目標情緒" },
-                        suggestedCTA: { type: "string", description: "建議的 CTA" }
+                        suggestedCTA: { type: "string", description: "建議的 CTA" },
+                        translation: { type: "string", description: "翻譯機概念（重新賦予的意義）" }
                       },
-                      required: ["title", "viralElements", "hookType", "targetEmotion", "suggestedCTA"],
+                      required: ["title", "viralElements", "hookType", "targetEmotion", "suggestedCTA", "translation"],
                       additionalProperties: false
                     }
                   }
