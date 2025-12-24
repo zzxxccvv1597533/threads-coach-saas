@@ -392,7 +392,7 @@ export const appRouter = router({
         const emotionAngles = ['焦慮型', '困惑型', '無奈型', '渴望型', '自我懷疑型', '比較心態型'];
         const selectedEmotions = emotionAngles.sort(() => Math.random() - 0.5).slice(0, 3);
         
-        const prompt = `你是一位 Threads 內容策略專家。請根據以下資訊，進行「Y軸（受眾）× X軸（子主題）」的交叉分析，生成痛點矩陣。
+const prompt = `你是一位 Threads 內容策略專家。請根據以下資訊，進行「Y軸（受眾）× X軸（子主題）」的交叉分析，生成痛點矩陣。
 
 === 創作者 IP 地基 ===
 ${ipContext || '未設定'}
@@ -406,38 +406,34 @@ ${cleanAudiences.map((a, i) => {
 === X軸：子主題 ===
 ${themes.map((t, i) => `${i + 1}. ${t}`).join('\n')}
 
-=== 任務說明 ===
-請模擬每一層受眾，在面對每一個子主題時，內心最真實的煩惱、焦慮、恐懼或具體疑問。
+=== 任務說明（極度重要） ===
+矩陣是用來「激發靈感」的，不是用來「閱讀文案」的。
 
-本次請用「${selectedEmotions.join('、')}」的情緒角度來生成。
+請輸出「用戶腦中閃過的第一個念頭（Trigger）」，而不是「完整的焦慮描述」。
 
-=== 重要規則 ===
-1. 不要給泛泛的標題（如：如何做行銷），要具體的痛點
-2. 用受眾心裡的 OS 來寫，像是他們真的會說出口的話
-3. 可以用各種人稱視角（第一人稱「我」、第二人稱「你」、觀察者視角）
-4. 帶有情緒（困惑、焦慮、無奈、期待、自我懷疑等）
-5. 可以直接作為發文的開頭 Hook
-6. 可以植入流量密碼（見下方說明）
+=== 嚴格格式規則（必須遵守） ===
+1. 每個格子字數限制：15-25 字以內
+2. 格式：「具體場景 + 具體疑問/衝突」
+3. 禁止：括號內心戲（如「(崩潰)」「(無奈)」）
+4. 禁止：長句、成語、複雜描述
+5. 禁止：寫成完整文案或內心獨白
+
+=== 正確 vs 錯誤範例 ===
+❌ 錯誤：技術很好但不敢收高價，覺得收錢就是不善良，看到別人賺錢又很嫉妒。
+✅ 正確：技術比網紅好，為什麼我連房租都繳不出來？
+
+❌ 錯誤：(崩潰) 我明明比那個網紅老師準十倍...我到底要不要也去拍那種...
+✅ 正確：該不該為了流量拍搞笑片？
+
+❌ 錯誤：我已經忍耐這麼久了，如果現在抽牌說要離開，我會不會後悔？
+✅ 正確：想漲價到 3000，但怕客人都跑光怎麼辦？
 
 === 流量密碼參考（可選擇性植入） ===
-- MBTI/星座/玄學：「ENFP 的人是不是都...」「天蠅座最近...」
-- 數字清單：「3 個徵兆」「5 種人」「90% 的人都不知道」
-- 反差對比：「明明...卻...」「以為...結果...」
-- 情緒共鳴詞：「救命」「天啊」「笑死」「傻眼」「崩潰」
-- 身體感受：「雞皮疑疒」「心臟漏跳一拍」
-- 關係標籤：「前任」「曖昧對象」「塑膠姊妹」「毒親」
-- 生活場景：「深夜」「下班後」「週一症候群」
 - 身分標籤：「二寶媽」「想離職的人」「創業第三年」
-- 時事熱點：節日、社會議題、熱門事件
+- 數字引導：「3 個徵兆」「90% 的人都...」
+- 反差對比：「明明...卻...」「以為...結果...」
 
-=== 範例（請根據創作者領域調整） ===
-- 「拍了影片卻沒人看，覺得自己很像小丑」
-- 「我已經忍耐這麼久了，如果現在抽牌說要離開，我會不會後悔？」
-- 「明明很有實力，卻不敢收高價」
-- 「為什麼別人發文都有人看，我的就沒人理？」
-- 「我是不是根本不適合做這件事？」
-
-=== 隨機種子（確保每次生成不同結果） ===
+=== 隨機種子 ===
 ${randomSeed}
 
 === 輸出格式 ===
@@ -447,8 +443,8 @@ ${cleanAudiences.map(a => `- "${a}"`).join('\n')}
 結構如下：
 {
   "${cleanAudiences[0] || '受眾1'}": {
-    "${themes[0] || '主題1'}": ["受眾心裡的OS1", "受眾心裡的OS2"],
-    "${themes[1] || '主題2'}": ["受眾心裡的OS1", "受眾心裡的OS2"]
+    "${themes[0] || '主題1'}": ["15-25字的Trigger1", "15-25字的Trigger2"],
+    "${themes[1] || '主題2'}": ["15-25字的Trigger1", "15-25字的Trigger2"]
   }
 }
 
@@ -1634,37 +1630,42 @@ ${selectedStyle}
           return `【內容支柱 - 你的專業領域】\n${pillarLines}`;
         };
         
-        // 建構用戶風格資料（從 AI 分析結果）
+        // 建構用戶風格資料（從資料庫欄位）
         const buildUserStyleContext = () => {
-          if (!userStyle?.analysisResult) {
+          if (!userStyle?.toneStyle) {
             return '';
           }
           
-          const result = userStyle.analysisResult as any;
           const parts: string[] = [];
           
           parts.push(`【用戶寫作風格分析 - 必須模仿】`);
           
-          if (result.toneStyle) {
-            parts.push(`  • 語氣風格：${result.toneStyle}`);
+          if (userStyle.toneStyle) {
+            parts.push(`  • 語氣風格：${userStyle.toneStyle}`);
           }
-          if (result.sentencePatterns && result.sentencePatterns.length > 0) {
-            parts.push(`  • 常用句式：${result.sentencePatterns.slice(0, 3).join('、')}`);
+          if (userStyle.commonPhrases && userStyle.commonPhrases.length > 0) {
+            parts.push(`  • 常用句式：${userStyle.commonPhrases.slice(0, 3).join('、')}`);
           }
-          if (result.catchphrases && result.catchphrases.length > 0) {
-            parts.push(`  • 口頭禪：${result.catchphrases.slice(0, 5).join('、')}`);
+          if (userStyle.catchphrases && userStyle.catchphrases.length > 0) {
+            parts.push(`  • 口頭禪：${userStyle.catchphrases.slice(0, 5).join('、')}`);
           }
-          if (result.hookStyle) {
-            parts.push(`  • Hook 風格：${result.hookStyle}`);
+          if (userStyle.hookStylePreference) {
+            parts.push(`  • Hook 風格：${userStyle.hookStylePreference}`);
           }
-          if (result.metaphorStyle) {
-            parts.push(`  • 比喻風格：${result.metaphorStyle}`);
+          if (userStyle.metaphorStyle) {
+            parts.push(`  • 比喻風格：${userStyle.metaphorStyle}`);
           }
-          if (result.emotionRhythm) {
-            parts.push(`  • 情緒節奏：${result.emotionRhythm}`);
+          if (userStyle.emotionRhythm) {
+            parts.push(`  • 情緒節奏：${userStyle.emotionRhythm}`);
           }
-          if (result.viralElements && result.viralElements.length > 0) {
-            parts.push(`  • 爆款元素：${result.viralElements.slice(0, 3).join('、')}`);
+          if (userStyle.viralElements) {
+            const ve = userStyle.viralElements as any;
+            if (ve.identityTags && ve.identityTags.length > 0) {
+              parts.push(`  • 常用身分標籤：${ve.identityTags.slice(0, 3).join('、')}`);
+            }
+            if (ve.emotionWords && ve.emotionWords.length > 0) {
+              parts.push(`  • 常用情緒詞：${ve.emotionWords.slice(0, 3).join('、')}`);
+            }
           }
           
           if (parts.length > 1) {
@@ -1839,10 +1840,21 @@ ${viralElementsPrompt}
 
 === Threads 爆款風格（最重要 - 必須嚴格執行） ===
 
-### 字數限制（絕對不能超過）
-- 一般貼文：300-500 字（含空格）
-- 短貼文（提問/投票/閃聊）：150-250 字
-- 超過字數限制 = 失敗，必須精簡
+### 字數限制（根據內容類型動態調整）
+
+「閃聊型 / 觀點型 / 提問型 / 投票型」：
+- 字數範圍：150-200 字
+- 特色：短小精悍、一個核心觀點、快速引發互動
+
+「故事型 / 觀察型 / 引言型」：
+- 字數範圍：300-400 字
+- 特色：有轉折、有情緒推進、但不囉唆
+
+「知識型 / 教學型 / 清單型」：
+- 字數範圍：400-500 字
+- 特色：有乾貨、但要用故事包裝，不是条列式
+
+「超過字數限制 = 失敗，必須精簡」
 
 ### 口語化原則（像傳訊息給朋友）
 1. 【傳訊息感】像在 LINE 跟朋友聊天，不是寫部落格文章
@@ -1855,8 +1867,12 @@ ${viralElementsPrompt}
 ### 呼吸感排版
 1. 【段落結構】每 2-4 行為一個段落
 2. 【空行規則】段落之間空一行
-3. 【句子長度】每句 10-15 字，最多 20 字
-4. 【節奏感】長短句交錯，開頭用短句
+3. 【單句字數限制 - 極度重要】
+   - 每句最多 15-20 字，理想 10-15 字
+   - 超過 20 字必須斷句
+   - 用逗號或另起一行來斷句
+   - 範例：「我在想，如果當時沒有放棄，現在會不會不一樣」→ 「我在想。如果當時沒有放棄。現在會不會不一樣？」
+4. 【節奏感】長短句交錯，開頭用短句（最好 5-10 字）
 
 ### 轉折詞（推動情緒）
 「但」「結果」「後來」「沒想到」「誰知道」「重點是」「關鍵是」
@@ -1874,10 +1890,23 @@ ${viralElementsPrompt}
 - 「首先」「其次」「最後」「第一」「第二」「第三」
 - 「接下來」「然後」（可用「後來」代替）
 
-### 禁止開頭方式
+### 開頭規則（極度重要 - 必須嚴格執行）
+
+「第一句必須獨立成段」：
+- 第一句後必須空一行
+- 第一句就是 Hook，讓人停下來
+
+「第一句必須是三選一」：
+1. 衝突：「明明很努力，為什麼還是沒人看？」
+2. 提問：「你有沒有過，明明很累卻睡不著？」
+3. 強烈觀點：「不是你不夠好，是你太容易妥協。」
+
+「禁止開頭方式」：
 - 不能用「你有沒有過這樣的經驗？」開頭（太制式）
 - 不能用「今天想跟大家分享...」開頭
 - 不能用「最近很多人問我...」開頭（除非真的有）
+- 不能用「其實」「其實呢」開頭（太弱）
+- 不能用「我覺得」開頭（太平）
 
 ### 禁止結尾方式
 - 不能用「希望對你有幫助」結尾
@@ -1919,7 +1948,7 @@ ${viralElementsPrompt}
         let generatedContent = typeof response.choices[0]?.message?.content === 'string' ? response.choices[0].message.content : '';
         
         // 應用漸進式去 AI 化過濾器
-        const hasUserStyle = !!(userStyle && userStyle.voiceTone);
+        const hasUserStyle = !!(userStyle && userStyle.toneStyle);
         const preservedWords = extractPreservedWords(userStyle as any);
         generatedContent = applyContentFilters(generatedContent, {
           voiceTone: profile?.voiceTone || undefined,
@@ -2325,7 +2354,7 @@ ${userInputContext}${input.additionalContext ? `補充說明：${input.additiona
         
         // 應用漸進式去 AI 化過濾器
         const userStyle = await db.getUserWritingStyle(ctx.user.id);
-        const hasUserStyle = !!(userStyle && userStyle.voiceTone);
+        const hasUserStyle = !!(userStyle && userStyle.toneStyle);
         const preservedWords = extractPreservedWords(userStyle as any);
         generatedContent = applyContentFilters(generatedContent, {
           voiceTone: profile?.voiceTone || undefined,
@@ -2462,7 +2491,7 @@ ${input.currentDraft}` },
         
         // 應用漸進式去 AI 化過濾器
         const userStyle = await db.getUserWritingStyle(ctx.user.id);
-        const hasUserStyle = !!(userStyle && userStyle.voiceTone);
+        const hasUserStyle = !!(userStyle && userStyle.toneStyle);
         const preservedWords = extractPreservedWords(userStyle as any);
         newContent = applyContentFilters(newContent, {
           voiceTone: profile?.voiceTone || undefined,
@@ -2713,7 +2742,7 @@ ${input.text}` }
         
         // 應用漸進式去 AI 化過濾器
         const userStyle = await db.getUserWritingStyle(ctx.user.id);
-        const hasUserStyle = !!(userStyle && userStyle.voiceTone);
+        const hasUserStyle = !!(userStyle && userStyle.toneStyle);
         const preservedWords = extractPreservedWords(userStyle as any);
         optimizedContent = applyContentFilters(optimizedContent, {
           voiceTone: profile?.voiceTone || undefined,
@@ -3409,7 +3438,9 @@ ${sampleTexts}
           },
         });
         
-        const analysisResult = JSON.parse(response.choices[0].message.content || '{}');
+        const rawContent = response.choices[0].message.content;
+        const contentStr = typeof rawContent === 'string' ? rawContent : '{}';
+        const analysisResult = JSON.parse(contentStr);
         
         // 更新分析結果
         await db.updateWritingStyleAnalysis(ctx.user.id, {
