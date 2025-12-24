@@ -8,6 +8,7 @@ import { invokeLLM } from "./_core/llm";
 import * as db from "./db";
 import { KNOWLEDGE_BASE, SYSTEM_PROMPTS, CONTENT_TYPES_WITH_VIRAL_ELEMENTS, FORBIDDEN_PHRASES, THREADS_STYLE_GUIDE, FOUR_LENS_FRAMEWORK } from "../shared/knowledge-base";
 import { executeContentHealthCheck, MAX_SCORES, DIMENSION_NAMES } from "./content-health-check";
+import { applyContentFilters, extractPreservedWords } from "./contentFilters";
 
 // Admin procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -1915,7 +1916,21 @@ ${viralElementsPrompt}
 
         await db.logApiUsage(ctx.user.id, 'generateDraft', 'llm', 600, 800);
         
-        const generatedContent = typeof response.choices[0]?.message?.content === 'string' ? response.choices[0].message.content : '';
+        let generatedContent = typeof response.choices[0]?.message?.content === 'string' ? response.choices[0].message.content : '';
+        
+        // 應用漸進式去 AI 化過濾器
+        const hasUserStyle = !!(userStyle && userStyle.voiceTone);
+        const preservedWords = extractPreservedWords(userStyle as any);
+        generatedContent = applyContentFilters(generatedContent, {
+          voiceTone: profile?.voiceTone || undefined,
+          contentType: input.contentType,
+          hasUserStyle,
+          userPreservedWords: preservedWords,
+          enableIdiomFilter: true,
+          enableFillerFilter: true,
+          enableEmotionFilter: true,
+          enableSimplify: false, // 暴力降維預設關閉
+        });
         
         // 創建草稿
         const draft = await db.createDraft({
@@ -2306,15 +2321,32 @@ ${userInputContext}${input.additionalContext ? `補充說明：${input.additiona
 
         await db.logApiUsage(ctx.user.id, 'generateMonetizeContent', 'llm', 800, 1000);
         
+        let generatedContent = typeof response.choices[0]?.message?.content === 'string' ? response.choices[0].message.content : '';
+        
+        // 應用漸進式去 AI 化過濾器
+        const userStyle = await db.getUserWritingStyle(ctx.user.id);
+        const hasUserStyle = !!(userStyle && userStyle.voiceTone);
+        const preservedWords = extractPreservedWords(userStyle as any);
+        generatedContent = applyContentFilters(generatedContent, {
+          voiceTone: profile?.voiceTone || undefined,
+          contentType: input.contentType,
+          hasUserStyle,
+          userPreservedWords: preservedWords,
+          enableIdiomFilter: true,
+          enableFillerFilter: true,
+          enableEmotionFilter: true,
+          enableSimplify: false,
+        });
+        
         // 創建草稿
         const draft = await db.createDraft({
           userId: ctx.user.id,
           contentType: input.contentType as any,
-          body: typeof response.choices[0]?.message?.content === 'string' ? response.choices[0].message.content : '',
+          body: generatedContent,
         });
 
         return {
-          content: response.choices[0]?.message?.content || '',
+          content: generatedContent,
           draftId: draft?.id,
         };
       }),
@@ -2424,9 +2456,23 @@ ${input.currentDraft}` },
 
         const response = await invokeLLM({ messages });
         const rawContent = response.choices[0]?.message?.content;
-        const newContent = typeof rawContent === 'string' ? rawContent : '';
+        let newContent = typeof rawContent === 'string' ? rawContent : '';
 
         await db.logApiUsage(ctx.user.id, 'refineDraft', 'llm', 500, 600);
+        
+        // 應用漸進式去 AI 化過濾器
+        const userStyle = await db.getUserWritingStyle(ctx.user.id);
+        const hasUserStyle = !!(userStyle && userStyle.voiceTone);
+        const preservedWords = extractPreservedWords(userStyle as any);
+        newContent = applyContentFilters(newContent, {
+          voiceTone: profile?.voiceTone || undefined,
+          hasUserStyle,
+          userPreservedWords: preservedWords,
+          enableIdiomFilter: true,
+          enableFillerFilter: true,
+          enableEmotionFilter: true,
+          enableSimplify: false,
+        });
 
         // 儲存修改偏好到 AI 記憶
         if (input.instruction.includes('更真誠') || input.instruction.includes('口語化') || input.instruction.includes('像廣告')) {
@@ -2659,11 +2705,25 @@ ${input.text}` }
           ],
         });
 
-        const optimizedContent = typeof response.choices[0]?.message?.content === 'string' 
+        let optimizedContent = typeof response.choices[0]?.message?.content === 'string' 
           ? response.choices[0].message.content 
           : '';
 
         await db.logApiUsage(ctx.user.id, 'autoFix', 'llm', 400, 600);
+        
+        // 應用漸進式去 AI 化過濾器
+        const userStyle = await db.getUserWritingStyle(ctx.user.id);
+        const hasUserStyle = !!(userStyle && userStyle.voiceTone);
+        const preservedWords = extractPreservedWords(userStyle as any);
+        optimizedContent = applyContentFilters(optimizedContent, {
+          voiceTone: profile?.voiceTone || undefined,
+          hasUserStyle,
+          userPreservedWords: preservedWords,
+          enableIdiomFilter: true,
+          enableFillerFilter: true,
+          enableEmotionFilter: true,
+          enableSimplify: false,
+        });
 
         // 如果有 draftId，更新草稿
         if (input.draftId) {
