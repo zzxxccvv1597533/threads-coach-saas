@@ -1597,6 +1597,14 @@ ${selectedStyle}
         }).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
+        console.log('[generateDraft] Input received:', JSON.stringify(input, null, 2));
+        console.log('[generateDraft] flexibleInput type:', typeof input.flexibleInput);
+        console.log('[generateDraft] flexibleInput value:', input.flexibleInput);
+        
+        // 安全處理 flexibleInput
+        const safeFlexibleInput = input.flexibleInput || {};
+        console.log('[generateDraft] safeFlexibleInput:', safeFlexibleInput);
+        
         const profile = await db.getIpProfileByUserId(ctx.user.id);
         const audiences = await db.getAudienceSegmentsByUserId(ctx.user.id);
         const contentPillars = await db.getContentPillarsByUserId(ctx.user.id);
@@ -1833,7 +1841,7 @@ ${selectedStyle}
           poll: `寫一篇「投票型」貼文，讓大家選擇。
 
 主題：${input.flexibleInput?.topic || input.material || ''}
-選項：${(input.flexibleInput?.options || []).join(' vs ')}
+選項：${Array.isArray(input.flexibleInput?.options) ? input.flexibleInput.options.join(' vs ') : (input.flexibleInput?.options || '')}
 
 結構要求：
 1. 簡短介紹投票主題

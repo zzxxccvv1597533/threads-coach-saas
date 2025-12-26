@@ -139,8 +139,9 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       setCurrentStep(7);
       toast.success("草稿已生成！");
     },
-    onError: () => {
-      toast.error("生成失敗，請稍後再試");
+    onError: (error) => {
+      console.error('[generateDraft] Error:', error);
+      toast.error(`生成失敗：${error.message || '請稍後再試'}`);
     },
   });
 
@@ -193,25 +194,38 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
 
   // 處理生成全文
   const handleGenerateFullDraft = () => {
+    console.log('[handleGenerateFullDraft] typeInputs:', typeInputs);
+    console.log('[handleGenerateFullDraft] selectedContentType:', selectedContentType);
+    
     if (!selectedTopic || !selectedHook) {
       toast.error("請先選擇 Hook");
       return;
     }
 
-    // 組合素材
+    // 組合素材 - 安全處理 typeInputs
+    const safeTypeInputs = typeInputs || {};
     const materialParts = [
       `主題：${selectedTopic.title}`,
       `開頭 Hook：${selectedHook}`,
-      ...Object.entries(typeInputs).map(([key, value]) => {
-        const field = ALL_CONTENT_TYPES_V2.find(t => t.id === selectedContentType)?.inputFields.find(f => f.key === key);
+      ...Object.entries(safeTypeInputs).map(([key, value]) => {
+        const field = ALL_CONTENT_TYPES_V2.find(t => t.id === selectedContentType)?.inputFields?.find(f => f.key === key);
         return field ? `${field.label}：${value}` : '';
       }).filter(Boolean),
     ];
+
+    // 只傳遞有內容的欄位
+    const filledFlexibleInputs: Record<string, string> = {};
+    for (const [key, value] of Object.entries(safeTypeInputs)) {
+      if (value && typeof value === 'string' && value.trim()) {
+        filledFlexibleInputs[key] = value;
+      }
+    }
 
     generateDraft.mutate({
       material: materialParts.join('\n'),
       contentType: selectedContentType,
       angle: selectedHook,
+      flexibleInput: Object.keys(filledFlexibleInputs).length > 0 ? filledFlexibleInputs : undefined,
     });
   };
 

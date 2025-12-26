@@ -1100,3 +1100,8 @@
 ### 互動任務測試
 - [ ] 任務列表顯示正常
 - [ ] 任務完成標記正常
+
+
+## Bug 修復 - 發文工作室 Spread syntax 錯誤 v2 (2024-12-26)
+- [ ] 定位 Spread syntax requires ...iterable[Symbol.iterator] 錯誤來源
+- [ ] 修復後端 API 中的 spread 語法問題
