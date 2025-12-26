@@ -467,6 +467,50 @@ export const CONTENT_TYPES_V2_PART2: ContentTypeDefinition[] = [
 2. 調查目的：{{survey_purpose}}
 3. 設計兩個立場鮮明或有趣的選項
 4. 結尾用「留言告訴我你的選擇」`
+  },
+  {
+    id: "diagnosis",
+    name: "診斷型",
+    description: "高互動類型，幫讀者分析症狀並給出標籤（如：你是哪種焦慮型？）",
+    example: "你是不是常常...那你可能是...",
+    structure: "diagnosis",
+    inputFields: [
+      {
+        key: "symptoms",
+        label: "常見特徵/症狀",
+        placeholder: "列出 3 個讀者會有的具體行為（如：明明很累卻捨不得睡）",
+        required: true,
+        description: "讓讀者對號入座的特徵",
+        type: "textarea"
+      },
+      {
+        key: "diagnosis_label",
+        label: "診斷標籤/術語",
+        placeholder: "這個現象在你的專業裡叫什麼？（如：報復性熬夜、夫妻宮無碼）",
+        required: false,
+        description: "賦予一個有趣的標籤",
+        type: "text"
+      },
+      {
+        key: "explanation",
+        label: "簡單解析/解法",
+        placeholder: "為什麼會這樣？一句話的安撫或建議",
+        required: true,
+        description: "展現專業與同理",
+        type: "textarea"
+      }
+    ],
+    viralElements: {
+      hookTips: "開頭直接點名特徵：「如果你有這三個跡象...」",
+      contentTips: "特徵要夠具體，標籤要有趣或專業，解析要溫暖",
+      ctaTips: "結尾問：「你是哪一型？」「你有中嗎？」",
+      avoidTips: "避免負面批判，避免長篇大論的說教"
+    },
+    aiPromptTemplate: `請撰寫診斷型貼文：
+1. 特徵/症狀：{{symptoms}}
+2. 診斷標籤：{{diagnosis_label}}
+3. 解析：{{explanation}}
+4. 讓讀者覺得「天啊這就是在說我」`
   }
 ];
 

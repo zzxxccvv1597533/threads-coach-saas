@@ -1020,3 +1020,16 @@
 - [x] 修改 updateMetricsFromReports 自動判定 hasProduct
 - [x] 從 IP 地基 lineOfficialUrl 自動同步 hasLineLink
 - [x] 從 userProducts 自動同步 hasProduct（檢查是否有核心產品）
+
+
+## 系統優化 Phase 36 - 診斷型與排版規則升級 (2024-12-26)
+
+### 新增診斷型貼文類型
+- [x] 在 content-types-v2.ts 新增 diagnosis 類型定義
+- [x] 包含 symptoms、diagnosis_label、explanation 輸入欄位
+- [x] 設定 viralElements 和 aiPromptTemplate
+
+### 放寬排版規則
+- [x] 修改 routers.ts 中的禁止格式規則
+- [x] 允許使用 Emoji 作為清單開頭（✨/👉/🔮）
+- [x] 限制 Emoji 條列僅用於知識型、整理型貼文
