@@ -3079,6 +3079,20 @@ ${input.context ? `貼文內容是關於：${input.context}` : ''}
         });
         return post;
       }),
+
+    // 刪除貼文記錄
+    delete: protectedProcedure
+      .input(z.object({ postId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        // 驗證貼文屬於當前用戶
+        const posts = await db.getPostsByUserId(ctx.user.id);
+        const post = posts.find(p => p.id === input.postId);
+        if (!post) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: '找不到該貼文記錄' });
+        }
+        await db.deletePost(input.postId);
+        return { success: true };
+      }),
     
     addMetrics: protectedProcedure
       .input(z.object({

@@ -19,6 +19,11 @@ import {
   Share2,
   TrendingUp,
   Link,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  FileText,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -28,7 +33,10 @@ export default function Reports() {
   const { data: weeklyReport, isLoading: reportLoading } = trpc.post.weeklyReport.useQuery();
   
   const [newPostUrl, setNewPostUrl] = useState("");
+  const [newPostContent, setNewPostContent] = useState("");
+  const [isParsingUrl, setIsParsingUrl] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [expandedPostId, setExpandedPostId] = useState<number | null>(null);
   const [metricsDialogOpen, setMetricsDialogOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
   const [metrics, setMetrics] = useState({
@@ -46,6 +54,7 @@ export default function Reports() {
     onSuccess: () => {
       utils.post.list.invalidate();
       setNewPostUrl("");
+      setNewPostContent("");
       setDialogOpen(false);
       toast.success("貼文已記錄！");
     },
@@ -73,12 +82,69 @@ export default function Reports() {
     },
   });
 
+  const deletePost = trpc.post.delete.useMutation({
+    onSuccess: () => {
+      utils.post.list.invalidate();
+      utils.post.weeklyReport.invalidate();
+      toast.success("貼文記錄已刪除");
+    },
+    onError: () => {
+      toast.error("刪除失敗，請稍後再試");
+    },
+  });
+
+  const parseThreadsUrl = trpc.post.parseThreadsUrl.useMutation({
+    onSuccess: (data) => {
+      if (data.content) {
+        setNewPostContent(data.content);
+        toast.success("已抓取貼文內文");
+      } else {
+        toast.info("無法抓取內文，請手動輸入");
+      }
+      setIsParsingUrl(false);
+    },
+    onError: () => {
+      toast.error("解析失敗，請手動輸入內文");
+      setIsParsingUrl(false);
+    },
+  });
+
   const handleCreatePost = () => {
     if (!newPostUrl.trim()) {
       toast.error("請輸入貼文連結");
       return;
     }
     createPost.mutate({ threadUrl: newPostUrl });
+  };
+
+  const handleParseUrl = () => {
+    if (!newPostUrl.trim()) {
+      toast.error("請先輸入 Threads 連結");
+      return;
+    }
+    setIsParsingUrl(true);
+    parseThreadsUrl.mutate({ url: newPostUrl });
+  };
+
+  const handleDeletePost = (postId: number) => {
+    if (confirm("確定要刪除這筆貼文記錄嗎？")) {
+      deletePost.mutate({ postId });
+    }
+  };
+
+  const toggleExpand = (postId: number) => {
+    setExpandedPostId(expandedPostId === postId ? null : postId);
+  };
+
+  // 獲取貼文標題（前 20 字）
+  const getPostTitle = (post: any) => {
+    // 如果有關聯的草稿，嘗試獲取內文
+    if (post.draftPost?.body) {
+      const body = post.draftPost.body;
+      return body.length > 25 ? body.substring(0, 25) + '...' : body;
+    }
+    // 否則顯示連結
+    return '查看貼文';
   };
 
   const handleAddMetrics = () => {
@@ -119,24 +185,69 @@ export default function Reports() {
                 記錄新貼文
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>記錄新貼文</DialogTitle>
                 <DialogDescription>
-                  輸入你在 Threads 發布的貼文連結
+                  輸入 Threads 連結或直接貼上貼文內文
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 pt-4">
+                {/* Threads 連結 */}
                 <div className="space-y-2">
-                  <Label>貼文連結</Label>
-                  <Input
-                    placeholder="https://www.threads.net/..."
-                    value={newPostUrl}
-                    onChange={(e) => setNewPostUrl(e.target.value)}
-                  />
+                  <Label>貼文連結 *</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="https://www.threads.net/..."
+                      value={newPostUrl}
+                      onChange={(e) => setNewPostUrl(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline"
+                      onClick={handleParseUrl}
+                      disabled={isParsingUrl || !newPostUrl.trim()}
+                    >
+                      {isParsingUrl ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        '抓取內文'
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    貼上 Threads 連結後點擊「抓取內文」自動填入
+                  </p>
                 </div>
-                <Button onClick={handleCreatePost} className="w-full">
-                  記錄貼文
+
+                {/* 貼文內文 */}
+                <div className="space-y-2">
+                  <Label>貼文內文（可選）</Label>
+                  <textarea
+                    placeholder="貼上你的貼文內文，方便後續分析..."
+                    value={newPostContent}
+                    onChange={(e) => setNewPostContent(e.target.value)}
+                    className="w-full min-h-[120px] px-3 py-2 text-sm rounded-md border border-input bg-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    輸入內文可以在列表中顯示標題，並用於 AI 分析
+                  </p>
+                </div>
+
+                <Button 
+                  onClick={handleCreatePost} 
+                  className="w-full"
+                  disabled={!newPostUrl.trim() || createPost.isPending}
+                >
+                  {createPost.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      記錄中...
+                    </>
+                  ) : (
+                    '記錄貼文'
+                  )}
                 </Button>
               </div>
             </DialogContent>
@@ -209,40 +320,77 @@ export default function Reports() {
                 {posts.map((post) => (
                   <div 
                     key={post.id}
-                    className="flex items-start gap-4 p-4 rounded-xl border border-border/50 hover:border-primary/30 transition-all"
+                    className="rounded-xl border border-border/50 hover:border-primary/30 transition-all overflow-hidden"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <BarChart3 className="w-5 h-5 text-primary" />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <a 
-                          href={post.threadUrl || '#'}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-primary hover:underline flex items-center gap-1"
-                        >
-                          <Link className="w-3 h-3" />
-                          查看貼文
-                        </a>
-                        <span className="text-xs text-muted-foreground">
-                          {post.postedAt ? format(new Date(post.postedAt), 'yyyy/MM/dd', { locale: zhTW }) : '-'}
-                        </span>
-                      </div>
+                    {/* 主要內容區 */}
+                    <div className="flex items-start gap-4 p-4">
+                      <button
+                        onClick={() => toggleExpand(post.id)}
+                        className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 hover:bg-primary/20 transition-colors"
+                      >
+                        {expandedPostId === post.id ? (
+                          <ChevronUp className="w-5 h-5 text-primary" />
+                        ) : (
+                          <FileText className="w-5 h-5 text-primary" />
+                        )}
+                      </button>
                       
-                      <p className="text-xs text-muted-foreground">
-                        點擊「更新數據」來記錄最新的互動數據
-                      </p>
+                      <div className="flex-1 min-w-0">
+                        {/* 標題和日期 */}
+                        <div className="flex items-center gap-2 mb-1">
+                          <button
+                            onClick={() => toggleExpand(post.id)}
+                            className="text-sm font-medium text-foreground hover:text-primary transition-colors text-left"
+                          >
+                            {getPostTitle(post)}
+                          </button>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <a 
+                            href={post.threadUrl || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline flex items-center gap-1"
+                          >
+                            <Link className="w-3 h-3" />
+                            查看原文
+                          </a>
+                          <span className="text-xs text-muted-foreground">
+                            {post.postedAt ? format(new Date(post.postedAt), 'yyyy/MM/dd', { locale: zhTW }) : '-'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openMetricsDialog(post.id)}
+                        >
+                          更新數據
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeletePost(post.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
 
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => openMetricsDialog(post.id)}
-                    >
-                      更新數據
-                    </Button>
+                    {/* 展開的內文區 */}
+                    {expandedPostId === post.id && (post as any).draftPost?.body && (
+                      <div className="px-4 pb-4 pt-0">
+                        <div className="bg-muted/50 rounded-lg p-4 ml-14">
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            {(post as any).draftPost.body}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

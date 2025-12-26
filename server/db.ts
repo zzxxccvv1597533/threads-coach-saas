@@ -504,6 +504,16 @@ export async function createPost(post: InsertPost): Promise<Post | undefined> {
   return result[0];
 }
 
+export async function deletePost(postId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  // 先刪除相關的 metrics
+  await db.delete(postMetrics).where(eq(postMetrics.postId, postId));
+  // 再刪除貼文
+  await db.delete(posts).where(eq(posts.id, postId));
+  return true;
+}
+
 export async function getPostMetricsByPostId(postId: number): Promise<PostMetric[]> {
   const db = await getDb();
   if (!db) return [];
