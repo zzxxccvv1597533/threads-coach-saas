@@ -19,8 +19,17 @@ import {
   Clock,
   Rocket,
   ChevronRight,
+  Settings,
+  Users,
+  Link2,
+  ShoppingBag,
+  Loader2,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
@@ -41,8 +50,37 @@ export default function Dashboard() {
     },
   });
 
+  const updateGrowthMetricsMutation = trpc.growthMetrics.update.useMutation({
+    onSuccess: (data) => {
+      utils.growthMetrics.get.invalidate();
+      toast.success(`數據已更新，經營階段：${getStageLabel(data.stage)}`);
+    },
+    onError: () => {
+      toast.error('更新失敗，請稍後再試');
+    },
+  });
+
+  const getStageLabel = (stage: string) => {
+    const labels: Record<string, string> = {
+      startup: '起步階段',
+      growth: '成長階段',
+      monetize: '變現階段',
+      scale: '規模化階段',
+    };
+    return labels[stage] || '起步階段';
+  };
+
   const handleSetManualStage = (stage: string | null) => {
     setManualStageMutation.mutate({ stage: stage as any });
+  };
+
+  const handleUpdateMetrics = (data: {
+    followerCount?: number;
+    hasLineLink?: boolean;
+    hasProduct?: boolean;
+    totalSales?: number;
+  }) => {
+    updateGrowthMetricsMutation.mutate(data);
   };
 
   // 計算 IP 完成度
@@ -156,9 +194,12 @@ export default function Dashboard() {
         <GrowthStageCard 
           stage={growthMetrics?.currentStage || 'startup'} 
           manualStage={growthMetrics?.manualStage}
+          metrics={growthMetrics}
           isLoading={metricsLoading}
+          isUpdating={updateGrowthMetricsMutation.isPending}
           onNavigate={() => setLocation('/ip-profile')}
           onSetManualStage={handleSetManualStage}
+          onUpdateMetrics={handleUpdateMetrics}
         />
 
         {/* Main Content Grid */}
@@ -432,17 +473,57 @@ function ContentTypeChart({ stats }: { stats: { contentType: string; count: numb
 function GrowthStageCard({ 
   stage, 
   manualStage,
+  metrics,
   isLoading, 
+  isUpdating,
   onNavigate,
   onSetManualStage,
+  onUpdateMetrics,
 }: { 
   stage: string; 
   manualStage?: string | null;
+  metrics?: {
+    followerCount?: number | null;
+    avgReach?: number | null;
+    avgEngagementRate?: number | null;
+    postFrequency?: number | null;
+    totalPosts?: number | null;
+    hasLineLink?: boolean | null;
+    hasProduct?: boolean | null;
+    totalSales?: number | null;
+    updatedAt?: Date | null;
+  } | null;
   isLoading: boolean;
+  isUpdating?: boolean;
   onNavigate: () => void;
   onSetManualStage: (stage: string | null) => void;
+  onUpdateMetrics: (data: {
+    followerCount?: number;
+    hasLineLink?: boolean;
+    hasProduct?: boolean;
+    totalSales?: number;
+  }) => void;
 }) {
   const [showStageSelector, setShowStageSelector] = React.useState(false);
+  const [showMetricsDialog, setShowMetricsDialog] = React.useState(false);
+  const [metricsForm, setMetricsForm] = React.useState({
+    followerCount: metrics?.followerCount || 0,
+    hasLineLink: metrics?.hasLineLink || false,
+    hasProduct: metrics?.hasProduct || false,
+    totalSales: metrics?.totalSales || 0,
+  });
+
+  // 當 metrics 變化時更新表單
+  React.useEffect(() => {
+    if (metrics) {
+      setMetricsForm({
+        followerCount: metrics.followerCount || 0,
+        hasLineLink: metrics.hasLineLink || false,
+        hasProduct: metrics.hasProduct || false,
+        totalSales: metrics.totalSales || 0,
+      });
+    }
+  }, [metrics]);
   
   const stageInfo: Record<string, {
     name: string;
@@ -493,6 +574,11 @@ function GrowthStageCard({
 
   const currentStage = stageInfo[stage] || stageInfo.startup;
   const isManual = !!manualStage;
+
+  const handleSaveMetrics = () => {
+    onUpdateMetrics(metricsForm);
+    setShowMetricsDialog(false);
+  };
 
   if (isLoading) {
     return (
@@ -604,13 +690,136 @@ function GrowthStageCard({
           </div>
 
           {/* 右側操作 */}
-          <button 
-            onClick={onNavigate}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            設定
-            <ChevronRight className="w-4 h-4" />
-          </button>
+          <Dialog open={showMetricsDialog} onOpenChange={setShowMetricsDialog}>
+            <DialogTrigger asChild>
+              <button 
+                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                設定
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>更新經營數據</DialogTitle>
+                <DialogDescription>
+                  更新你的帳號數據，系統會自動重新計算經營階段
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-6 pt-4">
+                {/* 粉絲數 */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-blue-500" />
+                    粉絲數
+                  </Label>
+                  <Input
+                    type="number"
+                    placeholder="輸入你的 Threads 粉絲數"
+                    value={metricsForm.followerCount || ''}
+                    onChange={(e) => setMetricsForm({
+                      ...metricsForm,
+                      followerCount: parseInt(e.target.value) || 0
+                    })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    到 Threads 個人檔案查看粉絲數
+                  </p>
+                </div>
+
+                {/* LINE 連結 */}
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="flex items-center gap-2">
+                      <Link2 className="w-4 h-4 text-green-500" />
+                      已設定 LINE 連結
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      個人檔案或貼文中有引導加 LINE 的連結
+                    </p>
+                  </div>
+                  <Switch
+                    checked={metricsForm.hasLineLink}
+                    onCheckedChange={(checked) => setMetricsForm({
+                      ...metricsForm,
+                      hasLineLink: checked
+                    })}
+                  />
+                </div>
+
+                {/* 有產品 */}
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="flex items-center gap-2">
+                      <ShoppingBag className="w-4 h-4 text-amber-500" />
+                      已設定產品
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      已在 IP 地基設定產品資訊
+                    </p>
+                  </div>
+                  <Switch
+                    checked={metricsForm.hasProduct}
+                    onCheckedChange={(checked) => setMetricsForm({
+                      ...metricsForm,
+                      hasProduct: checked
+                    })}
+                  />
+                </div>
+
+                {/* 成交數 */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-purple-500" />
+                    總成交數
+                  </Label>
+                  <Input
+                    type="number"
+                    placeholder="透過 Threads 帶來的成交數"
+                    value={metricsForm.totalSales || ''}
+                    onChange={(e) => setMetricsForm({
+                      ...metricsForm,
+                      totalSales: parseInt(e.target.value) || 0
+                    })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    透過 Threads 引流帶來的實際成交數量
+                  </p>
+                </div>
+
+                {/* 當前數據摘要 */}
+                {metrics && (
+                  <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">當前自動計算的數據：</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>平均觸及：{metrics.avgReach || 0}</div>
+                      <div>互動率：{((metrics.avgEngagementRate || 0) / 100).toFixed(1)}%</div>
+                      <div>週發文數：{metrics.postFrequency || 0}</div>
+                      <div>總發文數：{metrics.totalPosts || 0}</div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      以上數據由戰報自動計算，無需手動輸入
+                    </p>
+                  </div>
+                )}
+
+                <Button 
+                  onClick={handleSaveMetrics} 
+                  className="w-full"
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      更新中...
+                    </>
+                  ) : (
+                    '儲存並重新計算階段'
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </CardContent>
     </Card>
