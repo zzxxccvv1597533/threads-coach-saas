@@ -3170,6 +3170,99 @@ ${selfReflection ? `創作者反思：${selfReflection}` : ''}
       const report = await db.getWeeklyReport(ctx.user.id);
       return report ?? { posts: [], metrics: [], summary: { totalReach: 0, totalLikes: 0, totalComments: 0, totalSaves: 0 } };
     }),
+    
+    // Threads 連結解析 - 自動抓取貼文內文
+    parseThreadsUrl: protectedProcedure
+      .input(z.object({
+        url: z.string().url(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          // 驗證是否為 Threads 連結
+          const threadsUrlPattern = /threads\.net\/@([\w.]+)\/post\/([\w-]+)/;
+          const match = input.url.match(threadsUrlPattern);
+          
+          if (!match) {
+            return {
+              success: false,
+              error: '請輸入有效的 Threads 貼文連結',
+              content: null,
+              author: null,
+              postId: null,
+            };
+          }
+          
+          const [, author, postId] = match;
+          
+          // 嘗試抓取貼文內容（使用 fetch 抓取公開頁面）
+          let content = null;
+          try {
+            const response = await fetch(input.url, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
+              },
+            });
+            
+            if (response.ok) {
+              const html = await response.text();
+              
+              // 嘗試從 meta og:description 或 JSON-LD 中提取內文
+              // Threads 的貼文內容通常在 og:description 中
+              const ogDescMatch = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']*)["']/i);
+              if (ogDescMatch && ogDescMatch[1]) {
+                content = ogDescMatch[1]
+                  .replace(/&quot;/g, '"')
+                  .replace(/&amp;/g, '&')
+                  .replace(/&lt;/g, '<')
+                  .replace(/&gt;/g, '>')
+                  .replace(/&#x27;/g, "'")
+                  .replace(/&#39;/g, "'");
+              }
+              
+              // 如果 og:description 沒有，嘗試從 JSON-LD 提取
+              if (!content) {
+                const jsonLdMatch = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i);
+                if (jsonLdMatch && jsonLdMatch[1]) {
+                  try {
+                    const jsonLd = JSON.parse(jsonLdMatch[1]);
+                    if (jsonLd.articleBody) {
+                      content = jsonLd.articleBody;
+                    } else if (jsonLd.description) {
+                      content = jsonLd.description;
+                    }
+                  } catch (e) {
+                    // JSON 解析失敗，繼續
+                  }
+                }
+              }
+            }
+          } catch (fetchError) {
+            console.error('Failed to fetch Threads URL:', fetchError);
+            // 抓取失敗不阻止流程，只是沒有內文
+          }
+          
+          await db.logApiUsage(ctx.user.id, 'threads_parse', 'fetch', 200, 0);
+          
+          return {
+            success: true,
+            error: null,
+            content: content || null,
+            author,
+            postId,
+          };
+        } catch (error) {
+          console.error('Threads URL parse error:', error);
+          return {
+            success: false,
+            error: '解析失敗，請稍後再試',
+            content: null,
+            author: null,
+            postId: null,
+          };
+        }
+      }),
   }),
 
   // ==================== 商品管理 ====================
@@ -3413,8 +3506,12 @@ ${selfReflection ? `創作者反思：${selfReflection}` : ''}
         followerCount: z.number().optional(),
         avgReach: z.number().optional(),
         avgEngagement: z.number().optional(),
+        avgEngagementRate: z.number().optional(),
+        postFrequency: z.number().optional(),
+        totalPosts: z.number().optional(),
         hasProfileSetup: z.boolean().optional(),
         hasLineLink: z.boolean().optional(),
+        hasProduct: z.boolean().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         await db.upsertUserGrowthMetrics({ userId: ctx.user.id, ...input });
@@ -3422,6 +3519,22 @@ ${selfReflection ? `創作者反思：${selfReflection}` : ''}
         const stage = await db.calculateUserStage(ctx.user.id);
         await db.upsertUserGrowthMetrics({ userId: ctx.user.id, currentStage: stage as any });
         return { success: true, stage };
+      }),
+
+    // 手動設定經營階段
+    setManualStage: protectedProcedure
+      .input(z.object({
+        stage: z.enum(['startup', 'growth', 'monetize', 'scale']).nullable(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await db.upsertUserGrowthMetrics({ 
+          userId: ctx.user.id, 
+          manualStage: input.stage as any 
+        });
+        // 重新計算階段（如果有 manualStage 會優先使用）
+        const stage = await db.calculateUserStage(ctx.user.id);
+        await db.upsertUserGrowthMetrics({ userId: ctx.user.id, currentStage: stage as any });
+        return { success: true, stage, isManual: !!input.stage };
       }),
 
     getStage: protectedProcedure.query(async ({ ctx }) => {

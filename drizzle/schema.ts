@@ -485,10 +485,22 @@ export const userGrowthMetrics = mysqlTable("user_growth_metrics", {
   followerCount: int("followerCount").default(0),
   avgReach: int("avgReach").default(0), // 平均觸及
   avgEngagement: int("avgEngagement").default(0), // 平均互動
+  // 新增指標
+  avgEngagementRate: int("avgEngagementRate").default(0), // 平均互動率（百分比 * 100，例如 5% = 500）
+  postFrequency: int("postFrequency").default(0), // 週發文數
+  totalPosts: int("totalPosts").default(0), // 總發文數
   hasProfileSetup: boolean("hasProfileSetup").default(false), // 是否已設置首頁自介
   hasLineLink: boolean("hasLineLink").default(false), // 是否已設置 LINE 連結
+  hasProduct: boolean("hasProduct").default(false), // 是否已設定產品
   firstSaleAt: timestamp("firstSaleAt"), // 首次成交時間
   totalSales: int("totalSales").default(0), // 總成交數
+  // 手動覆寫階段
+  manualStage: mysqlEnum("manualStage", [
+    "startup",    // 起步期
+    "growth",     // 成長期
+    "monetize",   // 變現期
+    "scale"       // 規模化
+  ]), // 用戶手動選擇的階段（優先於自動計算）
   currentStage: mysqlEnum("currentStage", [
     "startup",    // 起步期：粉絲 < 100
     "growth",     // 成長期：粉絲 100-1000，流量穩定破千

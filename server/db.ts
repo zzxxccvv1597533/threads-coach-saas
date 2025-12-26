@@ -885,20 +885,79 @@ export async function calculateUserStage(userId: number): Promise<string> {
   const metrics = await getUserGrowthMetrics(userId);
   if (!metrics) return 'startup';
   
-  const { followerCount, avgReach, totalSales } = metrics;
+  // 如果用戶有手動設定階段，優先使用
+  if (metrics.manualStage) {
+    return metrics.manualStage;
+  }
   
-  // 規模化：粉絲 5000+，有成交紀錄
-  if ((followerCount || 0) >= 5000 && (totalSales || 0) > 0) {
+  const { 
+    followerCount, 
+    avgReach, 
+    avgEngagementRate, 
+    postFrequency,
+    totalPosts,
+    totalSales,
+    hasLineLink,
+    hasProduct
+  } = metrics;
+  
+  // 計算經營分數（綜合評估）
+  let score = 0;
+  
+  // 粉絲數評分（20分）
+  const followers = followerCount || 0;
+  if (followers >= 5000) score += 20;
+  else if (followers >= 2000) score += 15;
+  else if (followers >= 1000) score += 12;
+  else if (followers >= 500) score += 8;
+  else if (followers >= 100) score += 4;
+  
+  // 平均觸及評分（15分）
+  const reach = avgReach || 0;
+  if (reach >= 2000) score += 15;
+  else if (reach >= 1000) score += 12;
+  else if (reach >= 500) score += 8;
+  else if (reach >= 200) score += 4;
+  
+  // 互動率評分（15分）- avgEngagementRate 是百分比 * 100
+  const engagementRate = avgEngagementRate || 0;
+  if (engagementRate >= 1000) score += 15; // 10%+
+  else if (engagementRate >= 500) score += 12; // 5%+
+  else if (engagementRate >= 300) score += 8; // 3%+
+  else if (engagementRate >= 100) score += 4; // 1%+
+  
+  // 發文頻率評分（10分）- 週發文數
+  const frequency = postFrequency || 0;
+  if (frequency >= 7) score += 10; // 每天發文
+  else if (frequency >= 5) score += 8;
+  else if (frequency >= 3) score += 5;
+  else if (frequency >= 1) score += 2;
+  
+  // 總發文數評分（10分）
+  const posts = totalPosts || 0;
+  if (posts >= 100) score += 10;
+  else if (posts >= 50) score += 7;
+  else if (posts >= 20) score += 4;
+  else if (posts >= 10) score += 2;
+  
+  // 變現準備評分（30分）
+  if (hasLineLink) score += 10;
+  if (hasProduct) score += 10;
+  if ((totalSales || 0) > 0) score += 10;
+  
+  // 根據總分判斷階段
+  // 規模化：80+ 分
+  if (score >= 80) {
     return 'scale';
   }
   
-  // 變現期：粉絲 1000+，有穩定互動
-  if ((followerCount || 0) >= 1000) {
+  // 變現期：55+ 分
+  if (score >= 55) {
     return 'monetize';
   }
   
-  // 成長期：粉絲 100-1000，流量穩定破千
-  if ((followerCount || 0) >= 100 && (avgReach || 0) >= 1000) {
+  // 成長期：30+ 分
+  if (score >= 30) {
     return 'growth';
   }
   

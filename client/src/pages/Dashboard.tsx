@@ -1,9 +1,11 @@
 import DashboardLayout from "@/components/DashboardLayout";
+import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
 import { 
   PenTool, 
   CheckCircle, 
@@ -28,6 +30,20 @@ export default function Dashboard() {
   const { data: weeklyReport, isLoading: reportLoading } = trpc.post.weeklyReport.useQuery();
   const { data: contentTypeStats } = trpc.draft.contentTypeStats.useQuery();
   const { data: growthMetrics, isLoading: metricsLoading } = trpc.growthMetrics.get.useQuery();
+  const utils = trpc.useUtils();
+  const setManualStageMutation = trpc.growthMetrics.setManualStage.useMutation({
+    onSuccess: (data) => {
+      utils.growthMetrics.get.invalidate();
+      toast.success(data.isManual ? '已設定經營階段' : '已恢復自動判定');
+    },
+    onError: () => {
+      toast.error('設定失敗，請稍後再試');
+    },
+  });
+
+  const handleSetManualStage = (stage: string | null) => {
+    setManualStageMutation.mutate({ stage: stage as any });
+  };
 
   // 計算 IP 完成度
   const calculateIpProgress = () => {
@@ -139,8 +155,10 @@ export default function Dashboard() {
         {/* 經營階段卡片 */}
         <GrowthStageCard 
           stage={growthMetrics?.currentStage || 'startup'} 
+          manualStage={growthMetrics?.manualStage}
           isLoading={metricsLoading}
           onNavigate={() => setLocation('/ip-profile')}
+          onSetManualStage={handleSetManualStage}
         />
 
         {/* Main Content Grid */}
@@ -413,13 +431,19 @@ function ContentTypeChart({ stats }: { stats: { contentType: string; count: numb
 // 經營階段卡片組件
 function GrowthStageCard({ 
   stage, 
+  manualStage,
   isLoading, 
-  onNavigate 
+  onNavigate,
+  onSetManualStage,
 }: { 
   stage: string; 
+  manualStage?: string | null;
   isLoading: boolean;
   onNavigate: () => void;
+  onSetManualStage: (stage: string | null) => void;
 }) {
+  const [showStageSelector, setShowStageSelector] = React.useState(false);
+  
   const stageInfo: Record<string, {
     name: string;
     description: string;
@@ -447,7 +471,7 @@ function GrowthStageCard({
       bgColor: 'bg-emerald-50 border-emerald-200',
       progress: 50,
     },
-    monetization: {
+    monetize: {
       name: '變現階段',
       description: '導入產品',
       tips: '可以開始分享產品相關內容，但仍要保持 70% 情緒內容',
@@ -456,7 +480,7 @@ function GrowthStageCard({
       bgColor: 'bg-amber-50 border-amber-200',
       progress: 75,
     },
-    scaling: {
+    scale: {
       name: '規模化階段',
       description: '系統化運營',
       tips: '可以更積極推廣產品，建立自動化流程',
@@ -468,6 +492,7 @@ function GrowthStageCard({
   };
 
   const currentStage = stageInfo[stage] || stageInfo.startup;
+  const isManual = !!manualStage;
 
   if (isLoading) {
     return (
@@ -490,6 +515,11 @@ function GrowthStageCard({
               <Rocket className={`w-5 h-5 ${currentStage.color}`} />
               <span className={`text-sm font-medium ${currentStage.color}`}>
                 當前經營階段
+                {isManual && (
+                  <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-white/70 text-muted-foreground">
+                    手動設定
+                  </span>
+                )}
               </span>
             </div>
             <h3 className="text-xl font-bold mb-1">{currentStage.name}</h3>
@@ -511,7 +541,7 @@ function GrowthStageCard({
             </div>
 
             {/* 推薦內容類型 */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 mb-4">
               <span className="text-xs text-muted-foreground">推薦內容：</span>
               {currentStage.recommendedTypes.map((type, index) => (
                 <span 
@@ -522,6 +552,55 @@ function GrowthStageCard({
                 </span>
               ))}
             </div>
+
+            {/* 手動選擇階段 */}
+            {showStageSelector ? (
+              <div className="bg-white/70 rounded-lg p-3 border border-border/50">
+                <p className="text-xs text-muted-foreground mb-2">選擇你的經營階段：</p>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(stageInfo).map(([key, info]) => (
+                    <button
+                      key={key}
+                      onClick={() => {
+                        onSetManualStage(key);
+                        setShowStageSelector(false);
+                      }}
+                      className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                        stage === key 
+                          ? `${info.bgColor} ${info.color} font-medium` 
+                          : 'bg-white hover:bg-gray-50'
+                      }`}
+                    >
+                      {info.name}
+                    </button>
+                  ))}
+                  {isManual && (
+                    <button
+                      onClick={() => {
+                        onSetManualStage(null);
+                        setShowStageSelector(false);
+                      }}
+                      className="text-xs px-3 py-1.5 rounded-full border bg-gray-100 hover:bg-gray-200 text-gray-600"
+                    >
+                      恢復自動判定
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowStageSelector(false)}
+                  className="text-xs text-muted-foreground mt-2 hover:text-foreground"
+                >
+                  取消
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowStageSelector(true)}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                🎯 手動設定階段（粉絲少但已在變現？）
+              </button>
+            )}
           </div>
 
           {/* 右側操作 */}
