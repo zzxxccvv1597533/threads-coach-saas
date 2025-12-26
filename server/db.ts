@@ -303,6 +303,9 @@ export async function getIpProfileByUserId(userId: number): Promise<IpProfile | 
   return result.length > 0 ? result[0] : undefined;
 }
 
+// 別名
+ export const getIpProfile = getIpProfileByUserId;
+
 export async function upsertIpProfile(profile: InsertIpProfile): Promise<IpProfile | undefined> {
   const db = await getDb();
   if (!db) return undefined;
@@ -504,6 +507,13 @@ export async function createPost(post: InsertPost): Promise<Post | undefined> {
   return result[0];
 }
 
+export async function getPostById(postId: number): Promise<Post | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
+  return result[0];
+}
+
 export async function deletePost(postId: number): Promise<boolean> {
   const db = await getDb();
   if (!db) return false;
@@ -526,6 +536,12 @@ export async function createPostMetric(metric: InsertPostMetric): Promise<PostMe
   await db.insert(postMetrics).values(metric);
   const result = await db.select().from(postMetrics).where(eq(postMetrics.postId, metric.postId)).orderBy(desc(postMetrics.id)).limit(1);
   return result[0];
+}
+
+export async function updatePostMetric(metricId: number, updates: Partial<InsertPostMetric>): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(postMetrics).set(updates).where(eq(postMetrics.id, metricId));
 }
 
 export async function getWeeklyReport(userId: number) {

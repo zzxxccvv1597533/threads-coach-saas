@@ -957,3 +957,29 @@
 ### 風格範例上傳
 - [x] 讓用戶貼入爆款貼文範例（已存在於 IP 地基頁面）
 - [x] 強化 Few-Shot Learning 效果（Phase 27 已實作）
+
+
+## 系統優化 Phase 33 - 戰報閉環學習完善 (2024-12-26)
+
+### 爆文標記功能
+- [x] 新增 isViral 欄位標記爆文
+- [x] AI 自動分析爆文成功原因
+- [x] 前端加入爆文標記按鈕
+- [x] 前端顯示爆文徽章和分析結果
+- [x] 新增 markAsViral API
+
+### 戰報 AI 策略總結
+- [x] 分析最近 20 篇貼文數據
+- [x] 生成個人化策略建議
+- [x] 把結論寫回 ipProfiles 資料庫
+- [x] 新增 generateStrategySummary API
+- [x] 新增 aiStrategySummary, aiStrategyUpdatedAt, bestPostingTime, viralPatterns 欄位
+
+### 回饋到生成策略
+- [x] 根據爆文數據調整 AI 生成邏輯
+- [x] 在 buildUserStyleContext 中加入爆文分析結果
+- [x] 加入 viralPatterns、bestPostingTime、aiStrategySummary 到生成提示詞
+
+### 文案健檢 diff 比對 UI
+- [ ] 前端顯示原文 vs 修改後對比
+- [ ] 高亮顯示修改的地方

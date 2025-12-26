@@ -105,6 +105,12 @@ export const ipProfiles = mysqlTable("ip_profiles", {
   contentMatrixThemes: json("contentMatrixThemes").$type<string[]>(), // 三大主題
   ipAnalysisComplete: boolean("ipAnalysisComplete").default(false),
   currentVersion: int("currentVersion").default(1),
+  // AI 策略總結（從戰報數據學習）
+  aiStrategySummary: text("aiStrategySummary"), // AI 生成的策略總結
+  aiStrategyUpdatedAt: timestamp("aiStrategyUpdatedAt"), // 策略總結更新時間
+  bestPerformingType: varchar("bestPerformingType", { length: 50 }), // 表現最好的內容類型
+  bestPostingTime: varchar("bestPostingTime", { length: 20 }), // 最佳發文時段
+  viralPatterns: text("viralPatterns"), // 爆文模式分析
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -275,6 +281,9 @@ export const postMetrics = mysqlTable("post_metrics", {
   selfReflection: text("selfReflection"), // 自我反思：什麼有效/什麼可以改進
   aiInsight: text("aiInsight"), // AI 生成的策略洞察
   performanceLevel: mysqlEnum("performanceLevel", ["hit", "normal", "low"]), // 表現等級：爆文/正常/低迷
+  // 爆文標記與分析
+  isViral: boolean("isViral").default(false), // 用戶標記為爆文
+  viralAnalysis: text("viralAnalysis"), // AI 分析爆文成功原因
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

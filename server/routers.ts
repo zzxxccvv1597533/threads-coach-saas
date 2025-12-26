@@ -6,6 +6,9 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { invokeLLM } from "./_core/llm";
 import * as db from "./db";
+import { getDb } from "./db";
+import { postMetrics, ipProfiles } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
 import { KNOWLEDGE_BASE, SYSTEM_PROMPTS, CONTENT_TYPES_WITH_VIRAL_ELEMENTS, FORBIDDEN_PHRASES, THREADS_STYLE_GUIDE, FOUR_LENS_FRAMEWORK } from "../shared/knowledge-base";
 import { executeContentHealthCheck, MAX_SCORES, DIMENSION_NAMES } from "./content-health-check";
 import { applyContentFilters, extractPreservedWords } from "./contentFilters";
@@ -1721,7 +1724,7 @@ ${selectedStyle}
         };
         
         // 建構用戶風格資料（從資料庫欄位）- 含 Few-Shot Learning
-        const buildUserStyleContext = () => {
+        const buildUserStyleContext = async () => {
           // 檢查是否有風格資料或範文
           if (!userStyle?.toneStyle && (!userStyle?.samplePosts || (userStyle.samplePosts as any[]).length === 0)) {
             return '';
@@ -1764,7 +1767,26 @@ ${selectedStyle}
             }
           }
           
-          // === Few-Shot Learning：直接餵範文 ===
+          // === 爆文分析結果：回饋到生成策略 ===
+          const ipProfile = await db.getIpProfile(ctx.user.id);
+          if (ipProfile?.viralPatterns) {
+            parts.push(``);
+            parts.push(`=== 你的爆文模式分析 ===`);
+            parts.push(`以下是你過去爆文的成功分析，請在生成新內容時參考這些模式：`);
+            parts.push(ipProfile.viralPatterns);
+            parts.push(``);
+          }
+          if (ipProfile?.bestPostingTime) {
+            parts.push(`【最佳發文時段】${ipProfile.bestPostingTime}`);
+          }
+          if (ipProfile?.aiStrategySummary) {
+            parts.push(``);
+            parts.push(`=== AI 策略建議 ===`);
+            parts.push(ipProfile.aiStrategySummary.substring(0, 500)); // 取前 500 字避免過長
+            parts.push(``);
+          }
+          
+          // === Few-Shot Learning：直接餒範文 ===
           const samplePosts = userStyle?.samplePosts as Array<{ content: string; engagement?: number; addedAt: string }> | undefined;
           if (samplePosts && samplePosts.length > 0) {
             parts.push(``);
@@ -1924,7 +1946,7 @@ ${selectedStyle}
         const ipContext = buildIpContext();
         const audienceContext = buildAudienceContext();
         const contentPillarsContext = buildContentPillarsContext();
-        const userStyleContext = buildUserStyleContext();
+        const userStyleContext = await buildUserStyleContext();
         
         // 經營階段軟性權重
         const growthMetrics = await db.getUserGrowthMetrics(ctx.user.id);
@@ -3147,9 +3169,10 @@ ${input.context ? `貼文內容是關於：${input.context}` : ''}
         postingTime: z.enum(['morning', 'noon', 'evening', 'night']).optional(),
         topComment: z.string().optional(),
         selfReflection: z.string().optional(),
+        isViral: z.boolean().optional(), // 用戶標記為爆文
       }))
       .mutation(async ({ ctx, input }) => {
-        const { postId, postingTime, topComment, selfReflection, ...metrics } = input;
+        const { postId, postingTime, topComment, selfReflection, isViral, ...metrics } = input;
         
         // 計算表現等級
         const performanceLevel = calculatePerformanceLevel(metrics.reach, metrics.comments, metrics.saves);
@@ -3213,7 +3236,52 @@ ${selfReflection ? `創作者反思：${selfReflection}` : ''}
           selfReflection,
           aiInsight,
           performanceLevel,
+          isViral: isViral || false,
         });
+        
+        // 如果標記為爆文，生成爆文分析
+        if (isViral) {
+          const posts = await db.getPostsByUserId(ctx.user.id);
+          const post = posts.find(p => p.id === postId);
+          const draftPost = post?.draftPostId ? await db.getDraftById(post.draftPostId) : null;
+          
+          if (draftPost?.body) {
+            try {
+              const viralResponse = await invokeLLM({
+                messages: [
+                  { role: "system", content: `你是一位 Threads 爆文分析專家。請分析這篇爆文的成功原因。
+回覆要求：
+1. 分析 3-5 個具體成功因素
+2. 每個因素用一句話說明
+3. 結尾給出一個可複製的建議
+4. 不要笼統，要具體到這篇貼文的特性` },
+                  { role: "user", content: `爆文內容：
+${draftPost.body}
+
+表現數據：
+- 觸及：${metrics.reach || 0}
+- 愛心：${metrics.likes || 0}
+- 留言：${metrics.comments || 0}
+- 轉發：${metrics.reposts || 0}
+- 收藏：${metrics.saves || 0}
+${topComment ? `最熱門留言：${topComment}` : ''}
+
+請分析這篇貼文為什麼能成為爆文？` }
+                ],
+              });
+              const viralAnalysis = typeof viralResponse.choices[0]?.message?.content === 'string' 
+                ? viralResponse.choices[0].message.content 
+                : null;
+              
+              if (viralAnalysis && metric) {
+                await db.updatePostMetric(metric.id, { viralAnalysis });
+              }
+              await db.logApiUsage(ctx.user.id, 'viral_analysis', 'llm', 200, 150);
+            } catch (e) {
+              console.error('Failed to generate viral analysis:', e);
+            }
+          }
+        }
         
         // 自動更新經營指標
         await db.updateMetricsFromReports(ctx.user.id);
@@ -3225,6 +3293,105 @@ ${selfReflection ? `創作者反思：${selfReflection}` : ''}
       const report = await db.getWeeklyReport(ctx.user.id);
       return report ?? { posts: [], metrics: [], summary: { totalReach: 0, totalLikes: 0, totalComments: 0, totalSaves: 0 } };
     }),
+    
+    // 標記為爆文
+    markAsViral: protectedProcedure
+      .input(z.object({
+        postId: z.number(),
+        isViral: z.boolean(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // 確認貼文屬於當前用戶
+        const post = await db.getPostById(input.postId);
+        if (!post || post.userId !== ctx.user.id) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: '貼文不存在' });
+        }
+        
+        // 更新 isViral 欄位
+        const dbConn = await getDb();
+        if (!dbConn) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: '資料庫連線失敗' });
+        }
+        await dbConn.update(postMetrics)
+          .set({ isViral: input.isViral })
+          .where(eq(postMetrics.postId, input.postId));
+        
+        // 如果標記為爆文，觸發 AI 分析
+        if (input.isViral) {
+          // 獲取貼文內容和數據
+          const draftPost = post.draftPostId 
+            ? await db.getDraftById(post.draftPostId)
+            : null;
+          const metricsArr = await db.getPostMetricsByPostId(input.postId);
+          const metrics = metricsArr[0]; // 最新的 metric
+          
+          if (draftPost && metrics) {
+            // 使用 AI 分析爆文成功原因
+            const systemPrompt = `你是一位 Threads 經營專家，請分析這篇爆文的成功原因。
+
+分析需涵蓋：
+1. Hook 開頭為什麼有效？
+2. 內容結構有什麼特點？
+3. 情緒引導如何運用？
+4. 跟讀者的連結點在哪？
+5. 可以復製的元素有哪些？
+
+請用繁體中文回答，簡潔有力（150-250字）。`;
+            
+            const userPrompt = `貼文內容：
+${draftPost.body}
+
+互動數據：
+- 觸及：${metrics.reach || 0}
+- 愛心：${metrics.likes || 0}
+- 留言：${metrics.comments || 0}
+- 轉發：${metrics.reposts || 0}
+- 儲存：${metrics.saves || 0}
+
+請分析這篇貼文為什麼會爆？`;
+            
+            try {
+              const response = await invokeLLM({
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: userPrompt },
+                ],
+              });
+              
+              const viralAnalysis = typeof response.choices[0]?.message?.content === 'string' 
+                ? response.choices[0].message.content 
+                : null;
+              
+              if (viralAnalysis) {
+                await dbConn.update(postMetrics)
+                  .set({ viralAnalysis })
+                  .where(eq(postMetrics.postId, input.postId));
+              }
+              
+              await db.logApiUsage(ctx.user.id, 'viral_analysis', 'llm', 300, 200);
+              
+              return {
+                success: true,
+                isViral: true,
+                viralAnalysis,
+              };
+            } catch (error) {
+              console.error('Failed to analyze viral post:', error);
+              return {
+                success: true,
+                isViral: true,
+                viralAnalysis: null,
+              };
+            }
+          }
+        }
+        
+        return {
+          success: true,
+          isViral: input.isViral,
+          viralAnalysis: null,
+        };
+      }),
     
     // Threads 連結解析 - 自動抓取貼文內文
     parseThreadsUrl: protectedProcedure
@@ -3315,6 +3482,137 @@ ${selfReflection ? `創作者反思：${selfReflection}` : ''}
             content: null,
             author: null,
             postId: null,
+          };
+        }
+      }),
+
+    // 生成 AI 策略總結
+    generateStrategySummary: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        // 獲取最近 20 篇貼文的數據
+        const posts = await db.getPostsByUserId(ctx.user.id);
+        const recentPosts = posts.slice(0, 20);
+        
+        if (recentPosts.length < 5) {
+          return {
+            success: false,
+            error: '需要至少 5 篇貼文數據才能生成策略總結',
+            summary: null,
+          };
+        }
+        
+        // 獲取每篇貼文的 metrics 和 draft
+        const postsData = await Promise.all(recentPosts.map(async (p) => {
+          const metrics = await db.getPostMetricsByPostId(p.id);
+          const latestMetric = metrics[0]; // 最新的 metric
+          const draft = p.draftPostId ? await db.getDraftById(p.draftPostId) : null;
+          
+          return {
+            date: p.postedAt ? new Date(p.postedAt).toLocaleDateString() : 'N/A',
+            reach: latestMetric?.reach || 0,
+            likes: latestMetric?.likes || 0,
+            comments: latestMetric?.comments || 0,
+            reposts: latestMetric?.reposts || 0,
+            saves: latestMetric?.saves || 0,
+            postingTime: latestMetric?.postingTime || 'unknown',
+            isViral: latestMetric?.isViral || false,
+            viralAnalysis: latestMetric?.viralAnalysis || null,
+            selfReflection: latestMetric?.selfReflection || null,
+            contentPreview: draft?.body?.substring(0, 100) || '無內文',
+          };
+        }));
+        
+        // 計算統計數據
+        const totalReach = postsData.reduce((sum, p) => sum + p.reach, 0);
+        const avgReach = Math.round(totalReach / postsData.length);
+        const viralPosts = postsData.filter(p => p.isViral);
+        const postingTimeStats = postsData.reduce((acc, p) => {
+          if (p.postingTime && p.postingTime !== 'unknown') {
+            acc[p.postingTime] = (acc[p.postingTime] || 0) + 1;
+          }
+          return acc;
+        }, {} as Record<string, number>);
+        
+        // 找出最佳發文時段
+        const bestTime = Object.entries(postingTimeStats)
+          .sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+        
+        // 使用 AI 生成策略總結
+        const systemPrompt = `你是一位 Threads 經營專家，請根據用戶的貼文數據生成個人化的策略總結。
+
+分析需涵蓋：
+1. 整體表現趨勢
+2. 最佳發文時段建議
+3. 內容類型建議
+4. 爆文模式分析（如果有爆文數據）
+5. 具體可執行的下一步建議
+
+請用繁體中文回答，語氣要像教練一樣親切但專業。`;
+        
+        const userPrompt = `以下是我最近 ${postsData.length} 篇貼文的數據：
+
+平均觸及：${avgReach}
+總貼文數：${postsData.length}
+爆文數：${viralPosts.length}
+最常發文時段：${bestTime || '無數據'}
+
+各篇貼文數據：
+${postsData.map((p, i) => `${i + 1}. 觸及:${p.reach} 愛心:${p.likes} 留言:${p.comments} ${p.isViral ? '🔥爆文' : ''}
+   時段:${p.postingTime} 內文預覽:${p.contentPreview}${p.selfReflection ? `\n   自我反思:${p.selfReflection}` : ''}${p.viralAnalysis ? `\n   爆文分析:${p.viralAnalysis}` : ''}`).join('\n\n')}
+
+請生成策略總結（300-500字）`;
+        
+        try {
+          const response = await invokeLLM({
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+          });
+          
+          const summary = typeof response.choices[0]?.message?.content === 'string' 
+            ? response.choices[0].message.content 
+            : null;
+          
+          if (summary) {
+            // 儲存到 ipProfiles
+            const ipProfile = await db.getIpProfile(ctx.user.id);
+            if (ipProfile) {
+              const dbConn2 = await getDb();
+              if (dbConn2) {
+                await dbConn2.update(ipProfiles)
+                  .set({
+                    aiStrategySummary: summary,
+                    aiStrategyUpdatedAt: new Date(),
+                    bestPostingTime: bestTime,
+                    viralPatterns: viralPosts.length > 0 
+                      ? viralPosts.map(p => p.viralAnalysis).filter(Boolean).join('\n---\n')
+                      : null,
+                  })
+                  .where(eq(ipProfiles.userId, ctx.user.id));
+              }
+            }
+          }
+          
+          await db.logApiUsage(ctx.user.id, 'strategy_summary', 'llm', 500, 300);
+          
+          return {
+            success: true,
+            error: null,
+            summary,
+            stats: {
+              totalPosts: postsData.length,
+              avgReach,
+              viralCount: viralPosts.length,
+              bestPostingTime: bestTime,
+            },
+          };
+        } catch (error) {
+          console.error('Failed to generate strategy summary:', error);
+          return {
+            success: false,
+            error: '生成策略總結失敗，請稍後再試',
+            summary: null,
           };
         }
       }),

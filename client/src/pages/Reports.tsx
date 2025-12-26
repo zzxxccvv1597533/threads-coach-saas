@@ -24,6 +24,8 @@ import {
   ChevronUp,
   Loader2,
   FileText,
+  Flame,
+  Sparkles,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -55,6 +57,7 @@ export default function Reports() {
     postingTime: '' as '' | 'morning' | 'noon' | 'evening' | 'night',
     topComment: '',
     selfReflection: '',
+    isViral: false, // 爆文標記
   });
 
   const createPost = trpc.post.create.useMutation({
@@ -86,6 +89,7 @@ export default function Reports() {
         postingTime: '',
         topComment: '',
         selfReflection: '',
+        isViral: false,
       });
       toast.success("數據已更新！");
     },
@@ -99,6 +103,27 @@ export default function Reports() {
     },
     onError: () => {
       toast.error("刪除失敗，請稍後再試");
+    },
+  });
+
+  // 爆文標記 mutation
+  const markAsViral = trpc.post.markAsViral.useMutation({
+    onSuccess: (data) => {
+      utils.post.list.invalidate();
+      utils.post.weeklyReport.invalidate();
+      if (data.isViral) {
+        toast.success("🔥 已標記為爆文，AI 正在分析成功原因...");
+        if (data.viralAnalysis) {
+          setTimeout(() => {
+            toast.success("爆文分析完成！點擊展開查看詳情");
+          }, 1500);
+        }
+      } else {
+        toast.success("已取消爆文標記");
+      }
+    },
+    onError: () => {
+      toast.error("標記失敗，請稍後再試");
     },
   });
 
@@ -151,6 +176,7 @@ export default function Reports() {
       postingTime: metrics.postingTime || undefined,
       topComment: metrics.topComment || undefined,
       selfReflection: metrics.selfReflection || undefined,
+      isViral: metrics.isViral || undefined,
     });
   };
 
@@ -422,10 +448,39 @@ export default function Reports() {
                           <span className="text-xs text-muted-foreground">
                             {post.postedAt ? format(new Date(post.postedAt), 'yyyy/MM/dd', { locale: zhTW }) : '-'}
                           </span>
+                          {/* 爆文徽章 */}
+                          {(post as any).metrics?.[0]?.isViral && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-orange-500 to-red-500 text-white">
+                              <Flame className="w-3 h-3" />
+                              爆文
+                            </span>
+                          )}
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2">
+                        {/* 爆文標記按鈕 */}
+                        <Button
+                          size="sm"
+                          variant={(post as any).metrics?.[0]?.isViral ? "default" : "outline"}
+                          className={(post as any).metrics?.[0]?.isViral 
+                            ? "bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 border-0" 
+                            : ""}
+                          onClick={() => {
+                            const currentIsViral = (post as any).metrics?.[0]?.isViral || false;
+                            markAsViral.mutate({ postId: post.id, isViral: !currentIsViral });
+                          }}
+                          disabled={markAsViral.isPending}
+                        >
+                          {markAsViral.isPending ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Flame className="w-4 h-4 mr-1" />
+                              {(post as any).metrics?.[0]?.isViral ? '已標記' : '標記爆文'}
+                            </>
+                          )}
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
@@ -488,6 +543,19 @@ export default function Reports() {
                                 <p className="text-xs text-muted-foreground">收藏</p>
                               </div>
                             </div>
+                          </div>
+                        )}
+                        
+                        {/* 爆文分析 */}
+                        {(post as any).metrics?.[0]?.isViral && (post as any).metrics?.[0]?.viralAnalysis && (
+                          <div className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 ml-14">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Flame className="w-4 h-4 text-orange-600" />
+                              <p className="text-sm font-medium text-orange-800 dark:text-orange-200">🔥 爆文成功分析</p>
+                            </div>
+                            <p className="text-sm text-orange-900 dark:text-orange-100 whitespace-pre-wrap">
+                              {(post as any).metrics[0].viralAnalysis}
+                            </p>
                           </div>
                         )}
                         
@@ -642,6 +710,30 @@ export default function Reports() {
                       onChange={(e) => setMetrics({ ...metrics, selfReflection: e.target.value })}
                     />
                     <p className="text-xs text-muted-foreground">你的觀察會幫助 AI 更了解你的風格</p>
+                  </div>
+
+                  {/* 爆文標記 */}
+                  <div className="space-y-2">
+                    <Label>爆文標記</Label>
+                    <button
+                      type="button"
+                      onClick={() => setMetrics({ ...metrics, isViral: !metrics.isViral })}
+                      className={`w-full p-3 rounded-lg border text-center transition-all ${
+                        metrics.isViral
+                          ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white border-orange-500'
+                          : 'bg-background border-border hover:border-orange-500/50'
+                      }`}
+                    >
+                      <span className="text-lg">🔥</span>
+                      <p className="text-sm mt-1 font-medium">
+                        {metrics.isViral ? '✅ 已標記為爆文' : '點擊標記為爆文'}
+                      </p>
+                      <p className="text-xs mt-1 opacity-80">
+                        {metrics.isViral 
+                          ? 'AI 將分析這篇貼文的成功原因' 
+                          : '如果這篇表現特別好，標記它讓 AI 學習'}
+                      </p>
+                    </button>
                   </div>
                 </div>
               </div>
