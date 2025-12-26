@@ -593,6 +593,11 @@ export default function WritingStudio() {
           </div>
         )}
 
+        {/* 經營階段提示 */}
+        {growthMetrics && (
+          <GrowthStageHint stage={growthMetrics.currentStage || 'startup'} />
+        )}
+
         {/* Monetization Tip */}
         {shouldShowMonetizeTip && !hasCoreProduct && (
           <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-center justify-between">
@@ -1726,5 +1731,72 @@ function DraftResultWithChat({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// 經營階段提示組件
+function GrowthStageHint({ stage }: { stage: string }) {
+  const stageInfo: Record<string, {
+    name: string;
+    color: string;
+    bgColor: string;
+    recommendedTypes: string[];
+    tips: string;
+  }> = {
+    startup: {
+      name: '起步階段',
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50 border-blue-200',
+      recommendedTypes: ['故事型', '知識型', '閃聊型', '觀點型'],
+      tips: '建立人設和信任感，先不要推銷'
+    },
+    growth: {
+      name: '成長階段',
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-50 border-emerald-200',
+      recommendedTypes: ['提問型', '投票型', '觀點型', '對話型'],
+      tips: '增加互動，引導加入 LINE'
+    },
+    monetization: {
+      name: '變現階段',
+      color: 'text-amber-600',
+      bgColor: 'bg-amber-50 border-amber-200',
+      recommendedTypes: ['知識型', '故事型', '引流品推廣'],
+      tips: '可以分享產品，保持 70% 情緒內容'
+    },
+    scaling: {
+      name: '規模化階段',
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50 border-purple-200',
+      recommendedTypes: ['全部類型'],
+      tips: '可以更積極推廣產品'
+    }
+  };
+
+  const current = stageInfo[stage] || stageInfo.startup;
+
+  return (
+    <div className={`rounded-lg p-3 border ${current.bgColor}`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className={`text-sm font-medium ${current.color}`}>
+            🚀 {current.name}
+          </span>
+          <span className="text-sm text-muted-foreground">
+            {current.tips}
+          </span>
+        </div>
+        <div className="flex gap-1">
+          {current.recommendedTypes.slice(0, 3).map((type, index) => (
+            <span 
+              key={index}
+              className="text-xs px-2 py-0.5 rounded-full bg-white/70 border border-border/50"
+            >
+              {type}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

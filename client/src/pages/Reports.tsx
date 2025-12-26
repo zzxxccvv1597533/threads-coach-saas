@@ -37,6 +37,9 @@ export default function Reports() {
     comments: 0,
     reposts: 0,
     saves: 0,
+    postingTime: '' as '' | 'morning' | 'noon' | 'evening' | 'night',
+    topComment: '',
+    selfReflection: '',
   });
 
   const createPost = trpc.post.create.useMutation({
@@ -56,7 +59,16 @@ export default function Reports() {
       utils.post.list.invalidate();
       utils.post.weeklyReport.invalidate();
       setMetricsDialogOpen(false);
-      setMetrics({ reach: 0, likes: 0, comments: 0, reposts: 0, saves: 0 });
+      setMetrics({ 
+        reach: 0, 
+        likes: 0, 
+        comments: 0, 
+        reposts: 0, 
+        saves: 0,
+        postingTime: '',
+        topComment: '',
+        selfReflection: '',
+      });
       toast.success("數據已更新！");
     },
   });
@@ -73,7 +85,14 @@ export default function Reports() {
     if (!selectedPostId) return;
     addMetrics.mutate({
       postId: selectedPostId,
-      ...metrics,
+      reach: metrics.reach,
+      likes: metrics.likes,
+      comments: metrics.comments,
+      reposts: metrics.reposts,
+      saves: metrics.saves,
+      postingTime: metrics.postingTime || undefined,
+      topComment: metrics.topComment || undefined,
+      selfReflection: metrics.selfReflection || undefined,
     });
   };
 
@@ -252,6 +271,7 @@ export default function Reports() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 pt-4">
+              {/* 基本數據 */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>觸及</Label>
@@ -294,6 +314,66 @@ export default function Reports() {
                   />
                 </div>
               </div>
+
+              {/* 戰報閉環學習欄位 */}
+              <div className="border-t pt-4">
+                <p className="text-sm font-medium mb-3">📊 深度分析（選填）</p>
+                
+                <div className="space-y-4">
+                  {/* 發文時段 */}
+                  <div className="space-y-2">
+                    <Label>發文時段</Label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { value: 'morning', label: '早晨', emoji: '🌅' },
+                        { value: 'noon', label: '中午', emoji: '☀️' },
+                        { value: 'evening', label: '傍晚', emoji: '🌇' },
+                        { value: 'night', label: '晚上', emoji: '🌙' },
+                      ].map((time) => (
+                        <button
+                          key={time.value}
+                          type="button"
+                          onClick={() => setMetrics({ 
+                            ...metrics, 
+                            postingTime: metrics.postingTime === time.value ? '' : time.value as typeof metrics.postingTime 
+                          })}
+                          className={`p-2 rounded-lg border text-center transition-all ${
+                            metrics.postingTime === time.value
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-background border-border hover:border-primary/50'
+                          }`}
+                        >
+                          <span className="text-lg">{time.emoji}</span>
+                          <p className="text-xs mt-1">{time.label}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 最熱門留言 */}
+                  <div className="space-y-2">
+                    <Label>最熱門留言</Label>
+                    <Input
+                      placeholder="貼上互動最高的留言內容..."
+                      value={metrics.topComment}
+                      onChange={(e) => setMetrics({ ...metrics, topComment: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">幫助 AI 了解什麼內容最能引起共鳴</p>
+                  </div>
+
+                  {/* 自我反思 */}
+                  <div className="space-y-2">
+                    <Label>自我反思</Label>
+                    <Input
+                      placeholder="你覺得這篇什麼有效？什麼可以改進？"
+                      value={metrics.selfReflection}
+                      onChange={(e) => setMetrics({ ...metrics, selfReflection: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">你的觀察會幫助 AI 更了解你的風格</p>
+                  </div>
+                </div>
+              </div>
+
               <Button onClick={handleAddMetrics} className="w-full">
                 儲存數據
               </Button>

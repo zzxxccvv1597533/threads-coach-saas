@@ -117,19 +117,53 @@ export default function Tasks() {
           {taskTypes && Object.entries(taskTypes).map(([key, type]) => {
             const Icon = taskIcons[key as keyof typeof taskIcons];
             const colorClass = taskColors[key as keyof typeof taskColors];
+            const taskType = type as {
+              name: string;
+              description: string;
+              timeLevel?: string;
+              targetCount?: string;
+              tips: string[];
+              templates?: string[];
+            };
             return (
               <Card key={key} className="elegant-card">
                 <CardContent className="pt-6">
                   <div className={`w-10 h-10 rounded-lg ${colorClass} flex items-center justify-center mb-3`}>
                     <Icon className="w-5 h-5" />
                   </div>
-                  <h3 className="font-semibold mb-1">{type.name}</h3>
-                  <p className="text-xs text-muted-foreground mb-3">{type.description}</p>
-                  <div className="space-y-1">
-                    {type.tips.slice(0, 2).map((tip, i) => (
+                  <h3 className="font-semibold mb-1">{taskType.name}</h3>
+                  <p className="text-xs text-muted-foreground mb-2">{taskType.description}</p>
+                  
+                  {/* 時間等級和目標數量 */}
+                  <div className="flex gap-2 mb-3">
+                    {taskType.timeLevel && (
+                      <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                        ⏱️ {taskType.timeLevel}
+                      </span>
+                    )}
+                    {taskType.targetCount && (
+                      <span className="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                        🎯 {taskType.targetCount}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* 技巧提示 */}
+                  <div className="space-y-1 mb-3">
+                    {taskType.tips.slice(0, 2).map((tip, i) => (
                       <p key={i} className="text-xs text-muted-foreground">• {tip}</p>
                     ))}
                   </div>
+                  
+                  {/* 模板範例 */}
+                  {taskType.templates && taskType.templates.length > 0 && (
+                    <div className="bg-muted/50 rounded-lg p-2">
+                      <p className="text-xs font-medium mb-1">📝 範例句型</p>
+                      <p className="text-xs text-muted-foreground italic">
+                        「{taskType.templates[0]}」
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );

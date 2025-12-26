@@ -116,6 +116,12 @@ interface HealthCheckResult {
   };
   totalScore: number;
   overallAdvice: string;
+  redlineMarks?: Array<{
+    original: string;
+    suggestion: string;
+    reason: string;
+    category: string;
+  }>;
 }
 
 // 檢查項目組件
@@ -726,6 +732,52 @@ export default function Optimize() {
                   </div>
                 </div>
               </div>
+
+              {/* 紅線標記區塊 */}
+              {healthCheckResult.redlineMarks && healthCheckResult.redlineMarks.length > 0 && (
+                <div className="mt-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                      <span className="text-lg">✏️</span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">教學紅線標記</h3>
+                      <p className="text-xs text-muted-foreground">學會辨識這些問題，下次就能避免</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    {healthCheckResult.redlineMarks.map((mark, index) => (
+                      <div key={index} className="bg-white/80 rounded-lg border border-border/50 p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                            {mark.category}
+                          </span>
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          {/* 原文 */}
+                          <div className="bg-red-50/50 rounded-lg p-3 border border-red-200/50">
+                            <p className="text-xs text-red-600 font-medium mb-1">❌ 原文</p>
+                            <p className="text-sm text-red-800 line-through decoration-red-400">
+                              {mark.original}
+                            </p>
+                          </div>
+                          {/* 建議改寫 */}
+                          <div className="bg-emerald-50/50 rounded-lg p-3 border border-emerald-200/50">
+                            <p className="text-xs text-emerald-600 font-medium mb-1">✅ 建議改寫</p>
+                            <p className="text-sm text-emerald-800">
+                              {mark.suggestion}
+                            </p>
+                          </div>
+                        </div>
+                        {/* 原因說明 */}
+                        <div className="mt-3 text-xs text-muted-foreground bg-muted/30 rounded p-2">
+                          <span className="font-medium">💡 為什麼：</span> {mark.reason}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

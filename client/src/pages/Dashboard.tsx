@@ -15,6 +15,8 @@ import {
   TrendingUp,
   FileText,
   Clock,
+  Rocket,
+  ChevronRight,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -25,6 +27,7 @@ export default function Dashboard() {
   const { data: tasks, isLoading: tasksLoading } = trpc.task.today.useQuery();
   const { data: weeklyReport, isLoading: reportLoading } = trpc.post.weeklyReport.useQuery();
   const { data: contentTypeStats } = trpc.draft.contentTypeStats.useQuery();
+  const { data: growthMetrics, isLoading: metricsLoading } = trpc.growthMetrics.get.useQuery();
 
   // 計算 IP 完成度
   const calculateIpProgress = () => {
@@ -132,6 +135,13 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* 經營階段卡片 */}
+        <GrowthStageCard 
+          stage={growthMetrics?.currentStage || 'startup'} 
+          isLoading={metricsLoading}
+          onNavigate={() => setLocation('/ip-profile')}
+        />
 
         {/* Main Content Grid */}
         <div className="grid gap-6 lg:grid-cols-2">
@@ -397,6 +407,134 @@ function ContentTypeChart({ stats }: { stats: { contentType: string; count: numb
         ))}
       </div>
     </div>
+  );
+}
+
+// 經營階段卡片組件
+function GrowthStageCard({ 
+  stage, 
+  isLoading, 
+  onNavigate 
+}: { 
+  stage: string; 
+  isLoading: boolean;
+  onNavigate: () => void;
+}) {
+  const stageInfo: Record<string, {
+    name: string;
+    description: string;
+    tips: string;
+    recommendedTypes: string[];
+    color: string;
+    bgColor: string;
+    progress: number;
+  }> = {
+    startup: {
+      name: '起步階段',
+      description: '建立人設與信任',
+      tips: '多分享個人故事和專業知識，建立人設和信任感，先不要推銷',
+      recommendedTypes: ['故事型', '知識型', '閃聊型', '觀點型'],
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50 border-blue-200',
+      progress: 25,
+    },
+    growth: {
+      name: '成長階段',
+      description: '擴大影響力',
+      tips: '增加互動型內容，引導加入 LINE 或電子報',
+      recommendedTypes: ['提問型', '投票型', '觀點型', '對話型'],
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-50 border-emerald-200',
+      progress: 50,
+    },
+    monetization: {
+      name: '變現階段',
+      description: '導入產品',
+      tips: '可以開始分享產品相關內容，但仍要保持 70% 情緒內容',
+      recommendedTypes: ['知識型', '故事型', '引流品推廣'],
+      color: 'text-amber-600',
+      bgColor: 'bg-amber-50 border-amber-200',
+      progress: 75,
+    },
+    scaling: {
+      name: '規模化階段',
+      description: '系統化運營',
+      tips: '可以更積極推廣產品，建立自動化流程',
+      recommendedTypes: ['全部類型'],
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50 border-purple-200',
+      progress: 100,
+    },
+  };
+
+  const currentStage = stageInfo[stage] || stageInfo.startup;
+
+  if (isLoading) {
+    return (
+      <Card className="elegant-card">
+        <CardContent className="p-6">
+          <Skeleton className="h-6 w-32 mb-4" />
+          <Skeleton className="h-4 w-full mb-2" />
+          <Skeleton className="h-4 w-3/4" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className={`elegant-card border ${currentStage.bgColor}`}>
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <Rocket className={`w-5 h-5 ${currentStage.color}`} />
+              <span className={`text-sm font-medium ${currentStage.color}`}>
+                當前經營階段
+              </span>
+            </div>
+            <h3 className="text-xl font-bold mb-1">{currentStage.name}</h3>
+            <p className="text-sm text-muted-foreground mb-3">{currentStage.description}</p>
+            
+            {/* 進度條 */}
+            <div className="mb-4">
+              <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                <span>經營進度</span>
+                <span>{currentStage.progress}%</span>
+              </div>
+              <Progress value={currentStage.progress} className="h-2" />
+            </div>
+
+            {/* 策略提示 */}
+            <div className="bg-white/50 rounded-lg p-3 mb-3">
+              <p className="text-sm font-medium mb-1">💡 策略提示</p>
+              <p className="text-sm text-muted-foreground">{currentStage.tips}</p>
+            </div>
+
+            {/* 推薦內容類型 */}
+            <div className="flex flex-wrap gap-2">
+              <span className="text-xs text-muted-foreground">推薦內容：</span>
+              {currentStage.recommendedTypes.map((type, index) => (
+                <span 
+                  key={index}
+                  className="text-xs px-2 py-1 rounded-full bg-white/70 border border-border/50"
+                >
+                  {type}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* 右側操作 */}
+          <button 
+            onClick={onNavigate}
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            設定
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
