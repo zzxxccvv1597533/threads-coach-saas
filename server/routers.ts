@@ -1884,8 +1884,8 @@ ${selectedStyle}
           
           poll: `寫一篇「投票型」貼文，讓大家選擇。
 
-主題：${flexibleInput.topic || input.material || ''}
-選項：${(flexibleInput.options || []).join(' vs ')}
+二選一情境：${flexibleInput.binary_choice || input.material || ''}
+調查目的：${flexibleInput.survey_purpose || ''}
 
 結構要求：
 1. 簡短介紹投票主題

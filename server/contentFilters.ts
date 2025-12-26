@@ -406,24 +406,55 @@ export function applyContentFilters(
 
 /**
  * 從用戶風格分析中提取保留詞
+ * 安全處理各種可能的資料格式（陣列、字串、物件等）
  */
 export function extractPreservedWords(userStyle: {
-  commonPhrases?: string[];
-  catchphrases?: string[];
-  viralElements?: string[];
+  commonPhrases?: string[] | string | null;
+  catchphrases?: string[] | string | null;
+  viralElements?: {
+    identityTags?: string[];
+    emotionWords?: string[];
+    ctaStyles?: string[];
+  } | string[] | string | null;
 } | null): string[] {
   if (!userStyle) return [];
   
   const preserved: string[] = [];
   
-  if (userStyle.commonPhrases) {
-    preserved.push(...userStyle.commonPhrases);
-  }
-  if (userStyle.catchphrases) {
-    preserved.push(...userStyle.catchphrases);
-  }
+  // 安全地將值轉換為陣列
+  const toArray = (value: unknown): string[] => {
+    if (!value) return [];
+    if (Array.isArray(value)) {
+      return value.filter((v): v is string => typeof v === 'string');
+    }
+    if (typeof value === 'string') {
+      return value.split(/[,;，；]/).map(s => s.trim()).filter(Boolean);
+    }
+    return [];
+  };
+  
+  // 處理 commonPhrases
+  preserved.push(...toArray(userStyle.commonPhrases));
+  
+  // 處理 catchphrases
+  preserved.push(...toArray(userStyle.catchphrases));
+  
+  // 處理 viralElements（可能是物件或陣列）
   if (userStyle.viralElements) {
-    preserved.push(...userStyle.viralElements);
+    if (typeof userStyle.viralElements === 'object' && !Array.isArray(userStyle.viralElements)) {
+      // viralElements 是物件，提取其中的陣列
+      const ve = userStyle.viralElements as {
+        identityTags?: string[];
+        emotionWords?: string[];
+        ctaStyles?: string[];
+      };
+      preserved.push(...toArray(ve.identityTags));
+      preserved.push(...toArray(ve.emotionWords));
+      preserved.push(...toArray(ve.ctaStyles));
+    } else {
+      // viralElements 是陣列或字串
+      preserved.push(...toArray(userStyle.viralElements));
+    }
   }
   
   return preserved;

@@ -1105,3 +1105,15 @@
 ## Bug 修復 - 發文工作室 Spread syntax 錯誤 v2 (2024-12-26)
 - [ ] 定位 Spread syntax requires ...iterable[Symbol.iterator] 錯誤來源
 - [ ] 修復後端 API 中的 spread 語法問題
+
+
+## Bug 修復 - Spread syntax 錯誤完整修復 (2024-12-27)
+- [ ] 後端：更新 normalizeFlexibleInput 函數（完整版）
+- [ ] 後端：將 typeSpecificPrompts 中所有 input.flexibleInput?.X 改為 flexibleInput.X
+- [ ] 前端：更新 typeInputs state 型別支援陣列
+- [ ] 前端：更新 handleGenerateHooks 將陣列 join 成字串
+- [ ] 前端：更新 handleGenerateFullDraft 保留陣列格式
+
+
+## Bug 修復 - Spread syntax 錯誤 (2024-12-27)
+- [x] 修復 generateDraft Spread syntax 錯誤 - contentFilters.ts extractPreservedWords 函數安全處理非陣列值
