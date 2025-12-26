@@ -996,3 +996,27 @@
 ### 數據顯示優化
 - [x] Dialog 中顯示平均觸及、互動率、週發文數、總發文數
 - [x] 顯示哪些數據是自動計算、哪些需要手動輸入
+
+
+## 系統優化 Phase 35 - 系統問題修復 (2024-12-26)
+
+### 問題一：文案健檢 diff 欄位名稱修正
+- [x] 修正前端 Type 定義：original → originalText
+- [x] 修正前端 Type 定義：suggestion → suggestedText
+- [x] 修正 JSX 中的欄位引用
+
+### 問題二：IP 地基新增 LINE 連結欄位
+- [x] 在 ipProfiles schema 新增 lineOfficialUrl, lineOfficialName 欄位
+- [x] 在 IP 地基前端新增 LINE 官方帳號設定卡片
+- [x] 執行資料庫遷移 (0017_bright_zuras.sql)
+
+### 問題三：戰報「生成策略總結」按鈕
+- [x] 在 Reports.tsx 新增 generateStrategySummary mutation
+- [x] 新增「生成策略總結」按鈕
+- [x] 新增 AI 策略總結卡片和統計數據顯示
+
+### 問題四：hasLineLink/hasProduct 自動同步
+- [x] 修改 updateMetricsFromReports 自動判定 hasLineLink
+- [x] 修改 updateMetricsFromReports 自動判定 hasProduct
+- [x] 從 IP 地基 lineOfficialUrl 自動同步 hasLineLink
+- [x] 從 userProducts 自動同步 hasProduct（檢查是否有核心產品）

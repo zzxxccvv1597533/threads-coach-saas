@@ -117,8 +117,8 @@ interface HealthCheckResult {
   totalScore: number;
   overallAdvice: string;
   redlineMarks?: Array<{
-    original: string;
-    suggestion: string;
+    originalText: string;
+    suggestedText: string;
     reason: string;
     category: string;
   }>;
@@ -758,14 +758,14 @@ export default function Optimize() {
                           <div className="bg-red-50/50 rounded-lg p-3 border border-red-200/50">
                             <p className="text-xs text-red-600 font-medium mb-1">❌ 原文</p>
                             <p className="text-sm text-red-800 line-through decoration-red-400">
-                              {mark.original}
+                              {mark.originalText}
                             </p>
                           </div>
                           {/* 建議改寫 */}
                           <div className="bg-emerald-50/50 rounded-lg p-3 border border-emerald-200/50">
                             <p className="text-xs text-emerald-600 font-medium mb-1">✅ 建議改寫</p>
                             <p className="text-sm text-emerald-800">
-                              {mark.suggestion}
+                              {mark.suggestedText}
                             </p>
                           </div>
                         </div>

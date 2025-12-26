@@ -111,6 +111,9 @@ export const ipProfiles = mysqlTable("ip_profiles", {
   bestPerformingType: varchar("bestPerformingType", { length: 50 }), // 表現最好的內容類型
   bestPostingTime: varchar("bestPostingTime", { length: 20 }), // 最佳發文時段
   viralPatterns: text("viralPatterns"), // 爆文模式分析
+  // LINE 官方帳號
+  lineOfficialUrl: varchar("lineOfficialUrl", { length: 255 }), // LINE 官方帳號連結
+  lineOfficialName: varchar("lineOfficialName", { length: 100 }), // LINE 官方帳號名稱
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

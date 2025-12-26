@@ -106,8 +106,40 @@ export default function Reports() {
     },
   });
 
+  // 策略總結狀態
+  const [strategySummary, setStrategySummary] = useState<{
+    summary: string | null;
+    stats: {
+      totalPosts: number;
+      avgReach: number;
+      viralCount: number;
+      bestPostingTime: string | null;
+    };
+  } | null>(null);
+  const [showStrategySummary, setShowStrategySummary] = useState(false);
+
+  // 生成策略總結 mutation
+  const generateStrategySummary = trpc.post.generateStrategySummary.useMutation({
+    onSuccess: (data) => {
+      if (data.success && data.stats) {
+        setStrategySummary({
+          summary: data.summary,
+          stats: data.stats,
+        });
+        setShowStrategySummary(true);
+        toast.success("策略總結已生成！");
+      } else {
+        toast.error(data.error || "生成失敗");
+      }
+    },
+    onError: (error) => {
+      toast.error(error.message || "生成失敗，請稍後再試");
+    },
+  });
+
   // 爆文標記 mutation
   const markAsViral = trpc.post.markAsViral.useMutation({
+
     onSuccess: (data) => {
       utils.post.list.invalidate();
       utils.post.weeklyReport.invalidate();
@@ -386,6 +418,92 @@ export default function Reports() {
                   </div>
                 )}
               </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 策略總結區塊 */}
+        <Card className="elegant-card bg-gradient-to-r from-purple-500/5 to-indigo-500/5">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-purple-500" />
+                AI 策略總結
+              </CardTitle>
+              <Button
+                onClick={() => generateStrategySummary.mutate()}
+                disabled={generateStrategySummary.isPending || !posts || posts.length < 5}
+                variant="outline"
+                size="sm"
+              >
+                {generateStrategySummary.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    分析中...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    生成策略總結
+                  </>
+                )}
+              </Button>
+            </div>
+            <CardDescription>
+              根據你的貼文數據，AI 會分析並給出個人化的經營建議
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!posts || posts.length < 5 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>需要至少 5 篇貼文數據才能生成策略總結</p>
+                <p className="text-sm mt-2">目前有 {posts?.length || 0} 篇貼文</p>
+              </div>
+            ) : showStrategySummary && strategySummary ? (
+              <div className="space-y-4">
+                {/* 統計摘要 */}
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div className="text-center p-3 rounded-lg bg-background/50">
+                    <p className="text-2xl font-bold text-purple-600">{strategySummary.stats.totalPosts}</p>
+                    <p className="text-xs text-muted-foreground">分析貼文數</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-background/50">
+                    <p className="text-2xl font-bold text-blue-600">{strategySummary.stats.avgReach}</p>
+                    <p className="text-xs text-muted-foreground">平均觸及</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-background/50">
+                    <p className="text-2xl font-bold text-orange-600">{strategySummary.stats.viralCount}</p>
+                    <p className="text-xs text-muted-foreground">爆文數</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-background/50">
+                    <p className="text-lg font-bold text-emerald-600">
+                      {strategySummary.stats.bestPostingTime === 'morning' && '早上'}
+                      {strategySummary.stats.bestPostingTime === 'noon' && '中午'}
+                      {strategySummary.stats.bestPostingTime === 'evening' && '晚上'}
+                      {strategySummary.stats.bestPostingTime === 'night' && '深夜'}
+                      {!strategySummary.stats.bestPostingTime && '無數據'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">最佳發文時段</p>
+                  </div>
+                </div>
+                
+                {/* AI 策略建議 */}
+                {strategySummary.summary && (
+                  <div className="p-4 rounded-lg bg-purple-50/50 border border-purple-200/50">
+                    <p className="text-sm font-medium text-purple-700 mb-2">💡 AI 策略建議</p>
+                    <div className="text-sm text-purple-900 whitespace-pre-wrap">
+                      {strategySummary.summary}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Sparkles className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>點擊「生成策略總結」讓 AI 分析你的貼文數據</p>
+                <p className="text-sm mt-2">目前有 {posts?.length || 0} 篇貼文可供分析</p>
+              </div>
             )}
           </CardContent>
         </Card>

@@ -1042,6 +1042,14 @@ export async function updateMetricsFromReports(userId: number): Promise<void> {
   // 獲取現有指標
   const existing = await getUserGrowthMetrics(userId);
   
+  // 自動判定 hasLineLink（從 IP 地基檢查）
+  const ipProfile = await getIpProfile(userId);
+  const hasLineLink = !!(ipProfile?.lineOfficialUrl && ipProfile.lineOfficialUrl.trim().length > 0);
+  
+  // 自動判定 hasProduct（從 userProducts 檢查是否有核心產品）
+  const userProductsList = await getUserProductsByUserId(userId);
+  const hasProduct = userProductsList.some((p: UserProduct) => p.productType === 'core');
+  
   // 更新指標（保留用戶手動設定的欄位，如 followerCount、manualStage）
   await upsertUserGrowthMetrics({
     userId,
@@ -1050,8 +1058,8 @@ export async function updateMetricsFromReports(userId: number): Promise<void> {
     avgEngagementRate: calculatedMetrics.avgEngagementRate,
     postFrequency: calculatedMetrics.postFrequency,
     totalPosts: calculatedMetrics.totalPosts,
-    hasLineLink: existing?.hasLineLink || false,
-    hasProduct: existing?.hasProduct || false,
+    hasLineLink,
+    hasProduct,
     totalSales: existing?.totalSales || 0,
     manualStage: existing?.manualStage || null,
   });

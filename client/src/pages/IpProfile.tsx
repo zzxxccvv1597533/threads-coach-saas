@@ -32,6 +32,7 @@ import {
   BookOpen,
   Wand2,
   MessageSquare,
+  Link2,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -125,6 +126,9 @@ export default function IpProfile() {
     // 九宮格內容矩陣
     contentMatrixAudiences: { core: "", potential: "", opportunity: "" },
     contentMatrixThemes: [] as string[],
+    // LINE 官方帳號
+    lineOfficialUrl: "",
+    lineOfficialName: "",
   });
 
   const [newAudience, setNewAudience] = useState({
@@ -215,6 +219,9 @@ export default function IpProfile() {
         // 九宮格內容矩陣
         contentMatrixAudiences: (profile.contentMatrixAudiences as { core: string; potential: string; opportunity: string }) || { core: "", potential: "", opportunity: "" },
         contentMatrixThemes: (profile.contentMatrixThemes as string[]) || [],
+        // LINE 官方帳號
+        lineOfficialUrl: profile.lineOfficialUrl || "",
+        lineOfficialName: profile.lineOfficialName || "",
       });
       // 設定最後儲存時間
       if (profile.updatedAt) {
@@ -247,6 +254,8 @@ export default function IpProfile() {
         identityTags: (profile.identityTags as string[]) || [],
         contentMatrixAudiences: (profile.contentMatrixAudiences as { core: string; potential: string; opportunity: string }) || { core: "", potential: "", opportunity: "" },
         contentMatrixThemes: (profile.contentMatrixThemes as string[]) || [],
+        lineOfficialUrl: profile.lineOfficialUrl || "",
+        lineOfficialName: profile.lineOfficialName || "",
       } : {
         occupation: "",
         voiceTone: "",
@@ -262,6 +271,8 @@ export default function IpProfile() {
         identityTags: [] as string[],
         contentMatrixAudiences: { core: "", potential: "", opportunity: "" },
         contentMatrixThemes: [] as string[],
+        lineOfficialUrl: "",
+        lineOfficialName: "",
       };
       initialFormDataRef.current = initialData;
       isInitializedRef.current = true;
@@ -288,7 +299,9 @@ export default function IpProfile() {
       formData.heroJourneyMission !== initial.heroJourneyMission ||
       JSON.stringify(formData.identityTags) !== JSON.stringify(initial.identityTags) ||
       JSON.stringify(formData.contentMatrixAudiences) !== JSON.stringify(initial.contentMatrixAudiences) ||
-      JSON.stringify(formData.contentMatrixThemes) !== JSON.stringify(initial.contentMatrixThemes);
+      JSON.stringify(formData.contentMatrixThemes) !== JSON.stringify(initial.contentMatrixThemes) ||
+      formData.lineOfficialUrl !== initial.lineOfficialUrl ||
+      formData.lineOfficialName !== initial.lineOfficialName;
     
     setHasUnsavedChanges(hasChanges);
     
@@ -850,6 +863,62 @@ export default function IpProfile() {
                     </p>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* LINE 官方帳號 */}
+            <Card className="elegant-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Link2 className="w-5 h-5 text-emerald-500" />
+                  LINE 官方帳號
+                </CardTitle>
+                <CardDescription>
+                  設定你的 LINE 官方帳號，讓 AI 在生成內容時可以引導粉絲加入
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5">
+                  <div className="flex items-start gap-2">
+                    <Info className="w-4 h-4 text-emerald-600 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-emerald-700 mb-1">為什麼要設定 LINE 官方帳號？</p>
+                      <p className="text-sm text-muted-foreground">
+                        設定後，系統會自動將你的經營階段評分加上「LINE 連結」的分數，
+                        並且 AI 在生成變現內容時會自動引導粉絲加入你的 LINE。
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>LINE 官方帳號名稱</Label>
+                    <Input
+                      placeholder="例如：@yourlineid 或 你的官方帳號名稱"
+                      value={formData.lineOfficialName}
+                      onChange={(e) => setFormData({ ...formData, lineOfficialName: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>LINE 官方帳號連結</Label>
+                    <Input
+                      placeholder="https://line.me/R/ti/p/@yourlineid"
+                      value={formData.lineOfficialUrl}
+                      onChange={(e) => setFormData({ ...formData, lineOfficialUrl: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      請輸入完整的 LINE 官方帳號連結，可以從 LINE Official Account Manager 中取得
+                    </p>
+                  </div>
+                </div>
+
+                {formData.lineOfficialUrl && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                    <span className="text-sm text-emerald-700">已設定 LINE 官方帳號</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
