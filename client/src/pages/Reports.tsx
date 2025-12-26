@@ -34,8 +34,15 @@ export default function Reports() {
   
   const [newPostUrl, setNewPostUrl] = useState("");
   const [newPostContent, setNewPostContent] = useState("");
-  const [isParsingUrl, setIsParsingUrl] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  // 新增貼文時的數據
+  const [newMetrics, setNewMetrics] = useState({
+    reach: 0,
+    likes: 0,
+    comments: 0,
+    reposts: 0,
+    saves: 0,
+  });
   const [expandedPostId, setExpandedPostId] = useState<number | null>(null);
   const [metricsDialogOpen, setMetricsDialogOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
@@ -53,8 +60,10 @@ export default function Reports() {
   const createPost = trpc.post.create.useMutation({
     onSuccess: () => {
       utils.post.list.invalidate();
+      utils.post.weeklyReport.invalidate();
       setNewPostUrl("");
       setNewPostContent("");
+      setNewMetrics({ reach: 0, likes: 0, comments: 0, reposts: 0, saves: 0 });
       setDialogOpen(false);
       toast.success("貼文已記錄！");
     },
@@ -93,37 +102,20 @@ export default function Reports() {
     },
   });
 
-  const parseThreadsUrl = trpc.post.parseThreadsUrl.useMutation({
-    onSuccess: (data) => {
-      if (data.content) {
-        setNewPostContent(data.content);
-        toast.success("已抓取貼文內文");
-      } else {
-        toast.info("無法抓取內文，請手動輸入");
-      }
-      setIsParsingUrl(false);
-    },
-    onError: () => {
-      toast.error("解析失敗，請手動輸入內文");
-      setIsParsingUrl(false);
-    },
-  });
+
 
   const handleCreatePost = () => {
     if (!newPostUrl.trim()) {
       toast.error("請輸入貼文連結");
       return;
     }
-    createPost.mutate({ threadUrl: newPostUrl });
-  };
-
-  const handleParseUrl = () => {
-    if (!newPostUrl.trim()) {
-      toast.error("請先輸入 Threads 連結");
-      return;
-    }
-    setIsParsingUrl(true);
-    parseThreadsUrl.mutate({ url: newPostUrl });
+    createPost.mutate({ 
+      threadUrl: newPostUrl,
+      content: newPostContent || undefined,
+      metrics: (newMetrics.reach || newMetrics.likes || newMetrics.comments || newMetrics.reposts || newMetrics.saves) 
+        ? newMetrics 
+        : undefined,
+    });
   };
 
   const handleDeletePost = (postId: number) => {
@@ -196,43 +188,79 @@ export default function Reports() {
                 {/* Threads 連結 */}
                 <div className="space-y-2">
                   <Label>貼文連結 *</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="https://www.threads.net/..."
-                      value={newPostUrl}
-                      onChange={(e) => setNewPostUrl(e.target.value)}
-                      className="flex-1"
-                    />
-                    <Button 
-                      type="button" 
-                      variant="outline"
-                      onClick={handleParseUrl}
-                      disabled={isParsingUrl || !newPostUrl.trim()}
-                    >
-                      {isParsingUrl ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        '抓取內文'
-                      )}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    貼上 Threads 連結後點擊「抓取內文」自動填入
-                  </p>
+                  <Input
+                    placeholder="https://www.threads.net/..."
+                    value={newPostUrl}
+                    onChange={(e) => setNewPostUrl(e.target.value)}
+                  />
                 </div>
 
                 {/* 貼文內文 */}
                 <div className="space-y-2">
-                  <Label>貼文內文（可選）</Label>
+                  <Label>貼文內文</Label>
                   <textarea
-                    placeholder="貼上你的貼文內文，方便後續分析..."
+                    placeholder="貼上你的貼文內文..."
                     value={newPostContent}
                     onChange={(e) => setNewPostContent(e.target.value)}
-                    className="w-full min-h-[120px] px-3 py-2 text-sm rounded-md border border-input bg-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+                    className="w-full min-h-[100px] px-3 py-2 text-sm rounded-md border border-input bg-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    輸入內文可以在列表中顯示標題，並用於 AI 分析
-                  </p>
+                </div>
+
+                {/* 互動數據 */}
+                <div className="space-y-2">
+                  <Label>互動數據</Label>
+                  <div className="grid grid-cols-5 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">觸及</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={newMetrics.reach || ''}
+                        onChange={(e) => setNewMetrics(prev => ({ ...prev, reach: parseInt(e.target.value) || 0 }))}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">愛心</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={newMetrics.likes || ''}
+                        onChange={(e) => setNewMetrics(prev => ({ ...prev, likes: parseInt(e.target.value) || 0 }))}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">留言</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={newMetrics.comments || ''}
+                        onChange={(e) => setNewMetrics(prev => ({ ...prev, comments: parseInt(e.target.value) || 0 }))}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">轉發</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={newMetrics.reposts || ''}
+                        onChange={(e) => setNewMetrics(prev => ({ ...prev, reposts: parseInt(e.target.value) || 0 }))}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">收藏</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={newMetrics.saves || ''}
+                        onChange={(e) => setNewMetrics(prev => ({ ...prev, saves: parseInt(e.target.value) || 0 }))}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <Button 

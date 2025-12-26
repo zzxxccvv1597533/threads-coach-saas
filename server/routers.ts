@@ -3065,18 +3065,52 @@ ${input.context ? `貼文內容是關於：${input.context}` : ''}
         draftPostId: z.number().optional(),
         threadUrl: z.string(),
         postedAt: z.date().optional(),
+        content: z.string().optional(),
+        metrics: z.object({
+          reach: z.number().optional(),
+          likes: z.number().optional(),
+          comments: z.number().optional(),
+          reposts: z.number().optional(),
+          saves: z.number().optional(),
+        }).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         // 如果有關聯草稿，更新草稿狀態
         if (input.draftPostId) {
           await db.updateDraft(input.draftPostId, { status: 'published' });
         }
+        
+        // 如果有內文但沒有關聯草稿，創建一個簡單的草稿來儲存內文
+        let draftId = input.draftPostId;
+        if (input.content && !draftId) {
+          const draft = await db.createDraft({
+            userId: ctx.user.id,
+            body: input.content,
+            contentType: 'casual',
+            status: 'published',
+          });
+          draftId = draft?.id;
+        }
+        
         const post = await db.createPost({
           userId: ctx.user.id,
-          draftPostId: input.draftPostId,
+          draftPostId: draftId,
           threadUrl: input.threadUrl,
           postedAt: input.postedAt || new Date(),
         });
+        
+        // 如果有數據，同時創建 metrics
+        if (post && input.metrics) {
+          await db.createPostMetric({
+            postId: post.id,
+            reach: input.metrics.reach || 0,
+            likes: input.metrics.likes || 0,
+            comments: input.metrics.comments || 0,
+            reposts: input.metrics.reposts || 0,
+            saves: input.metrics.saves || 0,
+          });
+        }
+        
         return post;
       }),
 
