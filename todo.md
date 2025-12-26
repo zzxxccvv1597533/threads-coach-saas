@@ -1038,3 +1038,16 @@
 ## Bug 修復 - 發文工作室 Spread syntax 錯誤 (2024-12-26)
 - [x] 定位 Spread syntax requires ...iterable[Symbol.iterator] 錯誤來源
 - [x] 修復 handleGenerateDraft 函數，正確傳遞 flexibleInput 參數
+
+
+## Demo 資料建立 (2024-12-26)
+- [x] 建立 Demo IP 地基資料（人設三支柱、英雄旅程、語氣風格、AI策略總結）
+- [x] 建立 Demo 受眾分群資料（3個目標受眾）
+- [x] 建立 Demo 內容支柱資料（3個主題）
+- [x] 建立 Demo 產品資料（引流產品、核心產品、VIP產品）
+- [x] 建立 Demo 成功案例（2個客戶故事）
+- [x] 建立 Demo 草稿資料（3篇待發布草稿）
+- [x] 建立 Demo 戰報資料（4篇貼文含1篇爆文）
+- [x] 建立 Demo 經營數據（粉絲2500、成長期階段）
+- [x] 建立 Demo 寫作風格分析
+- [x] 建立 Demo 互動任務（3個今日任務）

@@ -1,0 +1,23 @@
+{
+  "query": "SELECT * FROM user_products LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute SELECT * FROM user_products LIMIT 1;",
+  "rows": [
+    {
+      "id": "30001",
+      "userId": "1710016",
+      "userProductType": "core",
+      "name": "數字初階課程",
+      "description": "",
+      "priceRange": "5000",
+      "deliveryTime": "2天，10小時",
+      "uniqueValue": "",
+      "isActive": "0",
+      "createdAt": "2025-12-21 04:48:27",
+      "updatedAt": "2025-12-21 04:48:33"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\tuserProductType\tname\tdescription\tpriceRange\tdeliveryTime\tuniqueValue\tisActive\tcreatedAt\tupdatedAt\n30001\t1710016\tcore\t數字初階課程\t\t5000\t2天，10小時\t\t0\t2025-12-21 04:48:27\t2025-12-21 04:48:33\n",
+  "stderr": "",
+  "execution_time_ms": 1526
+}
