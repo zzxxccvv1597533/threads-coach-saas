@@ -975,6 +975,71 @@ export async function calculateUserStage(userId: number): Promise<string> {
   return 'startup';
 }
 
+// 從戰報數據自動計算經營指標
+export async function calculateMetricsFromReports(userId: number): Promise<{
+  avgReach: number;
+  avgEngagementRate: number;
+  postFrequency: number;
+  totalPosts: number;
+}> {
+  const db = await getDb();
+  if (!db) return { avgReach: 0, avgEngagementRate: 0, postFrequency: 0, totalPosts: 0 };
+  
+  // 獲取用戶所有貼文
+  const userPosts = await db.select().from(posts).where(eq(posts.userId, userId)).orderBy(desc(posts.postedAt));
+  const totalPosts = userPosts.length;
+  
+  if (totalPosts === 0) {
+    return { avgReach: 0, avgEngagementRate: 0, postFrequency: 0, totalPosts: 0 };
+  }
+  
+  // 獲取最近 10 篇貼文的 metrics
+  const recentPostIds = userPosts.slice(0, 10).map(p => p.id);
+  const allMetrics = await db.select().from(postMetrics)
+    .where(sql`${postMetrics.postId} IN (${recentPostIds.join(',')})`);
+  
+  // 計算平均觸及
+  const totalReach = allMetrics.reduce((sum, m) => sum + (m.reach || 0), 0);
+  const avgReach = allMetrics.length > 0 ? Math.round(totalReach / allMetrics.length) : 0;
+  
+  // 計算平均互動率 (愛心+留言+轉發) / 觸及 * 100
+  let avgEngagementRate = 0;
+  if (allMetrics.length > 0 && totalReach > 0) {
+    const totalEngagement = allMetrics.reduce((sum, m) => 
+      sum + (m.likes || 0) + (m.comments || 0) + (m.reposts || 0), 0);
+    avgEngagementRate = Math.round((totalEngagement / totalReach) * 10000); // 乘 100 後再乘 100 儲存
+  }
+  
+  // 計算過去 30 天的發文頻率（週發文數）
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const recentPosts = userPosts.filter(p => p.postedAt && new Date(p.postedAt) >= thirtyDaysAgo);
+  const postFrequency = Math.round((recentPosts.length / 30) * 7); // 轉換為週發文數
+  
+  return { avgReach, avgEngagementRate, postFrequency, totalPosts };
+}
+
+// 更新用戶經營指標（從戰報自動計算）
+export async function updateMetricsFromReports(userId: number): Promise<void> {
+  const calculatedMetrics = await calculateMetricsFromReports(userId);
+  
+  // 獲取現有指標
+  const existing = await getUserGrowthMetrics(userId);
+  
+  // 更新指標（保留用戶手動設定的欄位，如 followerCount、manualStage）
+  await upsertUserGrowthMetrics({
+    userId,
+    followerCount: existing?.followerCount || 0,
+    avgReach: calculatedMetrics.avgReach,
+    avgEngagementRate: calculatedMetrics.avgEngagementRate,
+    postFrequency: calculatedMetrics.postFrequency,
+    totalPosts: calculatedMetrics.totalPosts,
+    hasLineLink: existing?.hasLineLink || false,
+    hasProduct: existing?.hasProduct || false,
+    totalSales: existing?.totalSales || 0,
+    manualStage: existing?.manualStage || null,
+  });
+}
 
 // ==================== 邀請碼相關 ====================
 

@@ -290,7 +290,7 @@ export default function Reports() {
               本週總覽
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-6">
             {reportLoading ? (
               <div className="grid gap-4 md:grid-cols-5">
                 {[...Array(5)].map((_, i) => (
@@ -298,33 +298,68 @@ export default function Reports() {
                 ))}
               </div>
             ) : (
-              <div className="grid gap-4 md:grid-cols-5">
-                <div className="text-center p-4 rounded-lg bg-background/50">
-                  <Eye className="w-5 h-5 mx-auto mb-2 text-blue-500" />
-                  <p className="text-2xl font-bold">{weeklyReport?.summary?.totalReach || 0}</p>
-                  <p className="text-xs text-muted-foreground">觸及</p>
+              <>
+                {/* 數據總覽 */}
+                <div className="grid gap-4 md:grid-cols-5">
+                  <div className="text-center p-4 rounded-lg bg-background/50">
+                    <Eye className="w-5 h-5 mx-auto mb-2 text-blue-500" />
+                    <p className="text-2xl font-bold">{weeklyReport?.summary?.totalReach || 0}</p>
+                    <p className="text-xs text-muted-foreground">觸及</p>
+                  </div>
+                  <div className="text-center p-4 rounded-lg bg-background/50">
+                    <Heart className="w-5 h-5 mx-auto mb-2 text-rose-500" />
+                    <p className="text-2xl font-bold">{weeklyReport?.summary?.totalLikes || 0}</p>
+                    <p className="text-xs text-muted-foreground">愛心</p>
+                  </div>
+                  <div className="text-center p-4 rounded-lg bg-background/50">
+                    <MessageSquare className="w-5 h-5 mx-auto mb-2 text-emerald-500" />
+                    <p className="text-2xl font-bold">{weeklyReport?.summary?.totalComments || 0}</p>
+                    <p className="text-xs text-muted-foreground">留言</p>
+                  </div>
+                  <div className="text-center p-4 rounded-lg bg-background/50">
+                    <Share2 className="w-5 h-5 mx-auto mb-2 text-amber-500" />
+                    <p className="text-2xl font-bold">0</p>
+                    <p className="text-xs text-muted-foreground">轉發</p>
+                  </div>
+                  <div className="text-center p-4 rounded-lg bg-background/50">
+                    <Bookmark className="w-5 h-5 mx-auto mb-2 text-violet-500" />
+                    <p className="text-2xl font-bold">{weeklyReport?.summary?.totalSaves || 0}</p>
+                    <p className="text-xs text-muted-foreground">收藏</p>
+                  </div>
                 </div>
-                <div className="text-center p-4 rounded-lg bg-background/50">
-                  <Heart className="w-5 h-5 mx-auto mb-2 text-rose-500" />
-                  <p className="text-2xl font-bold">{weeklyReport?.summary?.totalLikes || 0}</p>
-                  <p className="text-xs text-muted-foreground">愛心</p>
-                </div>
-                <div className="text-center p-4 rounded-lg bg-background/50">
-                  <MessageSquare className="w-5 h-5 mx-auto mb-2 text-emerald-500" />
-                  <p className="text-2xl font-bold">{weeklyReport?.summary?.totalComments || 0}</p>
-                  <p className="text-xs text-muted-foreground">留言</p>
-                </div>
-                <div className="text-center p-4 rounded-lg bg-background/50">
-                  <Share2 className="w-5 h-5 mx-auto mb-2 text-amber-500" />
-                  <p className="text-2xl font-bold">0</p>
-                  <p className="text-xs text-muted-foreground">轉發</p>
-                </div>
-                <div className="text-center p-4 rounded-lg bg-background/50">
-                  <Bookmark className="w-5 h-5 mx-auto mb-2 text-violet-500" />
-                  <p className="text-2xl font-bold">{weeklyReport?.summary?.totalSaves || 0}</p>
-                  <p className="text-xs text-muted-foreground">收藏</p>
-                </div>
-              </div>
+                
+                {/* 趨勢圖表 */}
+                {posts && posts.length >= 3 && (
+                  <div className="pt-4 border-t">
+                    <p className="text-sm font-medium mb-4">近期趨勢</p>
+                    <div className="h-32 flex items-end gap-2">
+                      {posts.slice(0, 10).reverse().map((post: any, index: number) => {
+                        const metrics = post.metrics?.[0];
+                        const reach = metrics?.reach || 0;
+                        const maxReach = Math.max(...posts.slice(0, 10).map((p: any) => p.metrics?.[0]?.reach || 0), 1);
+                        const height = Math.max((reach / maxReach) * 100, 5);
+                        return (
+                          <div key={post.id} className="flex-1 flex flex-col items-center gap-1">
+                            <div 
+                              className="w-full bg-primary/20 hover:bg-primary/40 rounded-t transition-all cursor-pointer relative group"
+                              style={{ height: `${height}%` }}
+                              title={`觸及: ${reach}`}
+                            >
+                              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-foreground text-background text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                {reach}
+                              </div>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground">
+                              {post.postedAt ? format(new Date(post.postedAt), 'MM/dd') : '-'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center mt-2">觸及數趨勢（最近 10 篇）</p>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
@@ -409,14 +444,75 @@ export default function Reports() {
                       </div>
                     </div>
 
-                    {/* 展開的內文區 */}
-                    {expandedPostId === post.id && (post as any).draftPost?.body && (
-                      <div className="px-4 pb-4 pt-0">
-                        <div className="bg-muted/50 rounded-lg p-4 ml-14">
-                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                            {(post as any).draftPost.body}
-                          </p>
-                        </div>
+                    {/* 展開的詳細區 */}
+                    {expandedPostId === post.id && (
+                      <div className="px-4 pb-4 pt-0 space-y-4">
+                        {/* 貼文內文 */}
+                        {(post as any).draftPost?.body && (
+                          <div className="bg-muted/50 rounded-lg p-4 ml-14">
+                            <p className="text-sm font-medium mb-2">貼文內文</p>
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                              {(post as any).draftPost.body}
+                            </p>
+                          </div>
+                        )}
+                        
+                        {/* 互動數據總覽 */}
+                        {(post as any).metrics && (post as any).metrics.length > 0 && (
+                          <div className="bg-primary/5 rounded-lg p-4 ml-14">
+                            <p className="text-sm font-medium mb-3">最新數據</p>
+                            <div className="grid grid-cols-5 gap-4">
+                              <div className="text-center">
+                                <Eye className="w-4 h-4 mx-auto mb-1 text-blue-500" />
+                                <p className="text-lg font-bold">{(post as any).metrics[0]?.reach || 0}</p>
+                                <p className="text-xs text-muted-foreground">觸及</p>
+                              </div>
+                              <div className="text-center">
+                                <Heart className="w-4 h-4 mx-auto mb-1 text-pink-500" />
+                                <p className="text-lg font-bold">{(post as any).metrics[0]?.likes || 0}</p>
+                                <p className="text-xs text-muted-foreground">愛心</p>
+                              </div>
+                              <div className="text-center">
+                                <MessageSquare className="w-4 h-4 mx-auto mb-1 text-green-500" />
+                                <p className="text-lg font-bold">{(post as any).metrics[0]?.comments || 0}</p>
+                                <p className="text-xs text-muted-foreground">留言</p>
+                              </div>
+                              <div className="text-center">
+                                <Share2 className="w-4 h-4 mx-auto mb-1 text-orange-500" />
+                                <p className="text-lg font-bold">{(post as any).metrics[0]?.reposts || 0}</p>
+                                <p className="text-xs text-muted-foreground">轉發</p>
+                              </div>
+                              <div className="text-center">
+                                <Bookmark className="w-4 h-4 mx-auto mb-1 text-purple-500" />
+                                <p className="text-lg font-bold">{(post as any).metrics[0]?.saves || 0}</p>
+                                <p className="text-xs text-muted-foreground">收藏</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* AI 洞察 */}
+                        {(post as any).metrics?.[0]?.aiInsight && (
+                          <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 ml-14">
+                            <div className="flex items-center gap-2 mb-2">
+                              <TrendingUp className="w-4 h-4 text-amber-600" />
+                              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">AI 策略建議</p>
+                            </div>
+                            <p className="text-sm text-amber-900 dark:text-amber-100 whitespace-pre-wrap">
+                              {(post as any).metrics[0].aiInsight}
+                            </p>
+                          </div>
+                        )}
+                        
+                        {/* 自我反思 */}
+                        {(post as any).metrics?.[0]?.selfReflection && (
+                          <div className="bg-muted/30 rounded-lg p-4 ml-14">
+                            <p className="text-sm font-medium mb-2">自我反思</p>
+                            <p className="text-sm text-muted-foreground">
+                              {(post as any).metrics[0].selfReflection}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

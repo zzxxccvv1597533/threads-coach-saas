@@ -3109,6 +3109,9 @@ ${input.context ? `貼文內容是關於：${input.context}` : ''}
             reposts: input.metrics.reposts || 0,
             saves: input.metrics.saves || 0,
           });
+          
+          // 自動更新經營指標
+          await db.updateMetricsFromReports(ctx.user.id);
         }
         
         return post;
@@ -3211,6 +3214,10 @@ ${selfReflection ? `創作者反思：${selfReflection}` : ''}
           aiInsight,
           performanceLevel,
         });
+        
+        // 自動更新經營指標
+        await db.updateMetricsFromReports(ctx.user.id);
+        
         return metric;
       }),
     
