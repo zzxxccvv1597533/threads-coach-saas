@@ -188,6 +188,8 @@ export const draftPosts = mysqlTable("draft_posts", {
   contentType: mysqlEnum("contentType", [
     "knowledge", "summary", "story", "viewpoint", "contrast",
     "casual", "dialogue", "question", "poll", "quote",
+    // 診斷型貼文
+    "diagnosis",
     // 變現內容類型
     "profile_intro", "service_intro", "lead_promo", "success_story", "limited_offer", "plus_one", "lead_magnet", "free_value"
   ]).default("story"),
@@ -267,6 +269,12 @@ export const postMetrics = mysqlTable("post_metrics", {
   linkClicks: int("linkClicks").default(0),
   inquiries: int("inquiries").default(0),
   notes: text("notes"),
+  // 戰報閉環學習欄位
+  postingTime: varchar("postingTime", { length: 10 }), // 發文時段：morning/noon/evening/night
+  topComment: text("topComment"), // 最熱門留言
+  selfReflection: text("selfReflection"), // 自我反思：什麼有效/什麼可以改進
+  aiInsight: text("aiInsight"), // AI 生成的策略洞察
+  performanceLevel: mysqlEnum("performanceLevel", ["hit", "normal", "low"]), // 表現等級：爆文/正常/低迷
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
