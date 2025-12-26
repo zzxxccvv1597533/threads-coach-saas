@@ -445,14 +445,28 @@ export default function WritingStudio() {
   };
 
   const handleGenerateDraft = () => {
-    if (!material.trim()) {
-      toast.error("請先輸入你的素材");
+    // 如果沒有素材且沒有填寫任何彈性欄位，則顯示錯誤
+    const hasFlexibleInput = Object.values(flexibleInputs).some(v => v && v.trim().length > 0);
+    if (!material.trim() && !hasFlexibleInput) {
+      toast.error("請先輸入你的素材或填寫關鍵資訊");
       return;
     }
+    
+    // 只傳遞有內容的欄位
+    const filledFlexibleInputs: Record<string, string | string[]> = {};
+    for (const [key, value] of Object.entries(flexibleInputs)) {
+      if (value && typeof value === 'string' && value.trim()) {
+        filledFlexibleInputs[key] = value;
+      } else if (Array.isArray(value) && value.length > 0) {
+        filledFlexibleInputs[key] = value;
+      }
+    }
+    
     generateDraft.mutate({
-      material,
+      material: material || undefined,
       contentType: selectedContentType,
       angle: selectedAngle || undefined,
+      flexibleInput: Object.keys(filledFlexibleInputs).length > 0 ? filledFlexibleInputs as any : undefined,
     });
   };
 

@@ -1033,3 +1033,8 @@
 - [x] 修改 routers.ts 中的禁止格式規則
 - [x] 允許使用 Emoji 作為清單開頭（✨/👉/🔮）
 - [x] 限制 Emoji 條列僅用於知識型、整理型貼文
+
+
+## Bug 修復 - 發文工作室 Spread syntax 錯誤 (2024-12-26)
+- [x] 定位 Spread syntax requires ...iterable[Symbol.iterator] 錯誤來源
+- [x] 修復 handleGenerateDraft 函數，正確傳遞 flexibleInput 參數
