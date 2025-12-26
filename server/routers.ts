@@ -1601,9 +1601,53 @@ ${selectedStyle}
         console.log('[generateDraft] flexibleInput type:', typeof input.flexibleInput);
         console.log('[generateDraft] flexibleInput value:', input.flexibleInput);
         
-        // 安全處理 flexibleInput
-        const safeFlexibleInput = input.flexibleInput || {};
-        console.log('[generateDraft] safeFlexibleInput:', safeFlexibleInput);
+        // ----------------- normalize flexibleInput -----------------
+        const normalizeFlexibleInput = (fi: any) => {
+          if (!fi) return { options: [] };
+          const out: any = { ...fi };
+
+          // options 可能為字串 / 物件 / 陣列 — 保證成為陣列
+          if (out.options && !Array.isArray(out.options)) {
+            if (typeof out.options === 'string') {
+              out.options = out.options
+                .split(/\s*(?:\r?\n|,|;|\/|vs|\|)\s*/i)
+                .map((s: string) => s.trim())
+                .filter(Boolean);
+            } else if (typeof out.options === 'object' && out.options !== null) {
+              try {
+                out.options = Object.values(out.options).map(String).map((s: string) => s.trim()).filter(Boolean);
+              } catch {
+                out.options = [];
+              }
+            } else {
+              out.options = [];
+            }
+          }
+          
+          // 確保 options 始終是陣列
+          if (!out.options) {
+            out.options = [];
+          }
+
+          // 其餘常見欄位確保為 string（避免 object 被 template 或 spread）
+          const stringKeys = [
+            'topic','stance','reason','common_belief','truth','question','context',
+            'quote','reflection','count','symptoms','diagnosis_label','explanation'
+          ];
+          for (const k of stringKeys) {
+            if (out[k] !== undefined && out[k] !== null && typeof out[k] !== 'string') {
+              try { out[k] = String(out[k]); } catch { out[k] = ''; }
+            }
+          }
+
+          return out;
+        };
+
+        const flexibleInput = normalizeFlexibleInput(input.flexibleInput);
+
+        // 開發時 debug log
+        console.log('[generateDraft] normalized flexibleInput type:', typeof flexibleInput, 'options type:', Array.isArray(flexibleInput.options) ? 'array' : typeof flexibleInput.options, 'options:', flexibleInput.options);
+        // -----------------------------------------------------------------
         
         const profile = await db.getIpProfileByUserId(ctx.user.id);
         const audiences = await db.getAudienceSegmentsByUserId(ctx.user.id);
@@ -1829,7 +1873,7 @@ ${selectedStyle}
         const typeSpecificPrompts: Record<string, string> = {
           question: `寫一篇「提問型」貼文，引發討論。
 
-主題：${input.flexibleInput?.topic || input.material || ''}
+主題：${flexibleInput.topic || input.material || ''}
 
 結構要求：
 1. 直接拋出問題，不需要長篇大論
@@ -1840,8 +1884,8 @@ ${selectedStyle}
           
           poll: `寫一篇「投票型」貼文，讓大家選擇。
 
-主題：${input.flexibleInput?.topic || input.material || ''}
-選項：${Array.isArray(input.flexibleInput?.options) ? input.flexibleInput.options.join(' vs ') : (input.flexibleInput?.options || '')}
+主題：${flexibleInput.topic || input.material || ''}
+選項：${(flexibleInput.options || []).join(' vs ')}
 
 結構要求：
 1. 簡短介紹投票主題
@@ -1852,8 +1896,8 @@ ${selectedStyle}
           
           viewpoint: `寫一篇「觀點型」貼文，表達立場。
 
-觀點：${input.flexibleInput?.stance || input.material || ''}
-原因：${input.flexibleInput?.reason || ''}
+觀點：${flexibleInput.stance || input.material || ''}
+原因：${flexibleInput.reason || ''}
 
 結構要求：
 1. 開頭直接說出你的立場
@@ -1864,8 +1908,8 @@ ${selectedStyle}
           
           contrast: `寫一篇「反差型」貼文，打破認知。
 
-大家以為：${input.flexibleInput?.common_belief || ''}
-其實是：${input.flexibleInput?.truth || ''}
+大家以為：${flexibleInput.common_belief || ''}
+其實是：${flexibleInput.truth || ''}
 
 結構要求：
 1. 開頭：「很多人以為...」
@@ -1877,7 +1921,7 @@ ${selectedStyle}
           
           casual: `寫一篇「閒聊型」貼文，輕鬆分享。
 
-話題：${input.flexibleInput?.topic || input.material || ''}
+話題：${flexibleInput.topic || input.material || ''}
 
 結構要求：
 1. 像在跟朋友聊天
@@ -1888,8 +1932,8 @@ ${selectedStyle}
           
           dialogue: `寫一篇「對話型」貼文，問答形式。
 
-問題：${input.flexibleInput?.question || ''}
-想回答的方向：${input.flexibleInput?.context || ''}
+問題：${flexibleInput.question || ''}
+想回答的方向：${flexibleInput.context || ''}
 
 結構要求：
 1. 開頭：「最近有人問我...」或「朋友問我...」
@@ -1900,8 +1944,8 @@ ${selectedStyle}
           
           quote: `寫一篇「引用型」貼文，分享感想。
 
-引用：${input.flexibleInput?.quote || ''}
-感想：${input.flexibleInput?.reflection || ''}
+引用：${flexibleInput.quote || ''}
+感想：${flexibleInput.reflection || ''}
 
 結構要求：
 1. 開頭引用這句話
@@ -1912,9 +1956,9 @@ ${selectedStyle}
           
           diagnosis: `寫一篇「診斷型」貼文，幫讀者診斷問題。
 
-特徵/症狀：${input.flexibleInput?.symptoms || input.material || ''}
-診斷標籤：${input.flexibleInput?.diagnosis_label || ''}
-解析：${input.flexibleInput?.explanation || ''}
+特徵/症狀：${flexibleInput.symptoms || input.material || ''}
+診斷標籤：${flexibleInput.diagnosis_label || ''}
+解析：${flexibleInput.explanation || ''}
 
 結構要求（嚴格遵守）：
 1. 特徵召喚：開頭用「如果你經常...」「你有沒有這種經驗...」

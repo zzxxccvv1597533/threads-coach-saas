@@ -75,7 +75,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
   const [selectedContentType, setSelectedContentType] = useState("");
   
   // Step 3: 填寫專屬欄位
-  const [typeInputs, setTypeInputs] = useState<Record<string, string>>({});
+  const [typeInputs, setTypeInputs] = useState<Record<string, string | string[]>>({});
   
   // Step 4: 選 Hook 風格
   const [selectedHookStyle, setSelectedHookStyle] = useState("");
@@ -188,7 +188,9 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       topic: selectedTopic.title,
       contentType: selectedContentType,
       hookStyle: selectedHookStyle,
-      inputs: typeInputs,
+      inputs: Object.fromEntries(
+        Object.entries(typeInputs).map(([k, v]) => [k, Array.isArray(v) ? v.join('\n') : (v as string || '')])
+      ),
     });
   };
 
@@ -209,17 +211,30 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       `開頭 Hook：${selectedHook}`,
       ...Object.entries(safeTypeInputs).map(([key, value]) => {
         const field = ALL_CONTENT_TYPES_V2.find(t => t.id === selectedContentType)?.inputFields?.find(f => f.key === key);
-        return field ? `${field.label}：${value}` : '';
+        if (!field) return '';
+        const display = Array.isArray(value) ? value.join(' / ') : String(value || '');
+        return `${field.label}：${display}`;
       }).filter(Boolean),
     ];
 
-    // 只傳遞有內容的欄位
-    const filledFlexibleInputs: Record<string, string> = {};
+    // 只傳遞有內容的欄位，並保留陣列（例如 poll 的 options）
+    const filledFlexibleInputs: Record<string, any> = {};
     for (const [key, value] of Object.entries(safeTypeInputs)) {
-      if (value && typeof value === 'string' && value.trim()) {
-        filledFlexibleInputs[key] = value;
+      if (value === undefined || value === null) continue;
+
+      if (Array.isArray(value)) {
+        const arr = value.map(v => String(v).trim()).filter(Boolean);
+        if (arr.length > 0) filledFlexibleInputs[key] = arr;
+      } else if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed) filledFlexibleInputs[key] = trimmed;
+      } else {
+        const coerced = String(value).trim();
+        if (coerced) filledFlexibleInputs[key] = coerced;
       }
     }
+
+    console.log('[handleGenerateFullDraft] filledFlexibleInputs to send:', filledFlexibleInputs);
 
     generateDraft.mutate({
       material: materialParts.join('\n'),
