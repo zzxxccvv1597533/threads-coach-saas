@@ -385,48 +385,7 @@ export default function Reports() {
                     <p className="text-xs text-muted-foreground">收藏</p>
                   </div>
                 </div>
-                
-                {/* 趨勢圖表 */}
-                {posts && posts.length >= 3 && (
-                  <div className="pt-4 border-t">
-                    <p className="text-sm font-medium mb-4">近期趨勢</p>
-                    <div className="h-40 flex items-end gap-3">
-                      {posts.slice(0, 10).reverse().map((post: any, index: number) => {
-                        const metrics = post.metrics?.[0];
-                        const reach = metrics?.reach || 0;
-                        const maxReach = Math.max(...posts.slice(0, 10).map((p: any) => p.metrics?.[0]?.reach || 0), 1);
-                        const height = Math.max((reach / maxReach) * 100, 10);
-                        // 根據數值大小變化顏色
-                        const barColor = reach >= maxReach * 0.8 
-                          ? 'bg-gradient-to-t from-blue-600 to-blue-400' 
-                          : reach >= maxReach * 0.5 
-                            ? 'bg-gradient-to-t from-blue-500 to-blue-300'
-                            : 'bg-gradient-to-t from-blue-400 to-blue-200';
-                        return (
-                          <div key={post.id} className="flex-1 flex flex-col items-center gap-1">
-                            {/* 數值標籤 */}
-                            <span className="text-xs font-medium text-blue-600">
-                              {reach > 0 ? (reach >= 1000 ? `${(reach/1000).toFixed(1)}k` : reach) : '-'}
-                            </span>
-                            <div 
-                              className={`w-full ${barColor} rounded-t transition-all cursor-pointer relative group shadow-sm`}
-                              style={{ height: `${height}%`, minHeight: '8px' }}
-                              title={`觸及: ${reach.toLocaleString()}`}
-                            >
-                              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                                {reach.toLocaleString()}
-                              </div>
-                            </div>
-                            <span className="text-[10px] text-muted-foreground">
-                              {post.postedAt ? format(new Date(post.postedAt), 'MM/dd') : '-'}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <p className="text-xs text-muted-foreground text-center mt-2">觸及數趨勢（最近 10 篇）</p>
-                  </div>
-                )}
+
               </>
             )}
           </CardContent>
