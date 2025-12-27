@@ -1117,3 +1117,9 @@
 
 ## Bug 修復 - Spread syntax 錯誤 (2024-12-27)
 - [x] 修復 generateDraft Spread syntax 錯誤 - contentFilters.ts extractPreservedWords 函數安全處理非陣列值
+
+
+## 戰報分析頁面優化 (2024-12-27)
+- [x] 修復近期趨勢線圖不顯示問題
+- [x] 修復策略總結 Markdown 語法顯示問題（移除 ** 等符號）
+- [x] 優化總結報告格式，加入表格和排版讓報告更正式

@@ -390,21 +390,31 @@ export default function Reports() {
                 {posts && posts.length >= 3 && (
                   <div className="pt-4 border-t">
                     <p className="text-sm font-medium mb-4">近期趨勢</p>
-                    <div className="h-32 flex items-end gap-2">
+                    <div className="h-40 flex items-end gap-3">
                       {posts.slice(0, 10).reverse().map((post: any, index: number) => {
                         const metrics = post.metrics?.[0];
                         const reach = metrics?.reach || 0;
                         const maxReach = Math.max(...posts.slice(0, 10).map((p: any) => p.metrics?.[0]?.reach || 0), 1);
-                        const height = Math.max((reach / maxReach) * 100, 5);
+                        const height = Math.max((reach / maxReach) * 100, 10);
+                        // 根據數值大小變化顏色
+                        const barColor = reach >= maxReach * 0.8 
+                          ? 'bg-gradient-to-t from-blue-600 to-blue-400' 
+                          : reach >= maxReach * 0.5 
+                            ? 'bg-gradient-to-t from-blue-500 to-blue-300'
+                            : 'bg-gradient-to-t from-blue-400 to-blue-200';
                         return (
                           <div key={post.id} className="flex-1 flex flex-col items-center gap-1">
+                            {/* 數值標籤 */}
+                            <span className="text-xs font-medium text-blue-600">
+                              {reach > 0 ? (reach >= 1000 ? `${(reach/1000).toFixed(1)}k` : reach) : '-'}
+                            </span>
                             <div 
-                              className="w-full bg-primary/20 hover:bg-primary/40 rounded-t transition-all cursor-pointer relative group"
-                              style={{ height: `${height}%` }}
-                              title={`觸及: ${reach}`}
+                              className={`w-full ${barColor} rounded-t transition-all cursor-pointer relative group shadow-sm`}
+                              style={{ height: `${height}%`, minHeight: '8px' }}
+                              title={`觸及: ${reach.toLocaleString()}`}
                             >
-                              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-foreground text-background text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                {reach}
+                              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                {reach.toLocaleString()}
                               </div>
                             </div>
                             <span className="text-[10px] text-muted-foreground">
@@ -461,39 +471,61 @@ export default function Reports() {
                 <p className="text-sm mt-2">目前有 {posts?.length || 0} 篇貼文</p>
               </div>
             ) : showStrategySummary && strategySummary ? (
-              <div className="space-y-4">
-                {/* 統計摘要 */}
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div className="text-center p-3 rounded-lg bg-background/50">
-                    <p className="text-2xl font-bold text-purple-600">{strategySummary.stats.totalPosts}</p>
-                    <p className="text-xs text-muted-foreground">分析貼文數</p>
-                  </div>
-                  <div className="text-center p-3 rounded-lg bg-background/50">
-                    <p className="text-2xl font-bold text-blue-600">{strategySummary.stats.avgReach}</p>
-                    <p className="text-xs text-muted-foreground">平均觸及</p>
-                  </div>
-                  <div className="text-center p-3 rounded-lg bg-background/50">
-                    <p className="text-2xl font-bold text-orange-600">{strategySummary.stats.viralCount}</p>
-                    <p className="text-xs text-muted-foreground">爆文數</p>
-                  </div>
-                  <div className="text-center p-3 rounded-lg bg-background/50">
-                    <p className="text-lg font-bold text-emerald-600">
-                      {strategySummary.stats.bestPostingTime === 'morning' && '早上'}
-                      {strategySummary.stats.bestPostingTime === 'noon' && '中午'}
-                      {strategySummary.stats.bestPostingTime === 'evening' && '晚上'}
-                      {strategySummary.stats.bestPostingTime === 'night' && '深夜'}
-                      {!strategySummary.stats.bestPostingTime && '無數據'}
-                    </p>
-                    <p className="text-xs text-muted-foreground">最佳發文時段</p>
-                  </div>
+              <div className="space-y-6">
+                {/* 統計摘要表格 */}
+                <div className="overflow-hidden rounded-xl border border-purple-200/50">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-purple-100/50">
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-purple-800">指標</th>
+                        <th className="px-4 py-3 text-right text-sm font-semibold text-purple-800">數値</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-purple-800">說明</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-purple-100">
+                      <tr className="bg-white/50 hover:bg-purple-50/50 transition-colors">
+                        <td className="px-4 py-3 text-sm font-medium">📊 分析貼文數</td>
+                        <td className="px-4 py-3 text-right text-lg font-bold text-purple-600">{strategySummary.stats.totalPosts}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">納入分析的貼文總數</td>
+                      </tr>
+                      <tr className="bg-white/50 hover:bg-purple-50/50 transition-colors">
+                        <td className="px-4 py-3 text-sm font-medium">👁️ 平均觸及</td>
+                        <td className="px-4 py-3 text-right text-lg font-bold text-blue-600">{strategySummary.stats.avgReach.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">每篇貼文平均觸及人數</td>
+                      </tr>
+                      <tr className="bg-white/50 hover:bg-purple-50/50 transition-colors">
+                        <td className="px-4 py-3 text-sm font-medium">🔥 爆文數</td>
+                        <td className="px-4 py-3 text-right text-lg font-bold text-orange-600">{strategySummary.stats.viralCount}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">表現特別突出的貼文</td>
+                      </tr>
+                      <tr className="bg-white/50 hover:bg-purple-50/50 transition-colors">
+                        <td className="px-4 py-3 text-sm font-medium">⏰ 最佳時段</td>
+                        <td className="px-4 py-3 text-right text-lg font-bold text-emerald-600">
+                          {strategySummary.stats.bestPostingTime === 'morning' && '早上 6-12點'}
+                          {strategySummary.stats.bestPostingTime === 'noon' && '中午 12-14點'}
+                          {strategySummary.stats.bestPostingTime === 'evening' && '晚上 18-22點'}
+                          {strategySummary.stats.bestPostingTime === 'night' && '深夜 22-2點'}
+                          {!strategySummary.stats.bestPostingTime && '待分析'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">表現最佳的發文時段</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
                 
                 {/* AI 策略建議 */}
                 {strategySummary.summary && (
-                  <div className="p-4 rounded-lg bg-purple-50/50 border border-purple-200/50">
-                    <p className="text-sm font-medium text-purple-700 mb-2">💡 AI 策略建議</p>
-                    <div className="text-sm text-purple-900 whitespace-pre-wrap">
-                      {strategySummary.summary}
+                  <div className="rounded-xl border border-purple-200/50 overflow-hidden">
+                    <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-3">
+                      <p className="text-sm font-semibold text-white flex items-center gap-2">
+                        <Sparkles className="w-4 h-4" />
+                        AI 策略分析報告
+                      </p>
+                    </div>
+                    <div className="p-5 bg-white/50">
+                      <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                        {strategySummary.summary}
+                      </div>
                     </div>
                   </div>
                 )}

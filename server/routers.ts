@@ -3133,7 +3133,17 @@ ${input.context ? `貼文內容是關於：${input.context}` : ''}
   post: router({
     list: protectedProcedure.query(async ({ ctx }) => {
       const posts = await db.getPostsByUserId(ctx.user.id);
-      return posts ?? [];
+      // 獲取每篇貼文的 metrics 和 draftPost
+      const postsWithMetrics = await Promise.all((posts ?? []).map(async (post) => {
+        const metrics = await db.getPostMetricsByPostId(post.id);
+        const draftPost = post.draftPostId ? await db.getDraftById(post.draftPostId) : null;
+        return {
+          ...post,
+          metrics,
+          draftPost,
+        };
+      }));
+      return postsWithMetrics;
     }),
     
     create: protectedProcedure
@@ -3594,6 +3604,11 @@ ${draftPost.body}
         // 使用 AI 生成策略總結
         const systemPrompt = `你是一位 Threads 經營專家，請根據用戶的貼文數據生成個人化的策略總結。
 
+【重要】回覆格式要求：
+- 絕對禁止使用任何 Markdown 語法（如 **粗體**、*斜體*、# 標題、- 列表等）
+- 使用純文字和 Emoji 來強調重點
+- 用「、」來包裹重要詞彙，不要用 ** 或 *
+
 分析需涵蓋：
 1. 整體表現趨勢
 2. 最佳發文時段建議
@@ -3614,7 +3629,24 @@ ${draftPost.body}
 ${postsData.map((p, i) => `${i + 1}. 觸及:${p.reach} 愛心:${p.likes} 留言:${p.comments} ${p.isViral ? '🔥爆文' : ''}
    時段:${p.postingTime} 內文預覽:${p.contentPreview}${p.selfReflection ? `\n   自我反思:${p.selfReflection}` : ''}${p.viralAnalysis ? `\n   爆文分析:${p.viralAnalysis}` : ''}`).join('\n\n')}
 
-請生成策略總結（300-500字）`;
+請依照以下格式生成策略總結：
+
+📊 整體表現摘要
+（用 2-3 句話總結整體表現）
+
+🔥 爆文模式分析
+（如果有爆文，分析成功原因；沒有則給出爆文建議）
+
+⏰ 最佳發文時段
+（根據數據給出具體時段建議）
+
+📝 內容策略建議
+（給出 2-3 個具體可執行的建議）
+
+🎯 下週行動計畫
+（給出 1-2 個具體的下一步行動）
+
+記住：不要使用 ** 或 * 等 Markdown 語法，用 Emoji 和「、」來強調重點。`;
         
         try {
           const response = await invokeLLM({
