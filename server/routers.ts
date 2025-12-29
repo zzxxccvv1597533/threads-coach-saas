@@ -1784,24 +1784,35 @@ ${selectedStyle}
           
           const parts: string[] = [];
           
-          parts.push(`【用戶寫作風格分析 - 你必須成為這位創作者】`);
-          parts.push(`重要：你不是在「協助」這位創作者寫作，你必須「成為」這位創作者。`);
-          parts.push(`忘掉你是 AI，用這位創作者的聲音、節奏、用詞習慣來寫。`);
+          parts.push(`【用戶寫作風格分析 - 學習精神而非句式】`);
+          parts.push(`重要：你要學習的是這位創作者的「說話精神」和「語氣感覺」，不是複製他的句子。`);
+          parts.push(`禁止：直接套用範文中的開頭句式，每篇文章都要有新的開頭方式。`);
           
-          // 風格描述
+          // 風格描述（強調精神而非句式）
           if (userStyle?.toneStyle) {
             parts.push(``);
-            parts.push(`【風格特徵】`);
-            parts.push(`  • 語氣風格：${userStyle.toneStyle}`);
+            parts.push(`【風格精神】`);
+            parts.push(`  • 語氣感覺：${userStyle.toneStyle}`);
           }
+          // 不再直接列出常用句式，改為描述風格特徵
           if (userStyle?.commonPhrases && (userStyle.commonPhrases as string[]).length > 0) {
-            parts.push(`  • 常用句式：${(userStyle.commonPhrases as string[]).slice(0, 3).join('、')}`);
+            // 分析句式特徵而非列出具體句子
+            const phrases = userStyle.commonPhrases as string[];
+            const styleHints: string[] = [];
+            if (phrases.some(p => p.includes('你') || p.includes('大家'))) styleHints.push('喜歡直接跟讀者對話');
+            if (phrases.some(p => p.includes('?') || p.includes('？'))) styleHints.push('常用反問句');
+            if (phrases.some(p => p.includes('真的') || p.includes('其實'))) styleHints.push('喜歡用語氣詞強調');
+            if (phrases.some(p => p.includes('後來') || p.includes('後來我'))) styleHints.push('喜歡用轉折句');
+            if (styleHints.length > 0) {
+              parts.push(`  • 句式特徵：${styleHints.join('、')}`);
+            }
           }
           if (userStyle?.catchphrases && (userStyle.catchphrases as string[]).length > 0) {
-            parts.push(`  • 口頭禪：${(userStyle.catchphrases as string[]).slice(0, 5).join('、')}`);
+            // 口頭禪可以保留，但要加上使用限制
+            parts.push(`  • 口頭禪（偶爾使用，不要每篇都用）：${(userStyle.catchphrases as string[]).slice(0, 3).join('、')}`);
           }
           if (userStyle?.hookStylePreference) {
-            parts.push(`  • Hook 風格：${userStyle.hookStylePreference}`);
+            parts.push(`  • 擅長的 Hook 類型：${userStyle.hookStylePreference}`);
           }
           if (userStyle?.metaphorStyle) {
             parts.push(`  • 比喻風格：${userStyle.metaphorStyle}`);
@@ -1838,32 +1849,29 @@ ${selectedStyle}
             parts.push(``);
           }
           
-          // === Few-Shot Learning：直接餒範文 ===
+          // === Few-Shot Learning：隨機選取 1 篇範文作為參考 ===
           const samplePosts = userStyle?.samplePosts as Array<{ content: string; engagement?: number; addedAt: string }> | undefined;
           if (samplePosts && samplePosts.length > 0) {
             parts.push(``);
-            parts.push(`=== 你的寫作風格範例 (Few-Shot Examples) ===`);
-            parts.push(`請忽略你預設的 AI 語氣，直接「模仿」以下範文的：`);
-            parts.push(`  1. 斷句方式（句子長短）`);
-            parts.push(`  2. 換行節奏（什麼時候空行）`);
-            parts.push(`  3. 語氣詞使用習慣（真的、欸、吧、呢）`);
-            parts.push(`  4. 情緒詞的擺放位置`);
+            parts.push(`=== 風格參考範文（學習精神，不是複製） ===`);
+            parts.push(`重要指示：`);
+            parts.push(`  1. 學習範文的「語氣感覺」和「節奏」，不是複製句子`);
+            parts.push(`  2. 絕對禁止直接使用範文中的開頭句式`);
+            parts.push(`  3. 每篇文章都要有全新的開頭，不能重複`);
+            parts.push(`  4. 口頭禪和語氣詞可以偶爾使用，但不要每篇都用`);
             parts.push(``);
             
-            // 取出前 3 篇範文
-            samplePosts.slice(0, 3).forEach((post, index) => {
-              parts.push(`--- 範文 ${index + 1} ---`);
-              parts.push(post.content);
-              parts.push(``);
-            });
+            // 隨機選取 1 篇範文（而非固定前 3 篇）
+            const randomIndex = Math.floor(Math.random() * samplePosts.length);
+            const selectedPost = samplePosts[randomIndex];
             
-            parts.push(`--- 範文結束 ---`);
+            parts.push(`--- 風格參考 ---`);
+            parts.push(selectedPost.content);
+            parts.push(`--- 參考結束 ---`);
             parts.push(``);
-            parts.push(`【模仿要點】`);
-            parts.push(`- 句子長度要跟範文一樣（如果範文都是短句，你也要用短句）`);
-            parts.push(`- 換行頻率要跟範文一樣（如果範文常空行，你也要常空行）`);
-            parts.push(`- 語氣詞要跟範文一樣（如果範文常用「真的」，你也要用）`);
-            parts.push(`- 開頭方式要跟範文一樣（如果範文常用問句開頭，你也要用）`);
+            parts.push(`【學習要點 - 學精神不學句子】`);
+            parts.push(`✓ 學習：句子長短的節奏、換行的頻率、說話的語氣`);
+            parts.push(`✗ 禁止：複製開頭句式、重複使用同樣的句型、每篇都用一樣的開場白`);
           }
           
           return parts.join('\n');

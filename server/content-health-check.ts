@@ -404,16 +404,26 @@ function buildPersonalizedPrompt(
     }
   }
   
-  // 整合風格樣本分析結果
+  // 整合風格樣本分析結果（強調學習精神而非句式）
   if (writingStyle) {
     personalContext += `\n## 學員爆款文風格分析\n`;
+    personalContext += `重要：健檢建議應強調「風格精神」而非「具體句式」，避免學員每篇都用一樣的開頭。\n\n`;
     
     if (writingStyle.toneStyle) {
-      personalContext += `- **語氣風格**：${writingStyle.toneStyle}\n`;
+      personalContext += `- **語氣精神**：${writingStyle.toneStyle}\n`;
     }
     
+    // 不再直接列出常用句式，改為描述風格特徵
     if (writingStyle.commonPhrases && writingStyle.commonPhrases.length > 0) {
-      personalContext += `- **常用句式**：${writingStyle.commonPhrases.join('、')}\n`;
+      const phrases = writingStyle.commonPhrases as string[];
+      const styleHints: string[] = [];
+      if (phrases.some((p: string) => p.includes('你') || p.includes('大家'))) styleHints.push('喜歡直接跟讀者對話');
+      if (phrases.some((p: string) => p.includes('?') || p.includes('？'))) styleHints.push('常用反問句');
+      if (phrases.some((p: string) => p.includes('真的') || p.includes('其實'))) styleHints.push('喜歡用語氣詞強調');
+      if (phrases.some((p: string) => p.includes('後來') || p.includes('後來我'))) styleHints.push('喜歡用轉折句');
+      if (styleHints.length > 0) {
+        personalContext += `- **句式特徵**：${styleHints.join('、')}\n`;
+      }
     }
     
     if (writingStyle.emotionalTone) {
@@ -421,35 +431,37 @@ function buildPersonalizedPrompt(
     }
     
     if (writingStyle.hookPatterns && writingStyle.hookPatterns.length > 0) {
-      personalContext += `- **擅長的開頭風格**：${writingStyle.hookPatterns.join('、')}\n`;
+      personalContext += `- **擅長的 Hook 類型**：${writingStyle.hookPatterns.join('、')}\n`;
     }
     
     if (writingStyle.viralElements && writingStyle.viralElements.length > 0) {
       personalContext += `- **爆款元素**：${writingStyle.viralElements.join('、')}\n`;
     }
     
-    // 加入爆款貼文範例（最多 3 篇）
+    // 加入爆款貼文範例（隨機選 1 篇，不是固定前 3 篇）
     if (writingStyle.samplePosts && writingStyle.samplePosts.length > 0) {
-      const topPosts = writingStyle.samplePosts.slice(0, 3);
-      personalContext += `\n### 學員爆款貼文範例（請參考這些風格給建議）\n`;
-      topPosts.forEach((post: any, index: number) => {
-        const content = typeof post === 'string' ? post : post.content;
-        if (content) {
-          personalContext += `\n**範例 ${index + 1}**：\n「${content.substring(0, 300)}${content.length > 300 ? '...' : ''}」\n`;
-        }
-      });
+      const randomIndex = Math.floor(Math.random() * writingStyle.samplePosts.length);
+      const selectedPost = writingStyle.samplePosts[randomIndex];
+      const content = typeof selectedPost === 'string' ? selectedPost : selectedPost.content;
+      if (content) {
+        personalContext += `\n### 風格參考範文（學習精神，不是複製句式）\n`;
+        personalContext += `「${content.substring(0, 300)}${content.length > 300 ? '...' : ''}」\n`;
+        personalContext += `\n✗ 禁止在建議中要求學員「用這個開頭」或「加入這句話」\n`;
+        personalContext += `✓ 應該建議學員「用這種語氣感覺」或「參考這種節奏」\n`;
+      }
     }
   }
   
-  // 加入個人化健檢指令
+  // 加入個人化健檢指令（強調多樣性）
   if (personalContext) {
     personalContext += `\n## 個人化健檢指令\n`;
     personalContext += `請根據上述學員資料，在建議中：\n`;
     personalContext += `1. 檢查文案是否符合學員的人設定位和專業領域\n`;
-    personalContext += `2. 檢查語氣是否符合學員的說話風格和口頭禪\n`;
+    personalContext += `2. 檢查語氣是否符合學員的「說話精神」（不是具體句式）\n`;
     personalContext += `3. 檢查內容是否對準學員的目標受眾\n`;
-    personalContext += `4. 在改寫建議中參考學員的爆款文風格\n`;
-    personalContext += `5. 如果文案風格與學員的爆款文差異很大，要特別指出\n`;
+    personalContext += `4. 改寫建議要強調「風格精神」而非「具體句式」\n`;
+    personalContext += `5. 禁止建議學員「用這個開頭」或「加入這句話」，應該建議「用這種語氣感覺」\n`;
+    personalContext += `6. 鼓勵學員嘗試不同的開頭方式，保持內容多樣性\n`;
   }
   
   return personalContext;
