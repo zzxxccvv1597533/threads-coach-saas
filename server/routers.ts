@@ -3159,6 +3159,11 @@ ${input.context ? `貼文內容是關於：${input.context}` : ''}
           reposts: z.number().optional(),
           saves: z.number().optional(),
         }).optional(),
+        // 深度分析欄位
+        postingTime: z.enum(['morning', 'noon', 'evening', 'night']).optional(),
+        topComment: z.string().optional(),
+        selfReflection: z.string().optional(),
+        isViral: z.boolean().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         // 如果有關聯草稿，更新草稿狀態
@@ -3185,15 +3190,20 @@ ${input.context ? `貼文內容是關於：${input.context}` : ''}
           postedAt: input.postedAt || new Date(),
         });
         
-        // 如果有數據，同時創建 metrics
-        if (post && input.metrics) {
+        // 如果有數據或深度分析欄位，同時創建 metrics
+        if (post && (input.metrics || input.postingTime || input.topComment || input.selfReflection || input.isViral)) {
           await db.createPostMetric({
             postId: post.id,
-            reach: input.metrics.reach || 0,
-            likes: input.metrics.likes || 0,
-            comments: input.metrics.comments || 0,
-            reposts: input.metrics.reposts || 0,
-            saves: input.metrics.saves || 0,
+            reach: input.metrics?.reach || 0,
+            likes: input.metrics?.likes || 0,
+            comments: input.metrics?.comments || 0,
+            reposts: input.metrics?.reposts || 0,
+            saves: input.metrics?.saves || 0,
+            // 深度分析欄位
+            postingTime: input.postingTime || null,
+            topComment: input.topComment || null,
+            selfReflection: input.selfReflection || null,
+            isViral: input.isViral || false,
           });
           
           // 自動更新經營指標

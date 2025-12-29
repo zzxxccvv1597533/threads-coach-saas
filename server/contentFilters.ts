@@ -182,6 +182,66 @@ const EMOTION_PATTERNS: Array<{
 ];
 
 // ============================================
+// 髒話過濾器（絕對禁止）
+// ============================================
+
+const PROFANITY_LIST: string[] = [
+  // 英文髒話
+  'Fuck', 'fuck', 'FUCK',
+  'FK', 'fk', 'F*ck', 'f*ck',
+  'Shit', 'shit', 'SHIT', 'sh*t',
+  'Damn', 'damn', 'DAMN',
+  'Ass', 'ass', 'ASS',
+  'Bitch', 'bitch', 'BITCH',
+  'WTF', 'wtf', 'STFU', 'stfu',
+  // 中文髒話
+  '靠', '靠北', '靠幸', '靠啊',
+  '幹', '幹你', '幹他', '幹嗎',
+  '媽的', '他媽的', '你媽的',
+  '操', '操你',
+  '屁', '屁話', '放屁',
+  '賤', '賤人',
+  '婊', '婊子',
+  '屎', '狗屎',
+  '去死', '死開',
+  '白癡', '白吃',
+  '智障', '弱智',
+];
+
+// 髒話替代詞（用於替換而非刪除）
+const PROFANITY_REPLACEMENTS: Record<string, string> = {
+  '靠': '天啊',
+  '靠北': '天啊',
+  '靠幸': '天啊',
+  '靠啊': '天啊',
+  '幹': '天啊',
+  '幹嗎': '天啊',
+  '媽的': '真的假的',
+  '他媽的': '真的假的',
+  '你媽的': '真的假的',
+  '屁': '傻眼',
+  '屁話': '傻話',
+  '放屁': '胡說',
+  '白癡': '傻眼',
+  '白吃': '傻眼',
+  '智障': '傻眼',
+  '弱智': '傻眼',
+  'Fuck': '天啊',
+  'fuck': '天啊',
+  'FUCK': '天啊',
+  'FK': '天啊',
+  'fk': '天啊',
+  'Shit': '傻眼',
+  'shit': '傻眼',
+  'SHIT': '傻眼',
+  'Damn': '天啊',
+  'damn': '天啊',
+  'DAMN': '天啊',
+  'WTF': '傻眼',
+  'wtf': '傻眼',
+};
+
+// ============================================
 // 強度係數配置
 // ============================================
 
@@ -222,6 +282,33 @@ const CONTENT_TYPE_COEFFICIENTS: Record<string, number> = {
 // ============================================
 // 過濾器函數
 // ============================================
+
+/**
+ * 髒話過濾器（絕對禁止，不受強度影響）
+ */
+export function filterProfanity(content: string): string {
+  let result = content;
+  
+  // 優先替換有替代詞的髒話
+  for (const [profanity, replacement] of Object.entries(PROFANITY_REPLACEMENTS)) {
+    // 使用詞邊界匹配，避免誤判
+    const regex = new RegExp(`\\b${profanity}\\b|${profanity}`, 'gi');
+    result = result.replace(regex, replacement);
+  }
+  
+  // 刪除沒有替代詞的髒話
+  for (const profanity of PROFANITY_LIST) {
+    if (!PROFANITY_REPLACEMENTS[profanity]) {
+      const regex = new RegExp(`\\b${profanity}\\b|${profanity}`, 'gi');
+      result = result.replace(regex, '');
+    }
+  }
+  
+  // 清理可能產生的多餘空格
+  result = result.replace(/  +/g, ' ');
+  
+  return result;
+}
 
 /**
  * 成語殺手過濾器
@@ -380,6 +467,9 @@ export function applyContentFilters(
   const intensity = calculateFilterIntensity(voiceTone, contentType, hasUserStyle);
   
   let result = content;
+  
+  // 0. 髒話過濾（最優先，絕對禁止，不受強度影響）
+  result = filterProfanity(result);
   
   // 1. 成語殺手
   if (enableIdiomFilter) {

@@ -45,6 +45,12 @@ export default function Reports() {
     reposts: 0,
     saves: 0,
   });
+  // 新增貼文時的深度分析欄位
+  const [newPostDate, setNewPostDate] = useState<string>('');
+  const [newPostingTime, setNewPostingTime] = useState<'' | 'morning' | 'noon' | 'evening' | 'night'>('');
+  const [newTopComment, setNewTopComment] = useState('');
+  const [newSelfReflection, setNewSelfReflection] = useState('');
+  const [newIsViral, setNewIsViral] = useState(false);
   const [expandedPostId, setExpandedPostId] = useState<number | null>(null);
   const [metricsDialogOpen, setMetricsDialogOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
@@ -67,6 +73,12 @@ export default function Reports() {
       setNewPostUrl("");
       setNewPostContent("");
       setNewMetrics({ reach: 0, likes: 0, comments: 0, reposts: 0, saves: 0 });
+      // 重置深度分析欄位
+      setNewPostDate('');
+      setNewPostingTime('');
+      setNewTopComment('');
+      setNewSelfReflection('');
+      setNewIsViral(false);
       setDialogOpen(false);
       toast.success("貼文已記錄！");
     },
@@ -169,9 +181,15 @@ export default function Reports() {
     createPost.mutate({ 
       threadUrl: newPostUrl,
       content: newPostContent || undefined,
+      postedAt: newPostDate ? new Date(newPostDate) : undefined,
       metrics: (newMetrics.reach || newMetrics.likes || newMetrics.comments || newMetrics.reposts || newMetrics.saves) 
         ? newMetrics 
         : undefined,
+      // 深度分析欄位
+      postingTime: newPostingTime || undefined,
+      topComment: newTopComment || undefined,
+      selfReflection: newSelfReflection || undefined,
+      isViral: newIsViral || undefined,
     });
   };
 
@@ -235,7 +253,7 @@ export default function Reports() {
                 記錄新貼文
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>記錄新貼文</DialogTitle>
                 <DialogDescription>
@@ -261,6 +279,16 @@ export default function Reports() {
                     value={newPostContent}
                     onChange={(e) => setNewPostContent(e.target.value)}
                     className="w-full min-h-[100px] px-3 py-2 text-sm rounded-md border border-input bg-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+                  />
+                </div>
+
+                {/* 發文日期 */}
+                <div className="space-y-2">
+                  <Label>發文日期</Label>
+                  <Input
+                    type="date"
+                    value={newPostDate}
+                    onChange={(e) => setNewPostDate(e.target.value)}
                   />
                 </div>
 
@@ -317,6 +345,86 @@ export default function Reports() {
                         onChange={(e) => setNewMetrics(prev => ({ ...prev, saves: parseInt(e.target.value) || 0 }))}
                         placeholder="0"
                       />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 深度分析（選填） */}
+                <div className="border-t pt-4">
+                  <p className="text-sm font-medium mb-3">📊 深度分析（選填）</p>
+                  
+                  <div className="space-y-4">
+                    {/* 發文時段 */}
+                    <div className="space-y-2">
+                      <Label>發文時段</Label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { value: 'morning' as const, label: '早晨', emoji: '🌅' },
+                          { value: 'noon' as const, label: '中午', emoji: '☀️' },
+                          { value: 'evening' as const, label: '傍晚', emoji: '🌇' },
+                          { value: 'night' as const, label: '晚上', emoji: '🌙' },
+                        ].map((time) => (
+                          <button
+                            key={time.value}
+                            type="button"
+                            onClick={() => setNewPostingTime(newPostingTime === time.value ? '' : time.value)}
+                            className={`p-2 rounded-lg border text-center transition-all ${
+                              newPostingTime === time.value
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-background border-border hover:border-primary/50'
+                            }`}
+                          >
+                            <span className="text-lg">{time.emoji}</span>
+                            <p className="text-xs mt-1">{time.label}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 最熱門留言 */}
+                    <div className="space-y-2">
+                      <Label>最熱門留言</Label>
+                      <Input
+                        placeholder="貼上互動最高的留言內容..."
+                        value={newTopComment}
+                        onChange={(e) => setNewTopComment(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">幫助 AI 了解什麼內容最能引起共鳴</p>
+                    </div>
+
+                    {/* 自我反思 */}
+                    <div className="space-y-2">
+                      <Label>自我反思</Label>
+                      <Input
+                        placeholder="你覺得這篇什麼有效？什麼可以改進？"
+                        value={newSelfReflection}
+                        onChange={(e) => setNewSelfReflection(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">你的觀察會幫助 AI 更了解你的風格</p>
+                    </div>
+
+                    {/* 爆文標記 */}
+                    <div className="space-y-2">
+                      <Label>爆文標記</Label>
+                      <button
+                        type="button"
+                        onClick={() => setNewIsViral(!newIsViral)}
+                        className={`w-full p-3 rounded-lg border text-center transition-all ${
+                          newIsViral
+                            ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white border-orange-500'
+                            : 'bg-background border-border hover:border-orange-500/50'
+                        }`}
+                      >
+                        <span className="text-lg">🔥</span>
+                        <p className="text-sm mt-1 font-medium">
+                          {newIsViral ? '✅ 已標記為爆文' : '點擊標記為爆文'}
+                        </p>
+                        <p className="text-xs mt-1 opacity-80">
+                          {newIsViral 
+                            ? 'AI 將分析這篇貼文的成功原因' 
+                            : '如果這篇表現特別好，標記它讓 AI 學習'}
+                        </p>
+                      </button>
                     </div>
                   </div>
                 </div>
