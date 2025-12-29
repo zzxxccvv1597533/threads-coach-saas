@@ -580,13 +580,26 @@ export function cleanAIInternalMarkers(content: string): string {
   result = result.replace(/[\(\uff08]模擬[^\)\uff09]+[\)\uff09]/g, '');
   
   // 11. 移除「好的，教練」、「好的，我來...」等 AI 回應前綴
-  result = result.replace(/^好的[\uff0c,][^\n]*\n/gm, '');
-  result = result.replace(/^收到[\uff0c,][^\n]*\n/gm, '');
+  result = result.replace(/^好的[，,][^\n]*\n/gm, '');
+  result = result.replace(/^收到[，,][^\n]*\n/gm, '');
   result = result.replace(/^我來幫你[^\n]*\n/gm, '');
   result = result.replace(/^讓我來[^\n]*\n/gm, '');
   
   // 12. 移除「---」獨立分隔線（如果前後是空行）
   result = result.replace(/\n---\n/g, '\n');
+  
+  // 13. 移除「👉 **邏輯X：...**」格式的標題（AI 常用的教學文章格式）
+  // 匹配：👉 **邏輯一：...**、👉 **邏輯二：...**、👉 **邏輯三：...**
+  result = result.replace(/👉\s*\*\*邏輯[一二三四五六七八九十\d]+[：:][^*]+\*\*/g, '');
+  
+  // 14. 移除「第X點：」、「重點X：」等編號格式
+  result = result.replace(/第[一二三四五六七八九十\d]+[點個條][：:]/g, '');
+  result = result.replace(/重點[一二三四五六七八九十\d]+[：:]/g, '');
+  result = result.replace(/邏輯[一二三四五六七八九十\d]+[：:]/g, '');
+  
+  // 15. 移除「**...**」粗體標題後的「。**」（保留內容）
+  // 例如：**內容就是「篩選器」，不是「流量密碼」。** → 內容就是「篩選器」，不是「流量密碼」。
+  result = result.replace(/\*\*([^*]+)\*\*/g, '$1');
   
   // 清理多餘的空行
   result = result.replace(/\n{3,}/g, '\n\n');
