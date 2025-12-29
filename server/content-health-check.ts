@@ -339,11 +339,137 @@ export const FOUR_LENS_MAX_SCORES = {
   conversion: 7,
 };
 
+// 建立個人化健檢提示詞
+function buildPersonalizedPrompt(
+  ipProfile: any | null,
+  writingStyle: any | null
+): string {
+  let personalContext = '';
+  
+  // 整合 IP 地基資料
+  if (ipProfile) {
+    personalContext += `\n\n## 學員個人資料（請根據這些資料給出個人化建議）\n`;
+    
+    if (ipProfile.occupation) {
+      personalContext += `- **職業/身份**：${ipProfile.occupation}\n`;
+    }
+    
+    // 人設三支柱（使用正確的欄位名稱）
+    if (ipProfile.personaExpertise || ipProfile.personaEmotion || ipProfile.personaViewpoint) {
+      personalContext += `- **人設三支柱**：\n`;
+      if (ipProfile.personaExpertise) personalContext += `  - 專業權威：${ipProfile.personaExpertise}\n`;
+      if (ipProfile.personaEmotion) personalContext += `  - 情感共鳴：${ipProfile.personaEmotion}\n`;
+      if (ipProfile.personaViewpoint) personalContext += `  - 獨特觀點：${ipProfile.personaViewpoint}\n`;
+    }
+    
+    // 目標受眾（從 contentMatrixAudiences 取得）
+    if (ipProfile.contentMatrixAudiences) {
+      const audiences = ipProfile.contentMatrixAudiences;
+      if (audiences.core) {
+        personalContext += `- **核心受眾**：${audiences.core}\n`;
+      }
+    }
+    
+    // 觀點聲明
+    if (ipProfile.viewpointStatement) {
+      personalContext += `- **核心觀點**：${ipProfile.viewpointStatement}\n`;
+    }
+    
+    // 說話風格
+    if (ipProfile.voiceTone) {
+      personalContext += `- **說話風格**：${ipProfile.voiceTone}\n`;
+    }
+    
+    // 身份標籤
+    if (ipProfile.identityTags && ipProfile.identityTags.length > 0) {
+      personalContext += `- **身份標籤**：${ipProfile.identityTags.join('、')}\n`;
+    }
+    
+    // 內容主題
+    if (ipProfile.contentMatrixThemes && ipProfile.contentMatrixThemes.length > 0) {
+      personalContext += `- **內容主題**：${ipProfile.contentMatrixThemes.join('、')}\n`;
+    }
+    
+    // AI 策略總結（從戰報數據學習）
+    if (ipProfile.aiStrategySummary) {
+      personalContext += `- **AI 策略分析**：${ipProfile.aiStrategySummary}\n`;
+    }
+    
+    if (ipProfile.bestPerformingType) {
+      personalContext += `- **表現最好的內容類型**：${ipProfile.bestPerformingType}\n`;
+    }
+    
+    if (ipProfile.viralPatterns) {
+      personalContext += `- **爆文模式**：${ipProfile.viralPatterns}\n`;
+    }
+  }
+  
+  // 整合風格樣本分析結果
+  if (writingStyle) {
+    personalContext += `\n## 學員爆款文風格分析\n`;
+    
+    if (writingStyle.toneStyle) {
+      personalContext += `- **語氣風格**：${writingStyle.toneStyle}\n`;
+    }
+    
+    if (writingStyle.commonPhrases && writingStyle.commonPhrases.length > 0) {
+      personalContext += `- **常用句式**：${writingStyle.commonPhrases.join('、')}\n`;
+    }
+    
+    if (writingStyle.emotionalTone) {
+      personalContext += `- **情緒基調**：${writingStyle.emotionalTone}\n`;
+    }
+    
+    if (writingStyle.hookPatterns && writingStyle.hookPatterns.length > 0) {
+      personalContext += `- **擅長的開頭風格**：${writingStyle.hookPatterns.join('、')}\n`;
+    }
+    
+    if (writingStyle.viralElements && writingStyle.viralElements.length > 0) {
+      personalContext += `- **爆款元素**：${writingStyle.viralElements.join('、')}\n`;
+    }
+    
+    // 加入爆款貼文範例（最多 3 篇）
+    if (writingStyle.samplePosts && writingStyle.samplePosts.length > 0) {
+      const topPosts = writingStyle.samplePosts.slice(0, 3);
+      personalContext += `\n### 學員爆款貼文範例（請參考這些風格給建議）\n`;
+      topPosts.forEach((post: any, index: number) => {
+        const content = typeof post === 'string' ? post : post.content;
+        if (content) {
+          personalContext += `\n**範例 ${index + 1}**：\n「${content.substring(0, 300)}${content.length > 300 ? '...' : ''}」\n`;
+        }
+      });
+    }
+  }
+  
+  // 加入個人化健檢指令
+  if (personalContext) {
+    personalContext += `\n## 個人化健檢指令\n`;
+    personalContext += `請根據上述學員資料，在建議中：\n`;
+    personalContext += `1. 檢查文案是否符合學員的人設定位和專業領域\n`;
+    personalContext += `2. 檢查語氣是否符合學員的說話風格和口頭禪\n`;
+    personalContext += `3. 檢查內容是否對準學員的目標受眾\n`;
+    personalContext += `4. 在改寫建議中參考學員的爆款文風格\n`;
+    personalContext += `5. 如果文案風格與學員的爆款文差異很大，要特別指出\n`;
+  }
+  
+  return personalContext;
+}
+
 // 執行健檢的主函數
 export async function executeContentHealthCheck(userId: number, text: string) {
+  // 載入學員的 IP 地基和風格資料
+  const [ipProfile, writingStyle] = await Promise.all([
+    db.getIpProfile(userId),
+    db.getUserWritingStyle(userId),
+  ]);
+  
+  // 建立個人化提示詞
+  const personalContext = buildPersonalizedPrompt(ipProfile || null, writingStyle);
+  const fullSystemPrompt = HEALTH_CHECK_SYSTEM_PROMPT + personalContext;
+  
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: HEALTH_CHECK_SYSTEM_PROMPT },
+      { role: "system", content: fullSystemPrompt },
       { role: "user", content: `請分析這篇文案：\n\n「${text}」` }
     ],
     response_format: {
@@ -423,10 +549,25 @@ export async function executeContentHealthCheck(userId: number, text: string) {
   else if (weakest.key === 'tone') overallAdvice += calibratedResult.tone.advice;
   else if (weakest.key === 'cta') overallAdvice += calibratedResult.cta.advice;
 
+  // 建立個人化資訊摘要
+  const personalizationInfo = {
+    hasIpProfile: !!ipProfile,
+    hasWritingStyle: !!writingStyle,
+    hasSamplePosts: !!(writingStyle?.samplePosts && writingStyle.samplePosts.length > 0),
+    samplePostCount: writingStyle?.samplePosts?.length || 0,
+    ipProfileFields: ipProfile ? {
+      hasOccupation: !!ipProfile.occupation,
+      hasPersonaTriad: !!(ipProfile.personaExpertise || ipProfile.personaEmotion || ipProfile.personaViewpoint),
+      hasTargetAudience: !!ipProfile.contentMatrixAudiences,
+      hasSpeakingStyle: !!ipProfile.voiceTone,
+    } : null,
+  };
+
   return {
     ...calibratedResult,
     overallAdvice,
     maxScores: MAX_SCORES,
     fourLensMaxScores: FOUR_LENS_MAX_SCORES,
+    personalizationInfo,
   };
 }
