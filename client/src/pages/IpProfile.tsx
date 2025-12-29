@@ -2016,6 +2016,44 @@ export default function IpProfile() {
           {/* 我的風格 Tab */}
           {activeTab === "style" && (
           <div className="space-y-6">
+            {/* 風格學習引導卡片 */}
+            <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+              <CardContent className="py-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Wand2 className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold text-lg">🎯 讓 AI 學習你的寫作風格</h3>
+                    <p className="text-muted-foreground">
+                      貼入你過去表現最好的貼文（互動高、迴響大的），AI 會分析你的：
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
+                      <div className="flex items-center gap-2 text-sm">
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        <span>語氣風格</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        <span>常用句式</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        <span>口頭禪</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        <span>爆款元素</span>
+                      </div>
+                    </div>
+                    <p className="text-sm text-primary font-medium mt-3">
+                      💡 完成風格分析後，發文工作室產出的內容會更像「你」寫的！
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* 爆款貼文樣本 */}
             <Card className="elegant-card">
               <CardHeader>
@@ -2212,17 +2250,39 @@ export default function IpProfile() {
             </Card>
             )}
             
-            {/* 提示卡片 */}
+            {/* 提示卡片 - 更詳細的引導 */}
             {(!writingStyle?.samplePosts || writingStyle.samplePosts.length < 3) && (
-            <Card className="border-dashed border-2 border-muted-foreground/20">
-              <CardContent className="py-8 text-center">
-                <Info className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">
-                  請至少新增 3 篇爆款貼文，讓 AI 學習你的寫作風格
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  分析完成後，AI 生成的文案會更符合你的語氣和風格
-                </p>
+            <Card className="border-dashed border-2 border-primary/30 bg-primary/5">
+              <CardContent className="py-8">
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                    <BookOpen className="w-8 h-8 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">如何找到你的爆款貼文？</h3>
+                    <p className="text-muted-foreground max-w-md mx-auto">
+                      打開你的 Threads 或其他社群平台，找出互動數最高的 3-10 篇貼文，
+                      複製內容貼到上方的輸入框。
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto text-left">
+                    <div className="bg-background rounded-lg p-4 border">
+                      <div className="font-medium mb-1">1️⃣ 找出爆款</div>
+                      <p className="text-sm text-muted-foreground">挑選收藏、迴應、留言數最高的貼文</p>
+                    </div>
+                    <div className="bg-background rounded-lg p-4 border">
+                      <div className="font-medium mb-1">2️⃣ 複製貼上</div>
+                      <p className="text-sm text-muted-foreground">將整篇貼文內容複製到上方輸入框</p>
+                    </div>
+                    <div className="bg-background rounded-lg p-4 border">
+                      <div className="font-medium mb-1">3️⃣ AI 分析</div>
+                      <p className="text-sm text-muted-foreground">新增 3 篇後點擊「AI 分析我的風格」</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-primary">
+                    📝 還差 {3 - (writingStyle?.samplePosts?.length || 0)} 篇即可開始分析
+                  </p>
+                </div>
               </CardContent>
             </Card>
             )}

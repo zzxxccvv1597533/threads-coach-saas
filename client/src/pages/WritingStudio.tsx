@@ -511,6 +511,30 @@ export default function WritingStudio() {
     toast.success("已複製到剪貼簿");
   };
 
+  // 確認當前版本，存入草稿庫
+  const handleConfirmVersion = () => {
+    if (draftId) {
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <span>✅ 已存入草稿庫</span>
+          <a 
+            href="/drafts" 
+            className="text-primary underline text-sm"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.href = '/drafts';
+            }}
+          >
+            前往草稿庫 →
+          </a>
+        </div>,
+        { duration: 5000 }
+      );
+    } else {
+      toast.success("已存入草稿庫");
+    }
+  };
+
   const handleReset = () => {
     setMaterial("");
     setSelectedAngle("");
@@ -1011,6 +1035,7 @@ export default function WritingStudio() {
                   onChatInputChange={setChatInput}
                   onChatSubmit={handleChatSubmit}
                   onCopy={handleCopy}
+                  onConfirmVersion={handleConfirmVersion}
                   chatEndRef={chatEndRef}
                   diagnosis={diagnosis}
                 />
@@ -1457,6 +1482,7 @@ export default function WritingStudio() {
                       onChatInputChange={setChatInput}
                       onChatSubmit={handleChatSubmit}
                       onCopy={handleCopy}
+                      onConfirmVersion={handleConfirmVersion}
                       chatEndRef={chatEndRef}
                       diagnosis={diagnosis}
                     />
@@ -1523,6 +1549,7 @@ interface DraftResultWithChatProps {
   onChatInputChange: (value: string) => void;
   onChatSubmit: () => void;
   onCopy: (text: string) => void;
+  onConfirmVersion: () => void; // 新增：確認此版本
   chatEndRef: React.RefObject<HTMLDivElement | null>;
   diagnosis?: {
     strengths: Array<{ label: string; description: string }>;
@@ -1540,6 +1567,7 @@ function DraftResultWithChat({
   onChatInputChange,
   onChatSubmit,
   onCopy,
+  onConfirmVersion,
   chatEndRef,
   diagnosis,
 }: DraftResultWithChatProps) {
@@ -1705,6 +1733,26 @@ function DraftResultWithChat({
             
             <div ref={chatEndRef} />
           </div>
+
+          {/* 確認版本按鈕 - 在對話後顯示 */}
+          {chatMessages.length > 0 && (
+            <div className="border-t border-border/50 p-3 bg-gradient-to-r from-primary/5 to-primary/10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <span>對這個版本滿意嗎？</span>
+                </div>
+                <Button 
+                  onClick={onConfirmVersion}
+                  className="bg-primary hover:bg-primary/90"
+                  size="sm"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  確認此版本，存入草稿庫
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* 固定底部輸入框 */}
           <div className="border-t border-border/50 p-4 bg-background/80 backdrop-blur-sm">

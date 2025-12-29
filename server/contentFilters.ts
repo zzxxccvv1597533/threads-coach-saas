@@ -186,59 +186,92 @@ const EMOTION_PATTERNS: Array<{
 // ============================================
 
 const PROFANITY_LIST: string[] = [
-  // 英文髒話
-  'Fuck', 'fuck', 'FUCK',
-  'FK', 'fk', 'F*ck', 'f*ck',
-  'Shit', 'shit', 'SHIT', 'sh*t',
+  // 英文髒話（各種變體）
+  'Fuck', 'fuck', 'FUCK', 'F*ck', 'f*ck', 'F**k', 'f**k',
+  'FK', 'fk', 'Fk', 'fK',
+  'Shit', 'shit', 'SHIT', 'sh*t', 'Sh*t', 'SH*T',
   'Damn', 'damn', 'DAMN',
   'Ass', 'ass', 'ASS',
   'Bitch', 'bitch', 'BITCH',
-  'WTF', 'wtf', 'STFU', 'stfu',
-  // 中文髒話
-  '靠', '靠北', '靠幸', '靠啊',
-  '幹', '幹你', '幹他', '幹嗎',
-  '媽的', '他媽的', '你媽的',
+  'WTF', 'wtf', 'Wtf', 'STFU', 'stfu',
+  // 中文髒話（各種變體）
+  '靠', '靠北', '靠幸', '靠啊', '靠夫', '靠杯',
+  '幹', '幹你', '幹他', '幹嗎', '幹拍', '幹話',
+  '媽的', '他媽的', '你媽的', '他媽', '你媽',
   '操', '操你',
-  '屁', '屁話', '放屁',
+  '屁', '屁話', '放屁', '屁啦', '屁嗆',
   '賤', '賤人',
   '婊', '婊子',
   '屎', '狗屎',
   '去死', '死開',
   '白癡', '白吃',
   '智障', '弱智',
+  // 變體和諧音
+  'X', 'x', '×', // 常用來代替髒話
+  '幹！', '靠！', '屁！',
+  'F!', 'FK!', 'fk!',
 ];
 
 // 髒話替代詞（用於替換而非刪除）
 const PROFANITY_REPLACEMENTS: Record<string, string> = {
+  // 中文髒話替代
   '靠': '天啊',
   '靠北': '天啊',
   '靠幸': '天啊',
   '靠啊': '天啊',
+  '靠夫': '天啊',
+  '靠杯': '天啊',
   '幹': '天啊',
   '幹嗎': '天啊',
+  '幹拍': '天啊',
+  '幹話': '傻話',
+  '幹！': '天啊！',
   '媽的': '真的假的',
   '他媽的': '真的假的',
   '你媽的': '真的假的',
+  '他媽': '真的',
+  '你媽': '真的',
   '屁': '傻眼',
   '屁話': '傻話',
   '放屁': '胡說',
+  '屁啦': '傻眼啦',
+  '屁嗆': '傻眼嗆',
+  '屁！': '傻眼！',
   '白癡': '傻眼',
   '白吃': '傻眼',
   '智障': '傻眼',
   '弱智': '傻眼',
+  // 英文髒話替代（各種變體）
   'Fuck': '天啊',
   'fuck': '天啊',
   'FUCK': '天啊',
+  'F*ck': '天啊',
+  'f*ck': '天啊',
+  'F**k': '天啊',
+  'f**k': '天啊',
   'FK': '天啊',
   'fk': '天啊',
+  'Fk': '天啊',
+  'fK': '天啊',
+  'FK!': '天啊！',
+  'fk!': '天啊！',
+  'F!': '天啊！',
   'Shit': '傻眼',
   'shit': '傻眼',
   'SHIT': '傻眼',
+  'sh*t': '傻眼',
+  'Sh*t': '傻眼',
+  'SH*T': '傻眼',
   'Damn': '天啊',
   'damn': '天啊',
   'DAMN': '天啊',
   'WTF': '傻眼',
   'wtf': '傻眼',
+  'Wtf': '傻眼',
+  // 特殊字元替代（常用來代替髒話）
+  'X': '',
+  'x': '',
+  '×': '',
 };
 
 // ============================================
@@ -289,17 +322,24 @@ const CONTENT_TYPE_COEFFICIENTS: Record<string, number> = {
 export function filterProfanity(content: string): string {
   let result = content;
   
+  // 輔助函數：轉義正則表達式特殊字元
+  const escapeRegex = (str: string): string => {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  };
+  
   // 優先替換有替代詞的髒話
   for (const [profanity, replacement] of Object.entries(PROFANITY_REPLACEMENTS)) {
-    // 使用詞邊界匹配，避免誤判
-    const regex = new RegExp(`\\b${profanity}\\b|${profanity}`, 'gi');
+    // 轉義特殊字元後再建立正則表達式
+    const escaped = escapeRegex(profanity);
+    const regex = new RegExp(`\\b${escaped}\\b|${escaped}`, 'gi');
     result = result.replace(regex, replacement);
   }
   
   // 刪除沒有替代詞的髒話
   for (const profanity of PROFANITY_LIST) {
     if (!PROFANITY_REPLACEMENTS[profanity]) {
-      const regex = new RegExp(`\\b${profanity}\\b|${profanity}`, 'gi');
+      const escaped = escapeRegex(profanity);
+      const regex = new RegExp(`\\b${escaped}\\b|${escaped}`, 'gi');
       result = result.replace(regex, '');
     }
   }
@@ -498,6 +538,174 @@ export function applyContentFilters(
  * 從用戶風格分析中提取保留詞
  * 安全處理各種可能的資料格式（陣列、字串、物件等）
  */
+// ============================================
+// AI 內部標記清理器
+// ============================================
+
+/**
+ * 清理 AI 生成內容中的內部標記和提示詞殘留
+ * 採用精準匹配策略，只移除特定格式的內部標記
+ */
+export function cleanAIInternalMarkers(content: string): string {
+  let result = content;
+  
+  // 1. 移除「(自我檢查：...)」格式的內部標記
+  result = result.replace(/[\(\uff08]自我檢查[\uff1a:][^\)\uff09]+[\)\uff09]/g, '');
+  
+  // 2. 移除「(字數約...)」格式的字數統計
+  result = result.replace(/[\(\uff08]字數約[^\)\uff09]+[\)\uff09]/g, '');
+  
+  // 3. 移除「--- (字數...)」格式的分隔線和字數統計
+  result = result.replace(/---\s*[\(\uff08]字數[^\)\uff09]+[\)\uff09]/g, '');
+  
+  // 4. 移除「情境模擬：」開頭的整個段落（到下一個空行為止）
+  result = result.replace(/情境模擬[\uff1a:][\s\S]*?(?=\n\n|$)/g, '');
+  
+  // 5. 移除「[內部標記]」格式
+  result = result.replace(/\[內部標記\][^\n]*/g, '');
+  
+  // 6. 移除「【提示】」格式
+  result = result.replace(/【提示】[^\n]*/g, '');
+  
+  // 7. 移除「注意：」開頭的內部提醒（通常是 AI 的自我提醒）
+  result = result.replace(/\n注意[\uff1a:][^\n]+\n/g, '\n');
+  
+  // 8. 移除「(符合要求...)」格式
+  result = result.replace(/[\(\uff08]符合要求[^\)\uff09]+[\)\uff09]/g, '');
+  
+  // 9. 移除「(語氣到位...)」格式
+  result = result.replace(/[\(\uff08]語氣到位[^\)\uff09]*[\)\uff09]/g, '');
+  
+  // 10. 移除「(模擬...)」格式
+  result = result.replace(/[\(\uff08]模擬[^\)\uff09]+[\)\uff09]/g, '');
+  
+  // 11. 移除「好的，教練」、「好的，我來...」等 AI 回應前綴
+  result = result.replace(/^好的[\uff0c,][^\n]*\n/gm, '');
+  result = result.replace(/^收到[\uff0c,][^\n]*\n/gm, '');
+  result = result.replace(/^我來幫你[^\n]*\n/gm, '');
+  result = result.replace(/^讓我來[^\n]*\n/gm, '');
+  
+  // 12. 移除「---」獨立分隔線（如果前後是空行）
+  result = result.replace(/\n---\n/g, '\n');
+  
+  // 清理多餘的空行
+  result = result.replace(/\n{3,}/g, '\n\n');
+  
+  // 清理開頭和結尾的空白
+  result = result.trim();
+  
+  return result;
+}
+
+// ============================================
+// 內容去重複器
+// ============================================
+
+/**
+ * 移除 AI 生成內容中的重複段落
+ * 只移除「完全相同」且「超過 20 字」的重複段落
+ */
+export function removeDuplicateParagraphs(content: string): string {
+  // 分割成段落
+  const paragraphs = content.split(/\n\n+/);
+  const seen = new Set<string>();
+  const result: string[] = [];
+  
+  for (const paragraph of paragraphs) {
+    const trimmed = paragraph.trim();
+    
+    // 空段落跳過
+    if (!trimmed) continue;
+    
+    // 短段落（20 字以內）不檢查重複（可能是修轭手法）
+    if (trimmed.length <= 20) {
+      result.push(paragraph);
+      continue;
+    }
+    
+    // 檢查是否重複
+    if (seen.has(trimmed)) {
+      // 跳過重複段落
+      continue;
+    }
+    
+    seen.add(trimmed);
+    result.push(paragraph);
+  }
+  
+  return result.join('\n\n');
+}
+
+/**
+ * 移除連續重複的句子（在同一段落內）
+ */
+export function removeDuplicateSentences(content: string): string {
+  // 分割成段落
+  const paragraphs = content.split(/\n/);
+  const result: string[] = [];
+  
+  for (const paragraph of paragraphs) {
+    // 分割成句子
+    const sentences = paragraph.split(/(?<=[\u3002\uff01\uff1f。!?])/);
+    const seen = new Set<string>();
+    const cleanSentences: string[] = [];
+    
+    for (const sentence of sentences) {
+      const trimmed = sentence.trim();
+      
+      // 空句子跳過
+      if (!trimmed) continue;
+      
+      // 短句子（10 字以內）不檢查重複
+      if (trimmed.length <= 10) {
+        cleanSentences.push(sentence);
+        continue;
+      }
+      
+      // 檢查是否重複
+      if (seen.has(trimmed)) {
+        continue;
+      }
+      
+      seen.add(trimmed);
+      cleanSentences.push(sentence);
+    }
+    
+    result.push(cleanSentences.join(''));
+  }
+  
+  return result.join('\n');
+}
+
+// ============================================
+// 綜合清理函數
+// ============================================
+
+/**
+ * 綜合清理 AI 輸出：移除內部標記 + 去重複 + 髒話過濾
+ */
+export function cleanAIOutput(content: string): string {
+  let result = content;
+  
+  // 1. 清理內部標記
+  result = cleanAIInternalMarkers(result);
+  
+  // 2. 移除重複段落
+  result = removeDuplicateParagraphs(result);
+  
+  // 3. 移除重複句子
+  result = removeDuplicateSentences(result);
+  
+  // 4. 髒話過濾
+  result = filterProfanity(result);
+  
+  return result;
+}
+
+// ============================================
+// 工具函數
+// ============================================
+
 export function extractPreservedWords(userStyle: {
   commonPhrases?: string[] | string | null;
   catchphrases?: string[] | string | null;

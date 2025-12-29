@@ -184,40 +184,40 @@ describe('Content Health Check - recalibrateScore', () => {
     });
   });
 
-  describe('CTA scoring (max 10)', () => {
-    it('should give 10 points for tribe call', () => {
+  describe('CTA scoring (max 10) - 加分制', () => {
+    it('should give 8 points for tribe call (最佳 CTA)', () => {
       const result = recalibrateScore(createMockResult({
         cta: { ctaType: 'tribe_call' },
       }));
-      expect(result.scores.cta).toBe(10);
+      expect(result.scores.cta).toBe(8); // 加分制：最佳 CTA 加 8 分
     });
 
-    it('should give 10 points for binary choice', () => {
+    it('should give 8 points for binary choice (最佳 CTA)', () => {
       const result = recalibrateScore(createMockResult({
         cta: { ctaType: 'binary_choice' },
       }));
-      expect(result.scores.cta).toBe(10);
+      expect(result.scores.cta).toBe(8); // 加分制：最佳 CTA 加 8 分
     });
 
-    it('should give 5 points for open question', () => {
+    it('should give 6 points for open question (良好 CTA)', () => {
       const result = recalibrateScore(createMockResult({
         cta: { ctaType: 'open_question' },
       }));
-      expect(result.scores.cta).toBe(5);
+      expect(result.scores.cta).toBe(6); // 加分制：良好 CTA 加 6 分
     });
 
-    it('should give 0 points for lecture', () => {
+    it('should give 4 points for lecture (基礎分)', () => {
       const result = recalibrateScore(createMockResult({
         cta: { ctaType: 'lecture' },
       }));
-      expect(result.scores.cta).toBe(0);
+      expect(result.scores.cta).toBe(4); // 加分制：生硬 CTA 仍給基礎分
     });
 
-    it('should give 0 points for no CTA', () => {
+    it('should give 5 points for no CTA (基礎分，不扣分)', () => {
       const result = recalibrateScore(createMockResult({
         cta: { ctaType: 'none' },
       }));
-      expect(result.scores.cta).toBe(0);
+      expect(result.scores.cta).toBe(5); // 加分制：沒有 CTA 不扣分，給基礎分
     });
   });
 
@@ -340,26 +340,26 @@ describe('Content Health Check - recalibrateScore', () => {
   });
 
   describe('Total score calculation', () => {
-    it('should calculate 100 for perfect score', () => {
+    it('should calculate 98 for perfect score (加分制 CTA 最高 8 分)', () => {
       const result = recalibrateScore(createMockResult({
-        hook: { hasContrastOpener: true },
-        translation: { hasBrilliantMetaphor: true },
-        tone: { hasInterjections: true, hasBreathingSpace: true, isHumanLike: true },
-        cta: { ctaType: 'tribe_call' },
+        hook: { hasContrastOpener: true }, // 25
+        translation: { hasBrilliantMetaphor: true }, // 20
+        tone: { hasInterjections: true, hasBreathingSpace: true, isHumanLike: true }, // 15
+        cta: { ctaType: 'tribe_call' }, // 8 (加分制最高)
         fourLens: {
-          emotion: { isDesireOriented: true },
-          persona: { isConsistent: true, hasPersonalTouch: true },
-          structure: { isEasyToAbsorb: true, hasLogicalFlow: true },
-          conversion: { hasNextStep: true, isActionable: true },
+          emotion: { isDesireOriented: true }, // 8
+          persona: { isConsistent: true, hasPersonalTouch: true }, // 8
+          structure: { isEasyToAbsorb: true, hasLogicalFlow: true }, // 7
+          conversion: { hasNextStep: true, isActionable: true }, // 7
         },
       }));
-      expect(result.totalScore).toBe(100);
+      expect(result.totalScore).toBe(25 + 20 + 15 + 8 + 30); // 98 (加分制 CTA 最高 8 分)
     });
 
     it('should calculate minimum score correctly', () => {
-      // 無任何項目時：hook=0, translation=12(基本分), tone=0, cta=0, fourLens=3(焦慮導向基本分)
+      // 無任何項目時：hook=0, translation=12(基本分), tone=0, cta=5(加分制基礎分), fourLens=3(焦慮導向基本分)
       const result = recalibrateScore(createMockResult());
-      expect(result.totalScore).toBe(0 + 12 + 0 + 0 + 3); // 15
+      expect(result.totalScore).toBe(0 + 12 + 0 + 5 + 3); // 20 (加分制：沒有 CTA 給 5 分基礎分)
     });
 
     it('should calculate total as sum of all dimensions', () => {
@@ -367,7 +367,7 @@ describe('Content Health Check - recalibrateScore', () => {
         hook: { hasObservationQuestion: true }, // 18
         translation: { hasSimpleExplanation: true }, // 16
         tone: { isHumanLike: true }, // 7
-        cta: { ctaType: 'open_question' }, // 5
+        cta: { ctaType: 'open_question' }, // 6 (加分制)
         fourLens: {
           emotion: { isDesireOriented: true }, // 8
           persona: { isConsistent: true }, // 5
@@ -375,7 +375,7 @@ describe('Content Health Check - recalibrateScore', () => {
           conversion: { hasNextStep: true }, // 4
         },
       }));
-      expect(result.totalScore).toBe(18 + 16 + 7 + 5 + (8 + 5 + 4 + 4)); // 67
+      expect(result.totalScore).toBe(18 + 16 + 7 + 6 + (8 + 5 + 4 + 4)); // 68
     });
   });
 

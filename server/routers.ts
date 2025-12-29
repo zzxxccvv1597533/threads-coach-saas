@@ -11,7 +11,7 @@ import { postMetrics, ipProfiles } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { KNOWLEDGE_BASE, SYSTEM_PROMPTS, CONTENT_TYPES_WITH_VIRAL_ELEMENTS, FORBIDDEN_PHRASES, THREADS_STYLE_GUIDE, FOUR_LENS_FRAMEWORK } from "../shared/knowledge-base";
 import { executeContentHealthCheck, MAX_SCORES, DIMENSION_NAMES } from "./content-health-check";
-import { applyContentFilters, extractPreservedWords } from "./contentFilters";
+import { applyContentFilters, extractPreservedWords, cleanAIOutput, filterProfanity } from "./contentFilters";
 
 // Admin procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -2187,6 +2187,9 @@ ${viralElementsPrompt}
         
         let generatedContent = typeof response.choices[0]?.message?.content === 'string' ? response.choices[0].message.content : '';
         
+        // 清理 AI 內部標記和重複內容
+        generatedContent = cleanAIOutput(generatedContent);
+        
         // 應用漸進式去 AI 化過濾器
         const hasUserStyle = !!(userStyle && userStyle.toneStyle);
         const preservedWords = extractPreservedWords(userStyle as any);
@@ -2592,6 +2595,9 @@ ${userInputContext}${input.additionalContext ? `補充說明：${input.additiona
         
         let generatedContent = typeof response.choices[0]?.message?.content === 'string' ? response.choices[0].message.content : '';
         
+        // 清理 AI 內部標記和重複內容
+        generatedContent = cleanAIOutput(generatedContent);
+        
         // 應用漸進式去 AI 化過濾器
         const userStyle = await db.getUserWritingStyle(ctx.user.id);
         const hasUserStyle = !!(userStyle && userStyle.toneStyle);
@@ -2728,6 +2734,9 @@ ${input.currentDraft}` },
         let newContent = typeof rawContent === 'string' ? rawContent : '';
 
         await db.logApiUsage(ctx.user.id, 'refineDraft', 'llm', 500, 600);
+        
+        // 清理 AI 內部標記和重複內容
+        newContent = cleanAIOutput(newContent);
         
         // 應用漸進式去 AI 化過濾器
         const userStyle = await db.getUserWritingStyle(ctx.user.id);
@@ -2979,6 +2988,9 @@ ${input.text}` }
           : '';
 
         await db.logApiUsage(ctx.user.id, 'autoFix', 'llm', 400, 600);
+        
+        // 清理 AI 內部標記和重複內容
+        optimizedContent = cleanAIOutput(optimizedContent);
         
         // 應用漸進式去 AI 化過濾器
         const userStyle = await db.getUserWritingStyle(ctx.user.id);
