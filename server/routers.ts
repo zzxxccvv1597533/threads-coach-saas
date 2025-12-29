@@ -2892,11 +2892,112 @@ ${input.currentDraft}` },
       .input(z.object({
         text: z.string(),
         draftId: z.number().optional(),
+        // 新增：健檢結果參數
+        healthCheckResult: z.object({
+          scores: z.object({
+            hook: z.number(),
+            translation: z.number(),
+            tone: z.number(),
+            cta: z.number(),
+            total: z.number(),
+          }).optional(),
+          maxScores: z.object({
+            hook: z.number(),
+            translation: z.number(),
+            tone: z.number(),
+            cta: z.number(),
+          }).optional(),
+          redlineMarks: z.array(z.object({
+            type: z.string(),
+            original: z.string(),
+            suggestion: z.string(),
+            reason: z.string(),
+          })).optional(),
+          hook: z.object({
+            score: z.number(),
+            advice: z.string(),
+          }).optional(),
+          translation: z.object({
+            score: z.number(),
+            advice: z.string(),
+          }).optional(),
+          tone: z.object({
+            score: z.number(),
+            advice: z.string(),
+          }).optional(),
+          cta: z.object({
+            score: z.number(),
+            advice: z.string(),
+          }).optional(),
+        }).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const profile = await db.getIpProfileByUserId(ctx.user.id);
+        const { healthCheckResult } = input;
         
-        const systemPrompt = `你是一位 Threads 爆款文案優化專家。請根據以下五大維度和四透鏡框架優化文案。
+        // 建立健檢問題摘要
+        let healthCheckSummary = '';
+        let priorityFixes = '';
+        
+        if (healthCheckResult && healthCheckResult.scores && healthCheckResult.maxScores) {
+          const { scores, maxScores, redlineMarks, hook, translation, tone, cta } = healthCheckResult;
+          
+          // 計算各維度得分率，找出最弱的維度
+          const dimensions = [
+            { name: 'Hook 鉤子強度', key: 'hook', score: scores.hook, max: maxScores.hook, advice: hook?.advice },
+            { name: 'Translation 說人話', key: 'translation', score: scores.translation, max: maxScores.translation, advice: translation?.advice },
+            { name: 'Tone 閱讀體感', key: 'tone', score: scores.tone, max: maxScores.tone, advice: tone?.advice },
+            { name: 'CTA 互動召喚', key: 'cta', score: scores.cta, max: maxScores.cta, advice: cta?.advice },
+          ];
+          
+          // 按得分率排序，找出最弱的維度
+          const sortedDimensions = [...dimensions].sort((a, b) => (a.score / a.max) - (b.score / b.max));
+          const weakest = sortedDimensions[0];
+          const strongest = sortedDimensions[sortedDimensions.length - 1];
+          
+          healthCheckSummary = `\n=== 文案健檢結果（請針對這些問題修改） ===\n`;
+          healthCheckSummary += `總分：${scores.total}/100\n\n`;
+          
+          healthCheckSummary += `各維度得分：\n`;
+          dimensions.forEach(d => {
+            const percentage = Math.round((d.score / d.max) * 100);
+            const status = percentage >= 80 ? '✅' : percentage >= 60 ? '⚠️' : '❌';
+            healthCheckSummary += `${status} ${d.name}：${d.score}/${d.max} (${percentage}%)\n`;
+          });
+          
+          // 最弱維度的具體建議
+          priorityFixes = `\n=== 優先修改順序 ===\n`;
+          priorityFixes += `🚨 最需要加強：${weakest.name}\n`;
+          if (weakest.advice) {
+            priorityFixes += `建議：${weakest.advice}\n`;
+          }
+          
+          // 如果有第二弱的維度
+          if (sortedDimensions[1] && (sortedDimensions[1].score / sortedDimensions[1].max) < 0.7) {
+            priorityFixes += `\n⚠️ 次要加強：${sortedDimensions[1].name}\n`;
+            if (sortedDimensions[1].advice) {
+              priorityFixes += `建議：${sortedDimensions[1].advice}\n`;
+            }
+          }
+          
+          // 如果有滿分的維度，提醒不要動
+          if ((strongest.score / strongest.max) >= 0.9) {
+            priorityFixes += `\n✅ 保持不變：${strongest.name} 已經很好，請不要改動這部分\n`;
+          }
+          
+          // 紅線標記（具體要修改的句子）
+          if (redlineMarks && redlineMarks.length > 0) {
+            priorityFixes += `\n=== 具體要修改的地方 ===\n`;
+            redlineMarks.slice(0, 5).forEach((mark, i) => {
+              priorityFixes += `\n${i + 1}. 問題類型：${mark.type}\n`;
+              priorityFixes += `   原文：「${mark.original}」\n`;
+              priorityFixes += `   建議改為：「${mark.suggestion}」\n`;
+              priorityFixes += `   原因：${mark.reason}\n`;
+            });
+          }
+        }
+        
+        const systemPrompt = `你是一位 Threads 爆款文案優化專家。${healthCheckResult ? '請根據以下健檢結果，針對性地修改文案。' : '請根據以下五大維度和四透鏡框架優化文案。'}${healthCheckSummary}${priorityFixes}
 
 === 創作者人設（必須保持一致） ===
 - 語氣風格：${profile?.voiceTone || '溫暖真誠'}

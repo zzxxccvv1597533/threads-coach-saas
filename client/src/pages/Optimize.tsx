@@ -321,7 +321,47 @@ export default function Optimize() {
       toast.error("請先輸入要優化的文案");
       return;
     }
-    autoFix.mutate({ text: inputText });
+    // 如果有健檢結果，傳入讓 AI 針對性修改
+    autoFix.mutate({ 
+      text: inputText,
+      healthCheckResult: healthCheckResult ? {
+        scores: {
+          hook: healthCheckResult.scores.hook,
+          translation: healthCheckResult.scores.translation,
+          tone: healthCheckResult.scores.tone,
+          cta: healthCheckResult.scores.cta,
+          total: healthCheckResult.totalScore,
+        },
+        maxScores: {
+          hook: healthCheckResult.maxScores.hook,
+          translation: healthCheckResult.maxScores.translation,
+          tone: healthCheckResult.maxScores.tone,
+          cta: healthCheckResult.maxScores.cta,
+        },
+        redlineMarks: healthCheckResult.redlineMarks?.map(mark => ({
+          type: mark.category,
+          original: mark.originalText,
+          suggestion: mark.suggestedText,
+          reason: mark.reason,
+        })),
+        hook: {
+          score: healthCheckResult.scores.hook,
+          advice: healthCheckResult.hook.advice,
+        },
+        translation: {
+          score: healthCheckResult.scores.translation,
+          advice: healthCheckResult.translation.advice,
+        },
+        tone: {
+          score: healthCheckResult.scores.tone,
+          advice: healthCheckResult.tone.advice,
+        },
+        cta: {
+          score: healthCheckResult.scores.cta,
+          advice: healthCheckResult.cta.advice,
+        },
+      } : undefined,
+    });
   };
 
   const handleCopy = (text: string) => {

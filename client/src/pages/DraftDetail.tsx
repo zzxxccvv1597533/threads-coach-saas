@@ -570,7 +570,46 @@ export default function DraftDetail() {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => autoFix.mutate({ text: editedBody })}
+              onClick={() => autoFix.mutate({ 
+                text: editedBody,
+                healthCheckResult: healthCheckResult ? {
+                  scores: {
+                    hook: healthCheckResult.scores.hook,
+                    translation: healthCheckResult.scores.translation,
+                    tone: healthCheckResult.scores.tone,
+                    cta: healthCheckResult.scores.cta,
+                    total: healthCheckResult.totalScore,
+                  },
+                  maxScores: {
+                    hook: healthCheckResult.maxScores.hook,
+                    translation: healthCheckResult.maxScores.translation,
+                    tone: healthCheckResult.maxScores.tone,
+                    cta: healthCheckResult.maxScores.cta,
+                  },
+                  redlineMarks: healthCheckResult.redlineMarks?.map(mark => ({
+                    type: mark.category,
+                    original: mark.original,
+                    suggestion: mark.suggestion,
+                    reason: mark.reason,
+                  })),
+                  hook: {
+                    score: healthCheckResult.scores.hook,
+                    advice: healthCheckResult.hook.advice,
+                  },
+                  translation: {
+                    score: healthCheckResult.scores.translation,
+                    advice: healthCheckResult.translation.advice,
+                  },
+                  tone: {
+                    score: healthCheckResult.scores.tone,
+                    advice: healthCheckResult.tone.advice,
+                  },
+                  cta: {
+                    score: healthCheckResult.scores.cta,
+                    advice: healthCheckResult.cta.advice,
+                  },
+                } : undefined,
+              })}
               disabled={autoFix.isPending}
               className="border-purple-300 text-purple-700 hover:bg-purple-50"
             >
