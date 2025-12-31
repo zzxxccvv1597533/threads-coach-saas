@@ -18,6 +18,7 @@ import Apply from "./pages/Apply";
 import DraftDetail from "./pages/DraftDetail";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Maintenance from "./pages/Maintenance";
 
 function Router() {
   return (
@@ -25,6 +26,7 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path={"/login"} component={Login} />
       <Route path={"/register"} component={Register} />
+      <Route path={"/maintenance"} component={Maintenance} />
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/ip-profile"} component={IpProfile} />
       <Route path={"/writing-studio"} component={WritingStudio} />

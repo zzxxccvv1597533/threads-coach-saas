@@ -6,17 +6,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Eye, EyeOff, LogIn, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, LogIn, ArrowLeft, AlertTriangle, RefreshCw } from "lucide-react";
+import { isDatabaseError } from "@/lib/errorUtils";
 
 export default function Login() {
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showMaintenanceAlert, setShowMaintenanceAlert] = useState(false);
 
   const loginMutation = trpc.auth.login.useMutation({
     onSuccess: (data) => {
       toast.success("登入成功！");
+      setShowMaintenanceAlert(false);
       // 根據角色重定向
       if (data.user.role === 'admin') {
         setLocation('/admin');
@@ -25,7 +28,13 @@ export default function Login() {
       }
     },
     onError: (error) => {
-      toast.error(error.message || "登入失敗");
+      // 檢查是否為資料庫錯誤
+      if (isDatabaseError(error)) {
+        setShowMaintenanceAlert(true);
+        toast.error("系統暫時無法連線，請稍後再試");
+      } else {
+        toast.error(error.message || "登入失敗");
+      }
     },
   });
 
@@ -35,7 +44,15 @@ export default function Login() {
       toast.error("請填寫所有欄位");
       return;
     }
+    setShowMaintenanceAlert(false);
     loginMutation.mutate({ email, password });
+  };
+
+  const handleRetry = () => {
+    setShowMaintenanceAlert(false);
+    if (email && password) {
+      loginMutation.mutate({ email, password });
+    }
   };
 
   return (
@@ -65,6 +82,31 @@ export default function Login() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {/* 系統維護提示 */}
+            {showMaintenanceAlert && (
+              <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-amber-800">系統維護中</p>
+                    <p className="text-xs text-amber-600 mt-1">
+                      我們正在進行系統維護，請稍後再試。通常會在 5-30 分鐘內恢復。
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRetry}
+                      disabled={loginMutation.isPending}
+                      className="mt-2 text-amber-700 border-amber-300 hover:bg-amber-100"
+                    >
+                      <RefreshCw className={`w-3 h-3 mr-1 ${loginMutation.isPending ? 'animate-spin' : ''}`} />
+                      重新嘗試
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
