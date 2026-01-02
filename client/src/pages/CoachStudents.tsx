@@ -378,12 +378,25 @@ export default function CoachStudents() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="cohort">期別</Label>
-              <Input
+              <select
                 id="cohort"
-                placeholder="例如：第四期"
                 value={editForm.cohort}
                 onChange={(e) => setEditForm({ ...editForm, cohort: e.target.value })}
-              />
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="">未設定</option>
+                <option value="第四期">第四期</option>
+                <option value="第五期">第五期</option>
+                <option value="第六期">第六期</option>
+                <option value="第七期">第七期</option>
+                <option value="第八期">第八期</option>
+                {editForm.cohort && !['第四期', '第五期', '第六期', '第七期', '第八期'].includes(editForm.cohort) && (
+                  <option value={editForm.cohort}>{editForm.cohort}</option>
+                )}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                如需自訂期別，請在創建邀請碼時設定
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="threadsHandle">Threads 帳號</Label>

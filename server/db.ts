@@ -1081,6 +1081,7 @@ function generateInviteCode(): string {
 export async function createInvitationCode(data: {
   createdBy: number;
   validDays?: number;
+  cohort?: string; // 期別
   note?: string;
   expiresAt?: Date;
 }): Promise<InvitationCode | null> {
@@ -1092,6 +1093,7 @@ export async function createInvitationCode(data: {
     code,
     createdBy: data.createdBy,
     validDays: data.validDays ?? 90,
+    cohort: data.cohort,
     note: data.note,
     expiresAt: data.expiresAt,
     status: 'active',
@@ -1107,6 +1109,7 @@ export async function createBatchInvitationCodes(data: {
   createdBy: number;
   count: number;
   validDays?: number;
+  cohort?: string; // 期別
   note?: string;
   expiresAt?: Date;
 }): Promise<InvitationCode[]> {
@@ -1118,6 +1121,7 @@ export async function createBatchInvitationCodes(data: {
     const code = await createInvitationCode({
       createdBy: data.createdBy,
       validDays: data.validDays,
+      cohort: data.cohort,
       note: data.note,
       expiresAt: data.expiresAt,
     });
@@ -1136,7 +1140,7 @@ export async function getInvitationCodeByCode(code: string): Promise<InvitationC
 }
 
 // 驗證並使用邀請碼
-export async function useInvitationCode(code: string, userId: number): Promise<{ success: boolean; message: string; validDays?: number }> {
+export async function useInvitationCode(code: string, userId: number): Promise<{ success: boolean; message: string; validDays?: number; cohort?: string }> {
   const db = await getDb();
   if (!db) return { success: false, message: '資料庫連接失敗' };
   
@@ -1166,20 +1170,27 @@ export async function useInvitationCode(code: string, userId: number): Promise<{
     })
     .where(eq(invitationCodes.id, invitation.id));
   
-  // 更新用戶的開通狀態
+  // 更新用戶的開通狀態和期別
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + invitation.validDays);
   
+  // 如果邀請碼有設定期別，自動帶入學員資料
+  const updateData: any = {
+    activationStatus: 'activated',
+    activatedAt: new Date(),
+    expiresAt: expiresAt,
+    activationNote: `使用邀請碼 ${code} 開通`,
+  };
+  
+  if (invitation.cohort) {
+    updateData.cohort = invitation.cohort;
+  }
+  
   await db.update(users)
-    .set({
-      activationStatus: 'activated',
-      activatedAt: new Date(),
-      expiresAt: expiresAt,
-      activationNote: `使用邀請碼 ${code} 開通`,
-    })
+    .set(updateData)
     .where(eq(users.id, userId));
   
-  return { success: true, message: '開通成功', validDays: invitation.validDays };
+  return { success: true, message: '開通成功', validDays: invitation.validDays, cohort: invitation.cohort || undefined };
 }
 
 // 獲取所有邀請碼（管理員用）

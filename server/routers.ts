@@ -4232,6 +4232,7 @@ ${postsData.map((p, i) => `${i + 1}. 觸及:${p.reach} 愛心:${p.likes} 留言:
     create: adminProcedure
       .input(z.object({
         validDays: z.number().default(90),
+        cohort: z.string().optional(), // 期別
         note: z.string().optional(),
         expiresAt: z.date().optional(),
       }))
@@ -4239,6 +4240,7 @@ ${postsData.map((p, i) => `${i + 1}. 觸及:${p.reach} 愛心:${p.likes} 留言:
         return db.createInvitationCode({
           createdBy: ctx.user.id,
           validDays: input.validDays,
+          cohort: input.cohort,
           note: input.note,
           expiresAt: input.expiresAt,
         });
@@ -4249,6 +4251,7 @@ ${postsData.map((p, i) => `${i + 1}. 觸及:${p.reach} 愛心:${p.likes} 留言:
       .input(z.object({
         count: z.number().min(1).max(100),
         validDays: z.number().default(90),
+        cohort: z.string().optional(), // 期別
         note: z.string().optional(),
         expiresAt: z.date().optional(),
       }))
@@ -4257,6 +4260,7 @@ ${postsData.map((p, i) => `${i + 1}. 觸及:${p.reach} 愛心:${p.likes} 留言:
           createdBy: ctx.user.id,
           count: input.count,
           validDays: input.validDays,
+          cohort: input.cohort,
           note: input.note,
           expiresAt: input.expiresAt,
         });

@@ -45,6 +45,7 @@ export const invitationCodes = mysqlTable("invitation_codes", {
   usedBy: int("usedBy"), // 使用者
   usedAt: timestamp("usedAt"),
   validDays: int("validDays").default(90).notNull(), // 有效天數，預設 90 天
+  cohort: varchar("cohort", { length: 32 }), // 期別，例如 "第四期"、"第五期"
   note: text("note"), // 備註（例如學員姓名）
   status: mysqlEnum("status", ["active", "used", "expired", "revoked"]).default("active").notNull(),
   expiresAt: timestamp("expiresAt"), // 邀請碼本身的過期時間

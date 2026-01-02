@@ -1,0 +1,1 @@
+ALTER TABLE `invitation_codes` ADD `cohort` varchar(32);

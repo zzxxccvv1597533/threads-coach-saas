@@ -326,8 +326,8 @@ export default function CoachReports() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {reports.map((report: Report) => (
-                      <TableRow key={report.postId} className="hover:bg-muted/30">
+                    {reports.map((report: Report, index: number) => (
+                      <TableRow key={`${report.postId}-${report.userId}-${index}`} className="hover:bg-muted/30">
                         <TableCell>
                           <div>
                             <p className="font-medium">{report.userName}</p>

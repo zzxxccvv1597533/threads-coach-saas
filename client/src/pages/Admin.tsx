@@ -613,11 +613,16 @@ export default function Admin() {
 }
 
 // 邀請碼管理組件
+// 預設期別選項
+const DEFAULT_COHORTS = ["第四期", "第五期", "第六期", "第七期", "第八期"];
+
 function InvitationManagement() {
   const utils = trpc.useUtils();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [batchCount, setBatchCount] = useState(1);
   const [validDays, setValidDays] = useState(90);
+  const [cohort, setCohort] = useState(""); // 期別
+  const [customCohort, setCustomCohort] = useState(""); // 自訂期別
   const [note, setNote] = useState("");
 
   // 獲取當前網站的基礎 URL
@@ -662,14 +667,23 @@ function InvitationManagement() {
   const resetForm = () => {
     setBatchCount(1);
     setValidDays(90);
+    setCohort("");
+    setCustomCohort("");
     setNote("");
   };
 
+  // 取得最終的期別值
+  const getFinalCohort = () => {
+    if (cohort === "custom") return customCohort || undefined;
+    return cohort || undefined;
+  };
+
   const handleCreate = () => {
+    const finalCohort = getFinalCohort();
     if (batchCount === 1) {
-      createMutation.mutate({ validDays, note: note || undefined });
+      createMutation.mutate({ validDays, cohort: finalCohort, note: note || undefined });
     } else {
-      createBatchMutation.mutate({ count: batchCount, validDays, note: note || undefined });
+      createBatchMutation.mutate({ count: batchCount, validDays, cohort: finalCohort, note: note || undefined });
     }
   };
 
@@ -839,6 +853,7 @@ function InvitationManagement() {
                     </div>
                     <div className="text-sm text-muted-foreground space-x-3">
                       <span>有效期：{inv.validDays} 天</span>
+                      {(inv as any).cohort && <span>· 期別：<span className="text-blue-600 font-medium">{(inv as any).cohort}</span></span>}
                       {inv.usedBy && <span>· 使用者 ID：{inv.usedBy}</span>}
                       {inv.usedAt && <span>· 使用時間：{format(new Date(inv.usedAt), 'yyyy/MM/dd HH:mm', { locale: zhTW })}</span>}
                       {inv.note && <span>· {inv.note}</span>}
@@ -905,12 +920,38 @@ function InvitationManagement() {
               </p>
             </div>
             <div className="space-y-2">
+              <Label htmlFor="cohort">學員期別</Label>
+              <select
+                id="cohort"
+                value={cohort}
+                onChange={(e) => setCohort(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="">不設定期別</option>
+                {DEFAULT_COHORTS.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+                <option value="custom">自訂期別...</option>
+              </select>
+              {cohort === "custom" && (
+                <Input
+                  placeholder="輸入自訂期別名稱"
+                  value={customCohort}
+                  onChange={(e) => setCustomCohort(e.target.value)}
+                  className="mt-2"
+                />
+              )}
+              <p className="text-xs text-muted-foreground">
+                學員使用邀請碼後會自動歸入此期別
+              </p>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="note">備註（選填）</Label>
               <Input
                 id="note"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="例如：第一期學員"
+                placeholder="例如：學員姓名"
               />
             </div>
           </div>
