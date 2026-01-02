@@ -965,6 +965,33 @@ ${randomSeed}
         await db.deleteDraft(input.id);
         return { success: true };
       }),
+
+    // 批次刪除草稿
+    batchDelete: protectedProcedure
+      .input(z.object({ ids: z.array(z.number()) }))
+      .mutation(async ({ ctx, input }) => {
+        const count = await db.batchDeleteDrafts(ctx.user.id, input.ids);
+        return { count };
+      }),
+
+    // 批次移動分類
+    batchMove: protectedProcedure
+      .input(z.object({ 
+        ids: z.array(z.number()),
+        contentType: z.string()
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const count = await db.batchMoveDrafts(ctx.user.id, input.ids, input.contentType);
+        return { count };
+      }),
+
+    // 批次封存
+    batchArchive: protectedProcedure
+      .input(z.object({ ids: z.array(z.number()) }))
+      .mutation(async ({ ctx, input }) => {
+        const count = await db.batchArchiveDrafts(ctx.user.id, input.ids);
+        return { count };
+      }),
     
     selectHook: protectedProcedure
       .input(z.object({ hookId: z.number(), draftId: z.number() }))
@@ -4032,6 +4059,71 @@ ${postsData.map((p, i) => `${i + 1}. 觸及:${p.reach} 愛心:${p.likes} 留言:
       .input(z.object({ postId: z.number() }))
       .query(async ({ input }) => {
         return db.getStudentReportDetail(input.postId);
+      }),
+
+    // ========== 批次操作 API ==========
+    
+    // 批次設定學員期別
+    batchSetCohort: adminProcedure
+      .input(z.object({
+        userIds: z.array(z.number()),
+        cohort: z.string().nullable(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.batchUpdateUserCohort(input.userIds, input.cohort);
+        return { success: true, count: input.userIds.length };
+      }),
+    
+    // 批次新增學員標籤
+    batchAddTags: adminProcedure
+      .input(z.object({
+        userIds: z.array(z.number()),
+        tags: z.array(z.string()),
+      }))
+      .mutation(async ({ input }) => {
+        await db.batchAddUserTags(input.userIds, input.tags);
+        return { success: true, count: input.userIds.length };
+      }),
+    
+    // 批次撤銷邀請碼
+    batchRevokeInvitations: adminProcedure
+      .input(z.object({
+        ids: z.array(z.number()),
+      }))
+      .mutation(async ({ input }) => {
+        await db.batchRevokeInvitationCodes(input.ids);
+        return { success: true, count: input.ids.length };
+      }),
+    
+    // 批次標記戰報已閱讀
+    batchMarkReportsRead: adminProcedure
+      .input(z.object({
+        postIds: z.array(z.number()),
+      }))
+      .mutation(async ({ input }) => {
+        await db.batchMarkReportsAsRead(input.postIds);
+        return { success: true, count: input.postIds.length };
+      }),
+    
+    // 匯出學員資料
+    exportStudents: adminProcedure
+      .input(z.object({
+        userIds: z.array(z.number()).optional(),
+        cohort: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        return db.exportStudentsData(input);
+      }),
+    
+    // 匯出戰報資料
+    exportReports: adminProcedure
+      .input(z.object({
+        postIds: z.array(z.number()).optional(),
+        cohort: z.string().optional(),
+        userId: z.number().optional(),
+      }))
+      .query(async ({ input }) => {
+        return db.exportReportsData(input);
       }),
   }),
 

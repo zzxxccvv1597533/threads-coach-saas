@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
@@ -10,17 +10,15 @@ import {
   Users, 
   Search,
   Filter,
-  User,
   FileText,
-  Target,
-  Calendar,
   Tag,
   Edit,
-  Eye,
   ChevronRight,
   BarChart3,
-  MessageSquare,
-  TrendingUp,
+  Download,
+  CheckSquare,
+  Square,
+  Minus,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -52,6 +51,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
+import { useMultiSelect } from "@/hooks/useMultiSelect";
+import { BatchActionBar } from "@/components/BatchActionBar";
 
 type Student = {
   id: number;
@@ -70,6 +71,8 @@ type Student = {
   ipCompleteness: number;
 };
 
+const DEFAULT_COHORTS = ["第四期", "第五期", "第六期", "第七期", "第八期"];
+
 export default function CoachStudents() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -85,6 +88,12 @@ export default function CoachStudents() {
     coachNote: "",
     coachTags: "",
   });
+
+  // 批次操作對話框
+  const [batchCohortDialogOpen, setBatchCohortDialogOpen] = useState(false);
+  const [batchTagsDialogOpen, setBatchTagsDialogOpen] = useState(false);
+  const [batchCohort, setBatchCohort] = useState("");
+  const [batchTags, setBatchTags] = useState("");
 
   // 取得期別列表
   const { data: cohorts } = trpc.admin.getCohorts.useQuery(undefined, {
@@ -102,6 +111,21 @@ export default function CoachStudents() {
     }
   );
 
+  // 多選功能
+  const {
+    selectedIds,
+    isSelected,
+    toggle,
+    toggleAll,
+    deselectAll,
+    isAllSelected,
+    isSomeSelected,
+    selectedCount,
+  } = useMultiSelect({
+    items: students || [],
+    getItemId: (student) => student.id,
+  });
+
   const updateStudentMutation = trpc.admin.updateStudentInfo.useMutation({
     onSuccess: () => {
       toast.success("學員資料已更新");
@@ -113,6 +137,40 @@ export default function CoachStudents() {
       toast.error("更新失敗：" + error.message);
     },
   });
+
+  // 批次設定期別
+  const batchSetCohortMutation = trpc.admin.batchSetCohort.useMutation({
+    onSuccess: (data) => {
+      toast.success(`已為 ${data.count} 位學員設定期別`);
+      utils.admin.getStudents.invalidate();
+      setBatchCohortDialogOpen(false);
+      setBatchCohort("");
+      deselectAll();
+    },
+    onError: (error) => {
+      toast.error("批次設定失敗：" + error.message);
+    },
+  });
+
+  // 批次新增標籤
+  const batchAddTagsMutation = trpc.admin.batchAddTags.useMutation({
+    onSuccess: (data) => {
+      toast.success(`已為 ${data.count} 位學員新增標籤`);
+      utils.admin.getStudents.invalidate();
+      setBatchTagsDialogOpen(false);
+      setBatchTags("");
+      deselectAll();
+    },
+    onError: (error) => {
+      toast.error("批次新增失敗：" + error.message);
+    },
+  });
+
+  // 匯出學員資料
+  const { refetch: exportStudents, isFetching: isExporting } = trpc.admin.exportStudents.useQuery(
+    { userIds: Array.from(selectedIds) as number[] },
+    { enabled: false }
+  );
 
   // 如果不是管理員，重定向
   if (user && user.role !== 'admin') {
@@ -144,12 +202,57 @@ export default function CoachStudents() {
     });
   };
 
-  const handleViewDetail = (studentId: number) => {
-    setLocation(`/coach/students/${studentId}`);
-  };
-
   const handleViewReports = (studentId: number) => {
     setLocation(`/coach/reports?userId=${studentId}`);
+  };
+
+  const handleBatchSetCohort = () => {
+    if (selectedCount === 0) return;
+    batchSetCohortMutation.mutate({
+      userIds: Array.from(selectedIds) as number[],
+      cohort: batchCohort || null,
+    });
+  };
+
+  const handleBatchAddTags = () => {
+    if (selectedCount === 0 || !batchTags.trim()) return;
+    const tags = batchTags.split(",").map(t => t.trim()).filter(t => t);
+    if (tags.length === 0) return;
+    batchAddTagsMutation.mutate({
+      userIds: Array.from(selectedIds) as number[],
+      tags,
+    });
+  };
+
+  const handleExport = async () => {
+    if (selectedCount === 0) return;
+    const result = await exportStudents();
+    if (result.data) {
+      // 轉換為 CSV
+      const headers = ['ID', '姓名', 'Email', '期別', 'Threads帳號', '教練備註', '標籤', '開通時間', '到期時間', '最後登入'];
+      const rows = result.data.map((s: any) => [
+        s.id,
+        s.name || '',
+        s.email || '',
+        s.cohort || '',
+        s.threadsHandle || '',
+        s.coachNote || '',
+        Array.isArray(s.coachTags) ? s.coachTags.join(';') : '',
+        s.activatedAt ? format(new Date(s.activatedAt), 'yyyy-MM-dd HH:mm') : '',
+        s.expiresAt ? format(new Date(s.expiresAt), 'yyyy-MM-dd HH:mm') : '',
+        s.lastSignedIn ? format(new Date(s.lastSignedIn), 'yyyy-MM-dd HH:mm') : '',
+      ]);
+      
+      const csv = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `學員資料_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`已匯出 ${result.data.length} 筆學員資料`);
+    }
   };
 
   return (
@@ -203,6 +306,17 @@ export default function CoachStudents() {
                   </SelectContent>
                 </Select>
               </div>
+              {(selectedCohort || searchTerm) && (
+                <Button 
+                  variant="ghost" 
+                  onClick={() => {
+                    setSelectedCohort("");
+                    setSearchTerm("");
+                  }}
+                >
+                  清除篩選
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -220,7 +334,7 @@ export default function CoachStudents() {
               )}
             </CardTitle>
             <CardDescription>
-              點擊學員可查看詳細資料和學習進度
+              勾選學員可進行批次操作（設定期別、新增標籤、匯出資料）
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -235,6 +349,14 @@ export default function CoachStudents() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
+                      <TableHead className="w-[50px]">
+                        <Checkbox
+                          checked={isAllSelected}
+                          onCheckedChange={toggleAll}
+                          aria-label="全選"
+                          className={isSomeSelected ? "data-[state=checked]:bg-primary/50" : ""}
+                        />
+                      </TableHead>
                       <TableHead className="w-[200px]">學員</TableHead>
                       <TableHead>期別</TableHead>
                       <TableHead>Threads</TableHead>
@@ -247,7 +369,17 @@ export default function CoachStudents() {
                   </TableHeader>
                   <TableBody>
                     {students.map((student: Student) => (
-                      <TableRow key={student.id} className="hover:bg-muted/30">
+                      <TableRow 
+                        key={student.id} 
+                        className={`hover:bg-muted/30 ${isSelected(student.id) ? 'bg-primary/5' : ''}`}
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={isSelected(student.id)}
+                            onCheckedChange={() => toggle(student.id)}
+                            aria-label={`選擇 ${student.name || student.email}`}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -279,25 +411,26 @@ export default function CoachStudents() {
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-2">
-                            <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
                               <div 
-                                className={`h-full rounded-full ${
-                                  student.ipCompleteness >= 80 ? 'bg-emerald-500' :
-                                  student.ipCompleteness >= 50 ? 'bg-amber-500' : 'bg-red-400'
-                                }`}
+                                className="h-full bg-primary rounded-full transition-all"
                                 style={{ width: `${student.ipCompleteness}%` }}
                               />
                             </div>
-                            <span className="text-xs text-muted-foreground">{student.ipCompleteness}%</span>
+                            <span className="text-xs text-muted-foreground w-8">
+                              {student.ipCompleteness}%
+                            </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-center">
-                          <span className="font-medium">{student.postCount}</span>
+                        <TableCell className="text-center font-medium">
+                          {student.postCount}
                         </TableCell>
                         <TableCell>
                           {student.latestPostDate ? (
-                            <div className="text-sm">
-                              <p>{format(new Date(student.latestPostDate), 'MM/dd', { locale: zhTW })}</p>
+                            <div>
+                              <p className="text-sm">
+                                {format(new Date(student.latestPostDate), 'MM/dd', { locale: zhTW })}
+                              </p>
                               <p className="text-xs text-muted-foreground">
                                 觸及 {student.latestPostReach}
                               </p>
@@ -338,14 +471,6 @@ export default function CoachStudents() {
                             >
                               <BarChart3 className="w-4 h-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleViewDetail(student.id)}
-                              title="查看詳情"
-                            >
-                              <ChevronRight className="w-4 h-4" />
-                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -362,6 +487,35 @@ export default function CoachStudents() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 批次操作工具列 */}
+      <BatchActionBar selectedCount={selectedCount} onDeselectAll={deselectAll}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setBatchCohortDialogOpen(true)}
+        >
+          <Tag className="w-4 h-4 mr-1" />
+          設定期別
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setBatchTagsDialogOpen(true)}
+        >
+          <Tag className="w-4 h-4 mr-1" />
+          新增標籤
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExport}
+          disabled={isExporting}
+        >
+          <Download className="w-4 h-4 mr-1" />
+          {isExporting ? '匯出中...' : '匯出資料'}
+        </Button>
+      </BatchActionBar>
 
       {/* 編輯學員標註 Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
@@ -385,18 +539,13 @@ export default function CoachStudents() {
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <option value="">未設定</option>
-                <option value="第四期">第四期</option>
-                <option value="第五期">第五期</option>
-                <option value="第六期">第六期</option>
-                <option value="第七期">第七期</option>
-                <option value="第八期">第八期</option>
-                {editForm.cohort && !['第四期', '第五期', '第六期', '第七期', '第八期'].includes(editForm.cohort) && (
+                {DEFAULT_COHORTS.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+                {editForm.cohort && !DEFAULT_COHORTS.includes(editForm.cohort) && (
                   <option value={editForm.cohort}>{editForm.cohort}</option>
                 )}
               </select>
-              <p className="text-xs text-muted-foreground">
-                如需自訂期別，請在創建邀請碼時設定
-              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="threadsHandle">Threads 帳號</Label>
@@ -440,6 +589,79 @@ export default function CoachStudents() {
               disabled={updateStudentMutation.isPending}
             >
               {updateStudentMutation.isPending ? "儲存中..." : "儲存"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 批次設定期別 Dialog */}
+      <Dialog open={batchCohortDialogOpen} onOpenChange={setBatchCohortDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>批次設定期別</DialogTitle>
+            <DialogDescription>
+              為已選擇的 {selectedCount} 位學員設定期別
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="batchCohort">選擇期別</Label>
+            <select
+              id="batchCohort"
+              value={batchCohort}
+              onChange={(e) => setBatchCohort(e.target.value)}
+              className="mt-2 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <option value="">清除期別</option>
+              {DEFAULT_COHORTS.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBatchCohortDialogOpen(false)}>
+              取消
+            </Button>
+            <Button 
+              onClick={handleBatchSetCohort}
+              disabled={batchSetCohortMutation.isPending}
+            >
+              {batchSetCohortMutation.isPending ? "設定中..." : "確認設定"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 批次新增標籤 Dialog */}
+      <Dialog open={batchTagsDialogOpen} onOpenChange={setBatchTagsDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>批次新增標籤</DialogTitle>
+            <DialogDescription>
+              為已選擇的 {selectedCount} 位學員新增標籤
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="batchTags">標籤（用逗號分隔）</Label>
+            <Input
+              id="batchTags"
+              placeholder="例如：積極, 需關注"
+              value={batchTags}
+              onChange={(e) => setBatchTags(e.target.value)}
+              className="mt-2"
+            />
+            <p className="text-xs text-muted-foreground mt-2">
+              新標籤會與現有標籤合併，不會覆蓋
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBatchTagsDialogOpen(false)}>
+              取消
+            </Button>
+            <Button 
+              onClick={handleBatchAddTags}
+              disabled={batchAddTagsMutation.isPending || !batchTags.trim()}
+            >
+              {batchAddTagsMutation.isPending ? "新增中..." : "確認新增"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -34,7 +34,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Copy, Ticket, Plus, Trash2, Info, Link } from "lucide-react";
+import { Copy, Ticket, Plus, Trash2, Info, Link, CheckSquare, Square } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useMultiSelect } from "@/hooks/useMultiSelect";
+import { BatchActionBar } from "@/components/BatchActionBar";
 
 type UserWithActivation = {
   id: number;
@@ -630,6 +633,22 @@ function InvitationManagement() {
 
   const { data: invitations, isLoading } = trpc.invitation.list.useQuery();
 
+  // 多選功能（只選擇可用的邀請碼）
+  const activeInvitations = invitations?.filter(i => i.status === 'active') || [];
+  const {
+    selectedIds,
+    isSelected,
+    toggle,
+    toggleAll,
+    deselectAll,
+    isAllSelected,
+    isSomeSelected,
+    selectedCount,
+  } = useMultiSelect({
+    items: activeInvitations,
+    getItemId: (inv) => inv.id,
+  });
+
   const createMutation = trpc.invitation.create.useMutation({
     onSuccess: (data) => {
       toast.success(`邀請碼已創建：${data?.code || ''}`);
@@ -663,6 +682,40 @@ function InvitationManagement() {
       toast.error("撤銷失敗：" + error.message);
     },
   });
+
+  // 批次撤銷邀請碼
+  const batchRevokeMutation = trpc.admin.batchRevokeInvitations.useMutation({
+    onSuccess: (data) => {
+      toast.success(`已撤銷 ${data.count} 個邀請碼`);
+      utils.invitation.list.invalidate();
+      deselectAll();
+    },
+    onError: (error) => {
+      toast.error("批次撤銷失敗：" + error.message);
+    },
+  });
+
+  // 批次複製邀請碼
+  const handleBatchCopy = () => {
+    const selectedInvitations = activeInvitations.filter(inv => selectedIds.has(inv.id));
+    const codes = selectedInvitations.map(inv => inv.code).join('\n');
+    navigator.clipboard.writeText(codes);
+    toast.success(`已複製 ${selectedInvitations.length} 個邀請碼`);
+  };
+
+  // 批次複製註冊連結
+  const handleBatchCopyLinks = () => {
+    const selectedInvitations = activeInvitations.filter(inv => selectedIds.has(inv.id));
+    const links = selectedInvitations.map(inv => `${baseUrl}/register?code=${inv.code}`).join('\n');
+    navigator.clipboard.writeText(links);
+    toast.success(`已複製 ${selectedInvitations.length} 個註冊連結`);
+  };
+
+  // 批次撤銷
+  const handleBatchRevoke = () => {
+    if (selectedCount === 0) return;
+    batchRevokeMutation.mutate({ ids: Array.from(selectedIds) as number[] });
+  };
 
   const resetForm = () => {
     setBatchCount(1);
@@ -819,11 +872,31 @@ function InvitationManagement() {
             </div>
           ) : invitations && invitations.length > 0 ? (
             <div className="space-y-3">
+              {/* 全選列 */}
+              {activeInvitations.length > 0 && (
+                <div className="flex items-center gap-3 px-4 py-2 bg-muted/30 rounded-lg">
+                  <Checkbox
+                    checked={isAllSelected}
+                    onCheckedChange={toggleAll}
+                    aria-label="全選可用邀請碼"
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    全選可用邀請碼 ({activeInvitations.length})
+                  </span>
+                </div>
+              )}
               {invitations.map((inv) => (
                 <div 
                   key={inv.id}
-                  className="flex items-center gap-4 p-4 rounded-xl border bg-card"
+                  className={`flex items-center gap-4 p-4 rounded-xl border bg-card ${inv.status === 'active' && isSelected(inv.id) ? 'ring-2 ring-primary/30 bg-primary/5' : ''}`}
                 >
+                  {inv.status === 'active' && (
+                    <Checkbox
+                      checked={isSelected(inv.id)}
+                      onCheckedChange={() => toggle(inv.id)}
+                      aria-label={`選擇邀請碼 ${inv.code}`}
+                    />
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       <code className="text-lg font-mono font-bold tracking-wider">{inv.code}</code>
@@ -881,6 +954,36 @@ function InvitationManagement() {
           )}
         </CardContent>
       </Card>
+
+      {/* 批次操作工具列 */}
+      <BatchActionBar selectedCount={selectedCount} onDeselectAll={deselectAll}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleBatchCopy}
+        >
+          <Copy className="w-4 h-4 mr-1" />
+          複製邀請碼
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleBatchCopyLinks}
+        >
+          <Link className="w-4 h-4 mr-1" />
+          複製連結
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleBatchRevoke}
+          disabled={batchRevokeMutation.isPending}
+          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+        >
+          <Trash2 className="w-4 h-4 mr-1" />
+          {batchRevokeMutation.isPending ? '撤銷中...' : '撤銷邀請碼'}
+        </Button>
+      </BatchActionBar>
 
       {/* 創建邀請碼對話框 */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>

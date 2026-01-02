@@ -1,4 +1,4 @@
-import { eq, desc, and, or, sql } from "drizzle-orm";
+import { eq, desc, and, or, sql, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
   InsertUser, users, 
@@ -1665,4 +1665,232 @@ function calculateIpCompleteness(ipProfile: any): number {
   }
   
   return Math.round((filled / fields.length) * 100);
+}
+
+
+// ==================== 批次操作函數 ====================
+
+// 批次更新學員期別
+export async function batchUpdateUserCohort(userIds: number[], cohort: string | null) {
+  const db = await getDb();
+  if (!db || userIds.length === 0) return;
+  
+  await db.update(users)
+    .set({ cohort })
+    .where(inArray(users.id, userIds));
+}
+
+// 批次新增學員標籤
+export async function batchAddUserTags(userIds: number[], newTags: string[]) {
+  const db = await getDb();
+  if (!db || userIds.length === 0 || newTags.length === 0) return;
+  
+  // 取得現有標籤並合併
+  const usersData = await db.select({ id: users.id, coachTags: users.coachTags })
+    .from(users)
+    .where(inArray(users.id, userIds));
+  
+  for (const user of usersData) {
+    const existingTags: string[] = user.coachTags ? JSON.parse(user.coachTags as string) : [];
+    const mergedTags = Array.from(new Set([...existingTags, ...newTags]));
+    await db.update(users)
+      .set({ coachTags: JSON.stringify(mergedTags) })
+      .where(eq(users.id, user.id));
+  }
+}
+
+// 批次撤銷邀請碼
+export async function batchRevokeInvitationCodes(ids: number[]) {
+  const db = await getDb();
+  if (!db || ids.length === 0) return;
+  
+  await db.update(invitationCodes)
+    .set({ status: 'revoked' })
+    .where(and(
+      inArray(invitationCodes.id, ids),
+      eq(invitationCodes.status, 'active')
+    ));
+}
+
+// 批次標記戰報已閱讀（在 postMetrics 新增 isRead 欄位或使用其他方式追蹤）
+export async function batchMarkReportsAsRead(postIds: number[]) {
+  const db = await getDb();
+  if (!db || postIds.length === 0) return;
+  
+  // 使用 coachNote 欄位標記已閱讀（或可以新增專門欄位）
+  await db.update(postMetrics)
+    .set({ notes: sql`CONCAT(IFNULL(${postMetrics.notes}, ''), ' [已閱讀]')` })
+    .where(inArray(postMetrics.postId, postIds));
+}
+
+// 匯出學員資料
+export async function exportStudentsData(options?: {
+  userIds?: number[];
+  cohort?: string;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  let query = db.select({
+    id: users.id,
+    name: users.name,
+    email: users.email,
+    cohort: users.cohort,
+    threadsHandle: users.threadsHandle,
+    coachNote: users.coachNote,
+    coachTags: users.coachTags,
+    activatedAt: users.activatedAt,
+    expiresAt: users.expiresAt,
+    lastSignedIn: users.lastSignedIn,
+    createdAt: users.createdAt,
+  }).from(users);
+  
+  const conditions = [eq(users.activationStatus, 'activated')];
+  
+  if (options?.userIds && options.userIds.length > 0) {
+    conditions.push(inArray(users.id, options.userIds));
+  }
+  if (options?.cohort) {
+    conditions.push(eq(users.cohort, options.cohort));
+  }
+  
+  query = query.where(and(...conditions)) as any;
+  const result = await query.orderBy(desc(users.createdAt));
+  
+  return result.map(user => ({
+    ...user,
+    coachTags: user.coachTags ? JSON.parse(user.coachTags as string) : [],
+  }));
+}
+
+// 匯出戰報資料
+export async function exportReportsData(options?: {
+  postIds?: number[];
+  cohort?: string;
+  userId?: number;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // 取得貼文和戰報數據
+  let query = db.select({
+    postId: posts.id,
+    userId: posts.userId,
+    threadUrl: posts.threadUrl,
+    postedAt: posts.postedAt,
+    createdAt: posts.createdAt,
+    reach: postMetrics.reach,
+    likes: postMetrics.likes,
+    comments: postMetrics.comments,
+    reposts: postMetrics.reposts,
+    saves: postMetrics.saves,
+    profileVisits: postMetrics.profileVisits,
+    linkClicks: postMetrics.linkClicks,
+    inquiries: postMetrics.inquiries,
+    notes: postMetrics.notes,
+    postingTime: postMetrics.postingTime,
+    topComment: postMetrics.topComment,
+    selfReflection: postMetrics.selfReflection,
+    aiInsight: postMetrics.aiInsight,
+    performanceLevel: postMetrics.performanceLevel,
+    isViral: postMetrics.isViral,
+    viralAnalysis: postMetrics.viralAnalysis,
+  })
+  .from(posts)
+  .leftJoin(postMetrics, eq(posts.id, postMetrics.postId));
+  
+  const conditions = [];
+  
+  if (options?.postIds && options.postIds.length > 0) {
+    conditions.push(inArray(posts.id, options.postIds));
+  }
+  if (options?.userId) {
+    conditions.push(eq(posts.userId, options.userId));
+  }
+  
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions)) as any;
+  }
+  
+  const postsResult = await query.orderBy(desc(posts.createdAt));
+  
+  // 取得用戶資料
+  const userIds = Array.from(new Set(postsResult.map(p => p.userId)));
+  const usersData = userIds.length > 0 
+    ? await db.select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        cohort: users.cohort,
+        threadsHandle: users.threadsHandle,
+      })
+      .from(users)
+      .where(inArray(users.id, userIds))
+    : [];
+  
+  const userMap = new Map(usersData.map(u => [u.id, u]));
+  
+  // 如果有 cohort 篩選，過濾結果
+  let filteredPosts = postsResult;
+  if (options?.cohort) {
+    filteredPosts = postsResult.filter(p => {
+      const user = userMap.get(p.userId);
+      return user?.cohort === options.cohort;
+    });
+  }
+  
+  return filteredPosts.map(post => {
+    const user = userMap.get(post.userId);
+    return {
+      ...post,
+      userName: user?.name || '',
+      userEmail: user?.email || '',
+      userCohort: user?.cohort || '',
+      threadsHandle: user?.threadsHandle || '',
+    };
+  });
+}
+
+
+// ===== 草稿批次操作 =====
+
+// 批次刪除草稿
+export async function batchDeleteDrafts(userId: number, draftIds: number[]): Promise<number> {
+  if (draftIds.length === 0) return 0;
+  const database = await getDb();
+  if (!database) return 0;
+  await database.delete(draftPosts)
+    .where(and(
+      eq(draftPosts.userId, userId),
+      inArray(draftPosts.id, draftIds)
+    ));
+  return draftIds.length;
+}
+
+// 批次移動草稿分類
+export async function batchMoveDrafts(userId: number, draftIds: number[], contentType: string): Promise<number> {
+  if (draftIds.length === 0) return 0;
+  const database = await getDb();
+  if (!database) return 0;
+  await database.update(draftPosts)
+    .set({ contentType: contentType as any })
+    .where(and(
+      eq(draftPosts.userId, userId),
+      inArray(draftPosts.id, draftIds)
+    ));
+  return draftIds.length;
+}
+
+// 批次封存草稿
+export async function batchArchiveDrafts(userId: number, draftIds: number[]): Promise<number> {
+  if (draftIds.length === 0) return 0;
+  const database = await getDb();
+  if (!database) return 0;
+  await database.update(draftPosts)
+    .set({ status: 'archived' })
+    .where(and(
+      eq(draftPosts.userId, userId),
+      inArray(draftPosts.id, draftIds)
+    ));
+  return draftIds.length;
 }

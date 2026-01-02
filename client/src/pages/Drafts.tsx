@@ -1,7 +1,9 @@
+import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
@@ -14,9 +16,27 @@ import {
   CheckCircle,
   Archive,
   Plus,
+  FolderInput,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { useMultiSelect } from "@/hooks/useMultiSelect";
+import { BatchActionBar } from "@/components/BatchActionBar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function Drafts() {
   const [, setLocation] = useLocation();
@@ -24,10 +44,65 @@ export default function Drafts() {
   const { data: drafts, isLoading } = trpc.draft.list.useQuery();
   const { data: contentTypes } = trpc.knowledge.contentTypes.useQuery();
   
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("");
+
+  // 多選功能
+  const {
+    selectedIds,
+    isSelected,
+    toggle,
+    toggleAll,
+    deselectAll,
+    isAllSelected,
+    selectedCount,
+  } = useMultiSelect({
+    items: drafts || [],
+    getItemId: (draft) => draft.id,
+  });
+
   const deleteDraft = trpc.draft.delete.useMutation({
     onSuccess: () => {
       utils.draft.list.invalidate();
       toast.success("草稿已刪除");
+    },
+  });
+
+  // 批次刪除
+  const batchDeleteMutation = trpc.draft.batchDelete.useMutation({
+    onSuccess: (data) => {
+      toast.success(`已刪除 ${data.count} 篇草稿`);
+      utils.draft.list.invalidate();
+      deselectAll();
+    },
+    onError: (error) => {
+      toast.error("批次刪除失敗：" + error.message);
+    },
+  });
+
+  // 批次移動分類
+  const batchMoveMutation = trpc.draft.batchMove.useMutation({
+    onSuccess: (data) => {
+      toast.success(`已移動 ${data.count} 篇草稿`);
+      utils.draft.list.invalidate();
+      deselectAll();
+      setMoveDialogOpen(false);
+      setSelectedCategory("");
+    },
+    onError: (error) => {
+      toast.error("批次移動失敗：" + error.message);
+    },
+  });
+
+  // 批次封存
+  const batchArchiveMutation = trpc.draft.batchArchive.useMutation({
+    onSuccess: (data) => {
+      toast.success(`已封存 ${data.count} 篇草稿`);
+      utils.draft.list.invalidate();
+      deselectAll();
+    },
+    onError: (error) => {
+      toast.error("批次封存失敗：" + error.message);
     },
   });
 
@@ -46,6 +121,25 @@ export default function Drafts() {
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedCount === 0) return;
+    if (!confirm(`確定要刪除 ${selectedCount} 篇草稿嗎？此操作無法復原。`)) return;
+    batchDeleteMutation.mutate({ ids: Array.from(selectedIds) as number[] });
+  };
+
+  const handleBatchArchive = () => {
+    if (selectedCount === 0) return;
+    batchArchiveMutation.mutate({ ids: Array.from(selectedIds) as number[] });
+  };
+
+  const handleBatchMove = () => {
+    if (selectedCount === 0 || !selectedCategory) return;
+    batchMoveMutation.mutate({ 
+      ids: Array.from(selectedIds) as number[], 
+      contentType: selectedCategory 
+    });
   };
 
   const draftCount = drafts?.filter(d => d.status === 'draft').length || 0;
@@ -114,10 +208,24 @@ export default function Drafts() {
         {/* Draft List */}
         <Card className="elegant-card">
           <CardHeader>
-            <CardTitle>所有草稿</CardTitle>
-            <CardDescription>
-              點擊草稿可以編輯或查看詳情
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>所有草稿</CardTitle>
+                <CardDescription>
+                  勾選草稿可進行批次操作（刪除、移動分類、封存）
+                </CardDescription>
+              </div>
+              {drafts && drafts.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={isAllSelected}
+                    onCheckedChange={toggleAll}
+                    aria-label="全選"
+                  />
+                  <span className="text-sm text-muted-foreground">全選</span>
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -131,14 +239,28 @@ export default function Drafts() {
                 {drafts.map((draft) => (
                   <div 
                     key={draft.id}
-                    className="group flex items-start gap-4 p-4 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-muted/30 transition-all cursor-pointer"
-                    onClick={() => setLocation(`/drafts/${draft.id}`)}
+                    className={`group flex items-start gap-4 p-4 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-muted/30 transition-all ${isSelected(draft.id) ? 'ring-2 ring-primary/30 bg-primary/5' : ''}`}
                   >
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <div className="flex items-center pt-1">
+                      <Checkbox
+                        checked={isSelected(draft.id)}
+                        onCheckedChange={() => toggle(draft.id)}
+                        aria-label={`選擇草稿`}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    
+                    <div 
+                      className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 cursor-pointer"
+                      onClick={() => setLocation(`/drafts/${draft.id}`)}
+                    >
                       <FileText className="w-5 h-5 text-primary" />
                     </div>
                     
-                    <div className="flex-1 min-w-0">
+                    <div 
+                      className="flex-1 min-w-0 cursor-pointer"
+                      onClick={() => setLocation(`/drafts/${draft.id}`)}
+                    >
                       <div className="flex items-center gap-2 mb-2">
                         {getStatusBadge(draft.status || 'draft')}
                         <Badge variant="outline" className="text-xs">
@@ -184,6 +306,74 @@ export default function Drafts() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 批次操作工具列 */}
+      <BatchActionBar selectedCount={selectedCount} onDeselectAll={deselectAll}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setMoveDialogOpen(true)}
+        >
+          <FolderInput className="w-4 h-4 mr-1" />
+          移動分類
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleBatchArchive}
+          disabled={batchArchiveMutation.isPending}
+        >
+          <Archive className="w-4 h-4 mr-1" />
+          {batchArchiveMutation.isPending ? '封存中...' : '封存'}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleBatchDelete}
+          disabled={batchDeleteMutation.isPending}
+          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+        >
+          <Trash2 className="w-4 h-4 mr-1" />
+          {batchDeleteMutation.isPending ? '刪除中...' : '刪除'}
+        </Button>
+      </BatchActionBar>
+
+      {/* 移動分類對話框 */}
+      <Dialog open={moveDialogOpen} onOpenChange={setMoveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>移動分類</DialogTitle>
+            <DialogDescription>
+              將選取的 {selectedCount} 篇草稿移動到指定分類
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="選擇目標分類" />
+              </SelectTrigger>
+              <SelectContent>
+                {contentTypes?.map((type) => (
+                  <SelectItem key={type.id} value={type.id}>
+                    {type.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMoveDialogOpen(false)}>
+              取消
+            </Button>
+            <Button 
+              onClick={handleBatchMove}
+              disabled={!selectedCategory || batchMoveMutation.isPending}
+            >
+              {batchMoveMutation.isPending ? '移動中...' : '確認移動'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
