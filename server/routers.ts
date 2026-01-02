@@ -3975,6 +3975,64 @@ ${postsData.map((p, i) => `${i + 1}. 觸及:${p.reach} 愛心:${p.likes} 留言:
     activatedUsers: adminProcedure.query(async () => {
       return db.getActivatedUsers();
     }),
+    
+    // ==================== 教練專區 API ====================
+    
+    // 取得所有期別
+    getCohorts: adminProcedure.query(async () => {
+      return db.getAllCohorts();
+    }),
+    
+    // 取得學員列表（含統計資料）
+    getStudents: adminProcedure
+      .input(z.object({
+        cohort: z.string().optional(),
+        search: z.string().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return db.getStudentsWithStats(input);
+      }),
+    
+    // 取得學員詳細資料
+    getStudentDetail: adminProcedure
+      .input(z.object({ userId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getStudentDetail(input.userId);
+      }),
+    
+    // 更新學員標註
+    updateStudentInfo: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        cohort: z.string().nullable().optional(),
+        coachNote: z.string().nullable().optional(),
+        coachTags: z.array(z.string()).nullable().optional(),
+        threadsHandle: z.string().nullable().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { userId, ...data } = input;
+        await db.updateUserCoachInfo(userId, data);
+        return { success: true };
+      }),
+    
+    // 取得所有學員戰報列表
+    getStudentReports: adminProcedure
+      .input(z.object({
+        cohort: z.string().optional(),
+        userId: z.number().optional(),
+        limit: z.number().optional(),
+        offset: z.number().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return db.getAllStudentReports(input);
+      }),
+    
+    // 取得戰報詳情
+    getReportDetail: adminProcedure
+      .input(z.object({ postId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getStudentReportDetail(input.postId);
+      }),
   }),
 
   // ==================== 用戶產品矩陣 ====================

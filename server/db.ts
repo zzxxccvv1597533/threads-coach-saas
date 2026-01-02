@@ -1,4 +1,4 @@
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
   InsertUser, users, 
@@ -1310,4 +1310,348 @@ export async function updateWritingStyleAnalysis(
     .where(eq(userWritingStyles.id, existing.id));
   
   return true;
+}
+
+
+// ==================== 教練專區 ====================
+
+// 更新學員標註資料
+export async function updateUserCoachInfo(
+  userId: number,
+  data: {
+    cohort?: string | null;
+    coachNote?: string | null;
+    coachTags?: string[] | null;
+    threadsHandle?: string | null;
+  }
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  await db.update(users)
+    .set({
+      cohort: data.cohort,
+      coachNote: data.coachNote,
+      coachTags: data.coachTags ? JSON.stringify(data.coachTags) : null,
+      threadsHandle: data.threadsHandle,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
+  
+  return true;
+}
+
+// 依期別取得學員列表
+export async function getUsersByCohort(cohort: string) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(users)
+    .where(eq(users.cohort, cohort))
+    .orderBy(desc(users.createdAt));
+}
+
+// 取得所有期別列表
+export async function getAllCohorts(): Promise<string[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const result = await db.selectDistinct({ cohort: users.cohort })
+    .from(users)
+    .where(sql`${users.cohort} IS NOT NULL AND ${users.cohort} != ''`);
+  
+  return result.map(r => r.cohort).filter((c): c is string => c !== null);
+}
+
+// 取得學員詳細資料（含 IP 地基、戰報統計）
+export async function getStudentDetail(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  // 取得用戶基本資料
+  const userResult = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (userResult.length === 0) return null;
+  const user = userResult[0];
+  
+  // 取得 IP 地基
+  const ipProfile = await getIpProfile(userId);
+  
+  // 取得戰報統計
+  const postsResult = await db.select().from(posts).where(eq(posts.userId, userId));
+  const postIds = postsResult.map(p => p.id);
+  
+  let metricsStats = {
+    totalPosts: postsResult.length,
+    totalReach: 0,
+    totalLikes: 0,
+    totalComments: 0,
+    avgEngagement: 0,
+    viralPosts: 0,
+  };
+  
+  if (postIds.length > 0) {
+    const metricsResult = await db.select().from(postMetrics)
+      .where(sql`${postMetrics.postId} IN (${sql.join(postIds.map(id => sql`${id}`), sql`, `)})`);
+    
+    for (const m of metricsResult) {
+      metricsStats.totalReach += m.reach || 0;
+      metricsStats.totalLikes += m.likes || 0;
+      metricsStats.totalComments += m.comments || 0;
+      if (m.isViral) metricsStats.viralPosts++;
+    }
+    
+    if (metricsResult.length > 0) {
+      metricsStats.avgEngagement = Math.round(
+        (metricsStats.totalLikes + metricsStats.totalComments) / metricsResult.length
+      );
+    }
+  }
+  
+  return {
+    user,
+    ipProfile,
+    stats: metricsStats,
+  };
+}
+
+// 取得所有學員的戰報列表（教練專區用）
+export async function getAllStudentReports(options?: {
+  cohort?: string;
+  userId?: number;
+  limit?: number;
+  offset?: number;
+}) {
+  const db = await getDb();
+  if (!db) return { reports: [], total: 0 };
+  
+  // 先取得符合條件的用戶
+  let userQuery = db.select({
+    id: users.id,
+    name: users.name,
+    email: users.email,
+    cohort: users.cohort,
+    threadsHandle: users.threadsHandle,
+    coachTags: users.coachTags,
+  }).from(users);
+  
+  const conditions = [];
+  if (options?.cohort) {
+    conditions.push(eq(users.cohort, options.cohort));
+  }
+  if (options?.userId) {
+    conditions.push(eq(users.id, options.userId));
+  }
+  
+  if (conditions.length > 0) {
+    userQuery = userQuery.where(and(...conditions)) as any;
+  }
+  
+  const usersResult = await userQuery;
+  const userMap = new Map(usersResult.map(u => [u.id, u]));
+  const userIds = usersResult.map(u => u.id);
+  
+  if (userIds.length === 0) {
+    return { reports: [], total: 0 };
+  }
+  
+  // 取得這些用戶的所有貼文和戰報
+  const postsWithMetrics = await db
+    .select({
+      post: posts,
+      metrics: postMetrics,
+    })
+    .from(posts)
+    .leftJoin(postMetrics, eq(posts.id, postMetrics.postId))
+    .where(sql`${posts.userId} IN (${sql.join(userIds.map(id => sql`${id}`), sql`, `)})`)
+    .orderBy(desc(posts.createdAt))
+    .limit(options?.limit || 100)
+    .offset(options?.offset || 0);
+  
+  // 計算總數
+  const countResult = await db
+    .select({ count: sql<number>`COUNT(*)` })
+    .from(posts)
+    .where(sql`${posts.userId} IN (${sql.join(userIds.map(id => sql`${id}`), sql`, `)})`);
+  
+  const total = countResult[0]?.count || 0;
+  
+  // 組合結果
+  const reports = postsWithMetrics.map(({ post, metrics }) => {
+    const user = userMap.get(post.userId);
+    return {
+      postId: post.id,
+      userId: post.userId,
+      userName: user?.name || '未知',
+      userEmail: user?.email || '',
+      cohort: user?.cohort || '',
+      threadsHandle: user?.threadsHandle || '',
+      threadUrl: post.threadUrl,
+      postedAt: post.postedAt,
+      createdAt: post.createdAt,
+      // 戰報數據
+      reach: metrics?.reach || 0,
+      likes: metrics?.likes || 0,
+      comments: metrics?.comments || 0,
+      reposts: metrics?.reposts || 0,
+      saves: metrics?.saves || 0,
+      profileVisits: metrics?.profileVisits || 0,
+      linkClicks: metrics?.linkClicks || 0,
+      inquiries: metrics?.inquiries || 0,
+      notes: metrics?.notes || '',
+      postingTime: metrics?.postingTime || '',
+      topComment: metrics?.topComment || '',
+      selfReflection: metrics?.selfReflection || '',
+      aiInsight: metrics?.aiInsight || '',
+      performanceLevel: metrics?.performanceLevel || 'normal',
+      isViral: metrics?.isViral || false,
+      viralAnalysis: metrics?.viralAnalysis || '',
+    };
+  });
+  
+  return { reports, total };
+}
+
+// 取得學員戰報詳情（含貼文內容）
+export async function getStudentReportDetail(postId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  // 取得貼文
+  const postResult = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
+  if (postResult.length === 0) return null;
+  const post = postResult[0];
+  
+  // 取得用戶資料
+  const userResult = await db.select().from(users).where(eq(users.id, post.userId)).limit(1);
+  const user = userResult[0];
+  
+  // 取得戰報數據
+  const metricsResult = await db.select().from(postMetrics).where(eq(postMetrics.postId, postId)).limit(1);
+  const metrics = metricsResult[0];
+  
+  // 取得草稿內容（如果有）
+  let draftContent = null;
+  if (post.draftPostId) {
+    const draftResult = await db.select().from(draftPosts).where(eq(draftPosts.id, post.draftPostId)).limit(1);
+    if (draftResult.length > 0) {
+      draftContent = draftResult[0];
+    }
+  }
+  
+  return {
+    post,
+    user: {
+      id: user?.id,
+      name: user?.name,
+      email: user?.email,
+      cohort: user?.cohort,
+      threadsHandle: user?.threadsHandle,
+      coachNote: user?.coachNote,
+      coachTags: user?.coachTags ? JSON.parse(user.coachTags as string) : [],
+    },
+    metrics,
+    draftContent,
+  };
+}
+
+// 取得學員列表（含統計資料，教練專區用）
+export async function getStudentsWithStats(options?: {
+  cohort?: string;
+  search?: string;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // 取得用戶列表
+  let query = db.select().from(users);
+  
+  const conditions = [];
+  // 只取已開通的學員
+  conditions.push(eq(users.activationStatus, 'activated'));
+  
+  if (options?.cohort) {
+    conditions.push(eq(users.cohort, options.cohort));
+  }
+  if (options?.search) {
+    conditions.push(
+      or(
+        sql`${users.name} LIKE ${`%${options.search}%`}`,
+        sql`${users.email} LIKE ${`%${options.search}%`}`,
+        sql`${users.threadsHandle} LIKE ${`%${options.search}%`}`
+      )
+    );
+  }
+  
+  query = query.where(and(...conditions)) as any;
+  const usersResult = await query.orderBy(desc(users.createdAt));
+  
+  // 為每個用戶取得統計資料
+  const studentsWithStats = await Promise.all(
+    usersResult.map(async (user) => {
+      // 取得貼文數量
+      const postsResult = await db.select({ count: sql<number>`COUNT(*)` })
+        .from(posts)
+        .where(eq(posts.userId, user.id));
+      const postCount = postsResult[0]?.count || 0;
+      
+      // 取得最近一篇戰報
+      const latestPostResult = await db.select()
+        .from(posts)
+        .leftJoin(postMetrics, eq(posts.id, postMetrics.postId))
+        .where(eq(posts.userId, user.id))
+        .orderBy(desc(posts.createdAt))
+        .limit(1);
+      
+      const latestPost = latestPostResult[0];
+      
+      // 取得 IP 地基完成度
+      const ipProfile = await getIpProfile(user.id);
+      const ipCompleteness = calculateIpCompleteness(ipProfile);
+      
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        cohort: user.cohort,
+        threadsHandle: user.threadsHandle,
+        coachNote: user.coachNote,
+        coachTags: user.coachTags ? JSON.parse(user.coachTags as string) : [],
+        activatedAt: user.activatedAt,
+        expiresAt: user.expiresAt,
+        lastSignedIn: user.lastSignedIn,
+        // 統計資料
+        postCount,
+        latestPostDate: latestPost?.posts?.createdAt || null,
+        latestPostReach: latestPost?.post_metrics?.reach || 0,
+        ipCompleteness,
+      };
+    })
+  );
+  
+  return studentsWithStats;
+}
+
+// 計算 IP 地基完成度
+function calculateIpCompleteness(ipProfile: any): number {
+  if (!ipProfile) return 0;
+  
+  const fields = [
+    'occupation',
+    'voiceTone',
+    'viewpointStatement',
+    'personaExpertise',
+    'personaEmotion',
+    'personaViewpoint',
+    'heroJourneyOrigin',
+    'heroJourneyProcess',
+    'heroJourneyHero',
+    'heroJourneyMission',
+  ];
+  
+  let filled = 0;
+  for (const field of fields) {
+    if (ipProfile[field]) filled++;
+  }
+  
+  return Math.round((filled / fields.length) * 100);
 }

@@ -127,6 +127,13 @@
       "when": 1766729045158,
       "tag": "0017_bright_zuras",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1767345948239,
+      "tag": "0018_equal_goliath",
+      "breakpoints": true
     }
   ]
 }

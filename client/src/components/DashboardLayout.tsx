@@ -34,6 +34,8 @@ import {
   FileText,
   Settings,
   Crown,
+  GraduationCap,
+  Users,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -52,6 +54,11 @@ const menuItems = [
 
 const adminMenuItems = [
   { icon: Crown, label: "管理後台", path: "/admin" },
+];
+
+const coachMenuItems = [
+  { icon: Users, label: "學員管理", path: "/coach/students" },
+  { icon: FileText, label: "戰報總覽", path: "/coach/reports" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -248,6 +255,37 @@ function DashboardLayoutContent({
 
             {isAdmin && (
               <>
+                {/* 教練專區 */}
+                <div className="my-4 mx-2 h-px bg-white/10" />
+                <div className="px-2 mb-2 group-data-[collapsible=icon]:hidden">
+                  <span className="text-xs font-medium text-white/40 uppercase tracking-wider">教練專區</span>
+                </div>
+                <SidebarMenu>
+                  {coachMenuItems.map(item => {
+                    const isActive = location.startsWith(item.path);
+                    return (
+                      <SidebarMenuItem key={item.path}>
+                        <SidebarMenuButton
+                          isActive={isActive}
+                          onClick={() => setLocation(item.path)}
+                          tooltip={item.label}
+                          className={`h-11 transition-all font-normal rounded-lg mb-1 ${
+                            isActive 
+                              ? "bg-emerald-500 text-white hover:bg-emerald-500/90" 
+                              : "text-emerald-300 hover:bg-white/10"
+                          }`}
+                        >
+                          <item.icon
+                            className={`h-4 w-4 ${isActive ? "text-white" : "text-emerald-300"}`}
+                          />
+                          <span className={isActive ? "font-semibold" : ""}>{item.label}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+
+                {/* 管理後台 */}
                 <div className="my-4 mx-2 h-px bg-white/10" />
                 <SidebarMenu>
                   {adminMenuItems.map(item => {

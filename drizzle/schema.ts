@@ -24,6 +24,11 @@ export const users = mysqlTable("users", {
   // 邀請碼額度（使用邀請碼註冊時記錄，開通時套用）
   invitationCodeId: int("invitationCodeId"),
   invitationBonusDays: int("invitationBonusDays"),
+  // 教練專區：學員標註欄位
+  cohort: varchar("cohort", { length: 32 }), // 期別，例如 "第四期"、"第五期"
+  coachNote: text("coachNote"), // 教練備註
+  coachTags: text("coachTags"), // 教練標籤（JSON 格式儲存）
+  threadsHandle: varchar("threadsHandle", { length: 64 }), // Threads 帳號
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),

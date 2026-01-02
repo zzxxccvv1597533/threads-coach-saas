@@ -19,6 +19,8 @@ import DraftDetail from "./pages/DraftDetail";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Maintenance from "./pages/Maintenance";
+import CoachStudents from "./pages/CoachStudents";
+import CoachReports from "./pages/CoachReports";
 
 function Router() {
   return (
@@ -38,6 +40,9 @@ function Router() {
       <Route path={"/pending"} component={PendingActivation} />
       <Route path={"/apply"} component={Apply} />
       <Route path={"/drafts/:id"} component={DraftDetail} />
+      <Route path={"/coach/students"} component={CoachStudents} />
+      <Route path={"/coach/students/:id"} component={CoachStudents} />
+      <Route path={"/coach/reports"} component={CoachReports} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
