@@ -24,6 +24,9 @@ import {
   rawMaterials,
   invitationCodes, InsertInvitationCode, InvitationCode,
   userWritingStyles, InsertUserWritingStyle, UserWritingStyle,
+  keywordBenchmarks, KeywordBenchmark,
+  contentHooks, ContentHook,
+  viralLearnings, InsertViralLearning,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1893,4 +1896,214 @@ export async function batchArchiveDrafts(userId: number, draftIds: number[]): Pr
       inArray(draftPosts.id, draftIds)
     ));
   return draftIds.length;
+}
+
+
+// ==================== 爆文數據分析系統 ====================
+
+// 取得關鍵字 Benchmark 數據
+export async function getKeywordBenchmark(keyword: string): Promise<KeywordBenchmark | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(keywordBenchmarks)
+    .where(eq(keywordBenchmarks.keyword, keyword))
+    .limit(1);
+  
+  return result[0] || null;
+}
+
+// 取得所有關鍵字 Benchmark 列表
+export async function getAllKeywordBenchmarks(): Promise<KeywordBenchmark[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(keywordBenchmarks)
+    .orderBy(desc(keywordBenchmarks.viralRate));
+}
+
+// 根據分類取得關鍵字 Benchmark
+export async function getKeywordBenchmarksByCategory(category: string): Promise<KeywordBenchmark[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(keywordBenchmarks)
+    .where(eq(keywordBenchmarks.category, category))
+    .orderBy(desc(keywordBenchmarks.viralRate));
+}
+
+// 模糊匹配關鍵字（用於從內容中識別關鍵字）
+export async function findMatchingKeywords(content: string): Promise<KeywordBenchmark[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // 取得所有關鍵字
+  const allKeywords = await db.select().from(keywordBenchmarks);
+  
+  // 找出內容中包含的關鍵字
+  const matches = allKeywords.filter(kw => 
+    content.toLowerCase().includes(kw.keyword.toLowerCase())
+  );
+  
+  // 按爆文率排序
+  return matches.sort((a, b) => (b.viralRate || 0) - (a.viralRate || 0));
+}
+
+// 取得開頭鉤子庫
+export async function getContentHooks(options?: {
+  type?: string;
+  limit?: number;
+}): Promise<ContentHook[]> {
+  const database = await getDb();
+  if (!database) return [];
+  
+  const conditions = [eq(contentHooks.isActive, true)];
+  
+  if (options?.type) {
+    conditions.push(eq(contentHooks.hookType, options.type));
+  }
+  
+  let query = database.select().from(contentHooks)
+    .where(and(...conditions))
+    .orderBy(desc(contentHooks.avgLikes));
+  
+  if (options?.limit) {
+    query = query.limit(options.limit) as any;
+  }
+  
+  return query;
+}
+
+// 根據內容類型取得推薦鉤子
+export async function getRecommendedHooks(contentType: string, limit: number = 5): Promise<ContentHook[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // 根據內容類型映射到鉤子類型
+  const hookTypeMap: Record<string, string[]> = {
+    'story': ['story', 'contrast', 'result'],
+    'knowledge': ['number', 'solution', 'list'],
+    'viewpoint': ['contrast', 'direct', 'mirror'],
+    'dialogue': ['dialogue', 'story', 'question'],
+    'question': ['question', 'mirror'],
+    'casual': ['emotion', 'direct', 'story'],
+    'quote': ['quote', 'contrast'],
+    'contrast': ['contrast', 'result'],
+    'diagnosis': ['identity', 'question'],
+  };
+  
+  const preferredTypes = hookTypeMap[contentType] || ['general'];
+  
+  // 取得符合的鉤子
+  const hooks = await db.select().from(contentHooks)
+    .where(and(
+      eq(contentHooks.isActive, true),
+      inArray(contentHooks.hookType, preferredTypes)
+    ))
+    .orderBy(desc(contentHooks.avgLikes))
+    .limit(limit * 2); // 多取一些以便隨機選擇
+  
+  // 隨機選擇
+  const shuffled = hooks.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, limit);
+}
+
+// 記錄學員爆文學習
+export async function recordViralLearning(data: InsertViralLearning): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  await db.insert(viralLearnings).values(data);
+}
+
+// 取得學員的爆文學習記錄
+export async function getUserViralLearnings(userId: number, limit: number = 10) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(viralLearnings)
+    .where(eq(viralLearnings.userId, userId))
+    .orderBy(desc(viralLearnings.createdAt))
+    .limit(limit);
+}
+
+// 取得未整合的爆文學習記錄（用於知識庫更新）
+export async function getUnintegratedViralLearnings(limit: number = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(viralLearnings)
+    .where(eq(viralLearnings.isIntegrated, false))
+    .orderBy(desc(viralLearnings.likes))
+    .limit(limit);
+}
+
+// 標記爆文學習為已整合
+export async function markViralLearningAsIntegrated(learningId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  await db.update(viralLearnings)
+    .set({ 
+      isIntegrated: true,
+      integratedAt: new Date()
+    })
+    .where(eq(viralLearnings.id, learningId));
+}
+
+// 建構爆文因子提示（用於 AI 生成）
+export function buildViralFactorsPrompt(benchmarks: KeywordBenchmark[]): string {
+  if (benchmarks.length === 0) return '';
+  
+  const topBenchmark = benchmarks[0];
+  
+  let prompt = `
+=== 市場數據參考（隱性優化，不要在內容中提及） ===
+`;
+
+  if (topBenchmark.keyword) {
+    prompt += `相關主題：${topBenchmark.keyword}\n`;
+  }
+  
+  if (topBenchmark.avgLikes) {
+    prompt += `市場平均讚數：${topBenchmark.avgLikes}\n`;
+  }
+  
+  if (topBenchmark.optimalLengthMin && topBenchmark.optimalLengthMax) {
+    prompt += `建議字數範圍：${topBenchmark.optimalLengthMin}-${topBenchmark.optimalLengthMax} 字\n`;
+  }
+  
+  if (topBenchmark.bestContentType) {
+    prompt += `最佳內容類型：${topBenchmark.bestContentType}\n`;
+  }
+
+  // 爆文因子建議
+  prompt += `
+【爆文因子建議】
+- 有結果導向（「結果」「後來」「最後」）的內容表現較好
+- 避免硬塞 CTA（會降低爆文率）
+- 保持自然的情緒流動，不要刻意轉折
+`;
+
+  return prompt;
+}
+
+// 建構開頭鉤子提示（用於 AI 生成）
+export function buildHooksPrompt(hooks: ContentHook[]): string {
+  if (hooks.length === 0) return '';
+  
+  const hookPatterns = hooks
+    .filter(h => h.hookPattern && h.hookPattern.length < 50) // 只取短的模式
+    .slice(0, 5)
+    .map(h => `- ${h.hookPattern}`)
+    .join('\n');
+  
+  if (!hookPatterns) return '';
+  
+  return `
+=== 開頭參考模式（可參考但不要照抄） ===
+${hookPatterns}
+
+【注意】這些只是參考模式，請根據內容自然發揮，不要生硬套用。
+`;
 }

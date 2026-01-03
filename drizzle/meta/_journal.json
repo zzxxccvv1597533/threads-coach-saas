@@ -141,6 +141,13 @@
       "when": 1767347907952,
       "tag": "0019_dear_kate_bishop",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1767405304390,
+      "tag": "0020_shocking_mad_thinker",
+      "breakpoints": true
     }
   ]
 }

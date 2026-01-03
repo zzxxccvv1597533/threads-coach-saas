@@ -570,3 +570,98 @@ export const userWritingStyles = mysqlTable("user_writing_styles", {
 
 export type UserWritingStyle = typeof userWritingStyles.$inferSelect;
 export type InsertUserWritingStyle = typeof userWritingStyles.$inferInsert;
+
+
+// ==================== 爆文數據分析系統 ====================
+
+// 關鍵字 Benchmark 資料表（儲存市場數據）
+export const keywordBenchmarks = mysqlTable("keyword_benchmarks", {
+  id: int("id").autoincrement().primaryKey(),
+  keyword: varchar("keyword", { length: 64 }).notNull().unique(), // 關鍵字名稱
+  category: varchar("category", { length: 64 }), // 分類（如：感情桃花、身心靈、命理占卜）
+  // 基礎統計
+  totalPosts: int("totalPosts").default(0), // 總貼文數
+  avgLikes: int("avgLikes").default(0), // 平均讚數
+  medianLikes: int("medianLikes").default(0), // 中位數讚數
+  maxLikes: int("maxLikes").default(0), // 最高讚數
+  // 爆文分析（讚數 >= 1000）
+  viralCount: int("viralCount").default(0), // 爆文數量
+  viralRate: int("viralRate").default(0), // 爆文率（百分比 * 100，例如 25.3% = 2530）
+  // 最佳貼文類型
+  bestContentType: varchar("bestContentType", { length: 32 }), // knowledge, story, dialogue 等
+  bestContentTypeViralRate: int("bestContentTypeViralRate").default(0), // 該類型的爆文率
+  // 內容特徵
+  avgLength: int("avgLength").default(0), // 平均字數
+  optimalLengthMin: int("optimalLengthMin").default(0), // 最佳字數下限
+  optimalLengthMax: int("optimalLengthMax").default(0), // 最佳字數上限
+  hasImageRate: int("hasImageRate").default(0), // 有圖比例（百分比 * 100）
+  // 爆文因子（從分析中提取）
+  viralFactors: json("viralFactors").$type<{
+    resultFlag: number; // 結果導向比例
+    ctaFlag: number; // CTA 比例（負面影響）
+    turnFlag: number; // 轉折比例
+    questionMark: number; // 問號使用比例
+  }>(),
+  // 高頻開頭模式（JSON 陣列）
+  topHooks: json("topHooks").$type<string[]>(),
+  // 更新時間
+  dataSource: varchar("dataSource", { length: 64 }), // 數據來源（如：threads_crawl_2024Q4）
+  lastUpdatedAt: timestamp("lastUpdatedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type KeywordBenchmark = typeof keywordBenchmarks.$inferSelect;
+export type InsertKeywordBenchmark = typeof keywordBenchmarks.$inferInsert;
+
+// 開頭鉤子庫（儲存高效開頭模式）
+export const contentHooks = mysqlTable("content_hooks", {
+  id: int("id").autoincrement().primaryKey(),
+  hookPattern: text("hookPattern").notNull(), // 鉤子模式（如：「你有沒有發現...」）
+  hookType: varchar("hookType", { length: 32 }), // 類型：question, contrast, result, story, mirror
+  // 適用場景
+  applicableKeywords: json("applicableKeywords").$type<string[]>(), // 適用的關鍵字
+  applicableContentTypes: json("applicableContentTypes").$type<string[]>(), // 適用的貼文類型
+  // 效果數據
+  avgLikes: int("avgLikes").default(0), // 使用此鉤子的平均讚數
+  viralRate: int("viralRate").default(0), // 爆文率
+  sampleCount: int("sampleCount").default(0), // 樣本數
+  // 範例
+  examples: json("examples").$type<Array<{
+    content: string; // 完整開頭範例
+    likes: number; // 讚數
+    keyword: string; // 關鍵字
+  }>>(),
+  // 狀態
+  isActive: boolean("isActive").default(true),
+  source: varchar("source", { length: 64 }), // 來源（manual, extracted, viral_analysis）
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ContentHook = typeof contentHooks.$inferSelect;
+export type InsertContentHook = typeof contentHooks.$inferInsert;
+
+// 學員爆文學習記錄（用於動態更新知識庫）
+export const viralLearnings = mysqlTable("viral_learnings", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(), // 學員 ID
+  postId: int("postId").notNull(), // 對應的戰報 ID
+  // 爆文特徵
+  extractedHook: text("extractedHook"), // 提取的開頭模式
+  extractedStructure: varchar("extractedStructure", { length: 64 }), // 結構類型
+  contentType: varchar("contentType", { length: 32 }), // 貼文類型
+  // 成效數據
+  likes: int("likes").default(0),
+  reach: int("reach").default(0),
+  engagement: int("engagement").default(0),
+  // 分析結果
+  successFactors: json("successFactors").$type<string[]>(), // 成功因素
+  learningNotes: text("learningNotes"), // AI 分析筆記
+  // 是否已整合到知識庫
+  isIntegrated: boolean("isIntegrated").default(false),
+  integratedAt: timestamp("integratedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ViralLearning = typeof viralLearnings.$inferSelect;
+export type InsertViralLearning = typeof viralLearnings.$inferInsert;

@@ -1683,6 +1683,15 @@ ${selectedStyle}
         
         const contentTypeInfo = CONTENT_TYPES_WITH_VIRAL_ELEMENTS.find(t => t.id === input.contentType) as any;
         
+        // === 爆文因子系統：根據內容查詢市場數據 ===
+        const materialContent = input.material || flexibleInput.topic || flexibleInput.question || '';
+        const matchingKeywords = await db.findMatchingKeywords(materialContent);
+        const viralFactorsPrompt = db.buildViralFactorsPrompt(matchingKeywords);
+        
+        // === 開頭鉤子庫：根據內容類型取得推薦鉤子 ===
+        const recommendedHooks = await db.getRecommendedHooks(input.contentType, 3);
+        const hooksPrompt = db.buildHooksPrompt(recommendedHooks);
+        
         // 建構 IP 地基資料字串（強化版）
         const buildIpContext = () => {
           const parts: string[] = [];
@@ -2086,6 +2095,10 @@ ${userStyleContext}
 類型：${contentTypeInfo?.name || input.contentType}
 說明：${contentTypeInfo?.description || ''}
 ${viralElementsPrompt}
+
+${viralFactorsPrompt}
+
+${hooksPrompt}
 
 === 四透鏡框架（創作時必須檢核） ===
 
@@ -3410,22 +3423,45 @@ ${input.context ? `貼文內容是關於：${input.context}` : ''}
           
           if (draftPost?.body) {
             try {
+              // === 查詢市場 Benchmark 數據 ===
+              const matchingKeywords = await db.findMatchingKeywords(draftPost.body);
+              let benchmarkContext = '';
+              if (matchingKeywords.length > 0) {
+                const topKeyword = matchingKeywords[0];
+                const avgLikes = topKeyword.avgLikes || 0;
+                const viralRate = topKeyword.viralRate || 0;
+                
+                // 計算與市場平均的比較
+                const likesRatio = avgLikes > 0 ? ((metrics.likes || 0) / avgLikes).toFixed(1) : 'N/A';
+                const isAboveAverage = (metrics.likes || 0) > avgLikes;
+                
+                benchmarkContext = `
+市場 Benchmark 對比（關鍵字：${topKeyword.keyword}）：
+- 同類貼文平均讚數：${avgLikes}
+- 您的貼文讚數：${metrics.likes || 0}
+- 表現比較：${isAboveAverage ? `您的表現是同類貼文的 ${likesRatio} 倍！` : `還有進步空間，同類貼文平均 ${avgLikes} 讚`}
+- 同類貼文爆文率：${(viralRate * 100).toFixed(1)}%`;
+              }
+              
               const insightResponse = await invokeLLM({
                 messages: [
-                  { role: "system", content: `你是一位 Threads 經營教練，根據貼文表現數據提供簡短策略建議。
+                  { role: "system", content: `你是一位 Threads 經營教練，根據貼文表現數據和市場 Benchmark 提供簡短策略建議。
 回覆要求：
 1. 最多 3 句話
 2. 具體可執行
 3. 針對這篇貼文的特性
-4. 不要笼統的建議` },
+4. 如果有 Benchmark 數據，要參考市場表現給建議
+5. 不要笼統的建議` },
                   { role: "user", content: `貼文內容：
 ${draftPost.body.substring(0, 500)}
 
 表現數據：
 - 觸及：${metrics.reach || 0}
+- 讚數：${metrics.likes || 0}
 - 留言：${metrics.comments || 0}
 - 收藏：${metrics.saves || 0}
 - 表現等級：${performanceLevel === 'hit' ? '爆文' : performanceLevel === 'low' ? '低迷' : '正常'}
+${benchmarkContext}
 ${topComment ? `最熱門留言：${topComment}` : ''}
 ${selfReflection ? `創作者反思：${selfReflection}` : ''}
 
@@ -3499,6 +3535,63 @@ ${topComment ? `最熱門留言：${topComment}` : ''}
                 await db.updatePostMetric(metric.id, { viralAnalysis });
               }
               await db.logApiUsage(ctx.user.id, 'viral_analysis', 'llm', 200, 150);
+              
+              // === 知識庫動態更新：記錄爆文學習 ===
+              try {
+                // 提取爆文特徵
+                const extractResponse = await invokeLLM({
+                  messages: [
+                    { role: "system", content: `你是一位內容分析專家。請從這篇爆文中提取可複製的特徵。
+回覆格式（JSON）：
+{
+  "hookPattern": "開頭模式（一句話描述）",
+  "contentStructure": "內容結構特徵",
+  "emotionFlow": "情緒流動方式",
+  "ctaStyle": "CTA 風格",
+  "keyElements": ["關鍵元素 1", "關鍵元素 2"]
+}` },
+                    { role: "user", content: `爆文內容：
+${draftPost.body}
+
+表現數據：
+- 讚數：${metrics.likes || 0}
+- 留言：${metrics.comments || 0}
+- 收藏：${metrics.saves || 0}` }
+                  ],
+                });
+                
+                const extractedFeaturesRaw = extractResponse.choices[0]?.message?.content;
+                const extractedFeatures = typeof extractedFeaturesRaw === 'string' ? extractedFeaturesRaw : '';
+                let parsedFeatures = null;
+                try {
+                  // 嘗試解析 JSON
+                  const jsonMatch = extractedFeatures.match(/\{[\s\S]*\}/);
+                  if (jsonMatch) {
+                    parsedFeatures = JSON.parse(jsonMatch[0]);
+                  }
+                } catch {
+                  // 解析失敗，使用原始文字
+                }
+                
+                // 記錄到爆文學習表
+                await db.recordViralLearning({
+                  userId: ctx.user.id,
+                  postId,
+                  extractedHook: parsedFeatures?.hookPattern || null,
+                  extractedStructure: parsedFeatures?.contentStructure || null,
+                  contentType: draftPost.contentType || null,
+                  likes: metrics.likes || 0,
+                  reach: metrics.reach || 0,
+                  engagement: (metrics.likes || 0) + (metrics.comments || 0) + (metrics.saves || 0),
+                  successFactors: parsedFeatures?.keyElements || null,
+                  learningNotes: extractedFeatures || null,
+                  isIntegrated: false,
+                });
+                
+                await db.logApiUsage(ctx.user.id, 'viral_learning_extract', 'llm', 100, 100);
+              } catch (e) {
+                console.error('Failed to record viral learning:', e);
+              }
             } catch (e) {
               console.error('Failed to generate viral analysis:', e);
             }
