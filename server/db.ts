@@ -2107,3 +2107,259 @@ ${hookPatterns}
 【注意】這些只是參考模式，請根據內容自然發揮，不要生硬套用。
 `;
 }
+
+
+// ============================================
+// 知識庫自動更新功能
+// ============================================
+
+// 檢查鉤子是否已存在（去重機制）
+export async function isHookPatternExists(hookPattern: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  // 清理鉤子模式（移除空白、標點符號差異）
+  const cleanPattern = hookPattern.trim().toLowerCase();
+  
+  // 取得所有現有鉤子
+  const existingHooks = await db.select({ hookPattern: contentHooks.hookPattern })
+    .from(contentHooks);
+  
+  // 檢查是否有相似的鉤子（使用簡單的相似度比較）
+  for (const hook of existingHooks) {
+    if (!hook.hookPattern) continue;
+    const existingClean = hook.hookPattern.trim().toLowerCase();
+    
+    // 完全相同
+    if (existingClean === cleanPattern) return true;
+    
+    // 相似度超過 80%（簡單的字元比較）
+    const similarity = calculateSimilarity(existingClean, cleanPattern);
+    if (similarity > 0.8) return true;
+  }
+  
+  return false;
+}
+
+// 簡單的字串相似度計算
+function calculateSimilarity(str1: string, str2: string): number {
+  const longer = str1.length > str2.length ? str1 : str2;
+  const shorter = str1.length > str2.length ? str2 : str1;
+  
+  if (longer.length === 0) return 1.0;
+  
+  // 計算編輯距離
+  const editDistance = levenshteinDistance(longer, shorter);
+  return (longer.length - editDistance) / longer.length;
+}
+
+// Levenshtein 距離計算
+function levenshteinDistance(str1: string, str2: string): number {
+  const matrix: number[][] = [];
+  
+  for (let i = 0; i <= str1.length; i++) {
+    matrix[i] = [i];
+  }
+  
+  for (let j = 0; j <= str2.length; j++) {
+    matrix[0][j] = j;
+  }
+  
+  for (let i = 1; i <= str1.length; i++) {
+    for (let j = 1; j <= str2.length; j++) {
+      if (str1[i - 1] === str2[j - 1]) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  
+  return matrix[str1.length][str2.length];
+}
+
+// 從爆文學習記錄中提取並新增鉤子到知識庫
+export async function integrateViralLearningToHooks(learning: {
+  id: number;
+  extractedHook: string | null;
+  contentType: string | null;
+  likes: number | null;
+  successFactors: string[] | null;
+}): Promise<{ success: boolean; reason: string }> {
+  const db = await getDb();
+  if (!db) return { success: false, reason: '資料庫連線失敗' };
+  
+  // 檢查是否有提取到鉤子
+  if (!learning.extractedHook || learning.extractedHook.length < 5) {
+    await markViralLearningAsIntegrated(learning.id);
+    return { success: false, reason: '沒有有效的鉤子模式' };
+  }
+  
+  // 檢查鉤子是否已存在
+  const exists = await isHookPatternExists(learning.extractedHook);
+  if (exists) {
+    await markViralLearningAsIntegrated(learning.id);
+    return { success: false, reason: '鉤子模式已存在' };
+  }
+  
+  // 推斷鉤子類型
+  const hookType = inferHookType(learning.extractedHook);
+  
+  // 新增到 content_hooks
+  await db.insert(contentHooks).values({
+    hookPattern: learning.extractedHook,
+    hookType: hookType,
+    applicableContentTypes: learning.contentType ? [learning.contentType] : null,
+    avgLikes: learning.likes || 0,
+    sampleCount: 1,
+    source: 'viral_analysis',
+    isActive: true,
+  });
+  
+  // 標記為已整合
+  await markViralLearningAsIntegrated(learning.id);
+  
+  return { success: true, reason: '成功新增到知識庫' };
+}
+
+// 推斷鉤子類型
+function inferHookType(hookPattern: string): string {
+  const pattern = hookPattern.toLowerCase();
+  
+  // 問句型
+  if (pattern.includes('？') || pattern.includes('嗎') || pattern.includes('有沒有') || pattern.includes('是不是')) {
+    return 'question';
+  }
+  
+  // 反差型
+  if (pattern.includes('但') || pattern.includes('卻') || pattern.includes('沒想到') || pattern.includes('結果')) {
+    return 'contrast';
+  }
+  
+  // 故事型
+  if (pattern.includes('那天') || pattern.includes('有一次') || pattern.includes('記得') || pattern.includes('曾經')) {
+    return 'story';
+  }
+  
+  // 鏡像型（說出受眾心聲）
+  if (pattern.includes('你是不是') || pattern.includes('你有沒有') || pattern.includes('很多人')) {
+    return 'mirror';
+  }
+  
+  // 數字型
+  if (/\d+/.test(pattern)) {
+    return 'number';
+  }
+  
+  // 情緒型
+  if (pattern.includes('真的') || pattern.includes('超') || pattern.includes('好') || pattern.includes('傻眼')) {
+    return 'emotion';
+  }
+  
+  // 預設為一般型
+  return 'general';
+}
+
+// 批次處理未整合的爆文學習記錄
+export async function processUnintegratedViralLearnings(): Promise<{
+  processed: number;
+  integrated: number;
+  skipped: number;
+  details: Array<{ id: number; success: boolean; reason: string }>;
+}> {
+  const unintegrated = await getUnintegratedViralLearnings(50);
+  
+  const results = {
+    processed: 0,
+    integrated: 0,
+    skipped: 0,
+    details: [] as Array<{ id: number; success: boolean; reason: string }>,
+  };
+  
+  for (const learning of unintegrated) {
+    const result = await integrateViralLearningToHooks({
+      id: learning.id,
+      extractedHook: learning.extractedHook,
+      contentType: learning.contentType,
+      likes: learning.likes,
+      successFactors: learning.successFactors,
+    });
+    
+    results.processed++;
+    if (result.success) {
+      results.integrated++;
+    } else {
+      results.skipped++;
+    }
+    results.details.push({ id: learning.id, ...result });
+  }
+  
+  return results;
+}
+
+// 更新現有鉤子的效果數據（當有新的爆文使用相同鉤子時）
+export async function updateHookStats(hookId: number, newLikes: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  // 取得現有數據
+  const [hook] = await db.select().from(contentHooks).where(eq(contentHooks.id, hookId));
+  if (!hook) return;
+  
+  // 計算新的平均讚數
+  const currentAvg = hook.avgLikes || 0;
+  const currentCount = hook.sampleCount || 1;
+  const newAvg = Math.round((currentAvg * currentCount + newLikes) / (currentCount + 1));
+  
+  // 更新
+  await db.update(contentHooks)
+    .set({
+      avgLikes: newAvg,
+      sampleCount: currentCount + 1,
+    })
+    .where(eq(contentHooks.id, hookId));
+}
+
+// 取得知識庫更新統計
+export async function getKnowledgeBaseStats(): Promise<{
+  totalHooks: number;
+  manualHooks: number;
+  extractedHooks: number;
+  viralAnalysisHooks: number;
+  pendingLearnings: number;
+  integratedLearnings: number;
+}> {
+  const db = await getDb();
+  if (!db) return {
+    totalHooks: 0,
+    manualHooks: 0,
+    extractedHooks: 0,
+    viralAnalysisHooks: 0,
+    pendingLearnings: 0,
+    integratedLearnings: 0,
+  };
+  
+  // 統計鉤子
+  const allHooks = await db.select().from(contentHooks);
+  const manualHooks = allHooks.filter(h => h.source === 'manual' || !h.source).length;
+  const extractedHooks = allHooks.filter(h => h.source === 'extracted').length;
+  const viralAnalysisHooks = allHooks.filter(h => h.source === 'viral_analysis').length;
+  
+  // 統計學習記錄
+  const allLearnings = await db.select().from(viralLearnings);
+  const pendingLearnings = allLearnings.filter(l => !l.isIntegrated).length;
+  const integratedLearnings = allLearnings.filter(l => l.isIntegrated).length;
+  
+  return {
+    totalHooks: allHooks.length,
+    manualHooks,
+    extractedHooks,
+    viralAnalysisHooks,
+    pendingLearnings,
+    integratedLearnings,
+  };
+}

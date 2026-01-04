@@ -3705,6 +3705,16 @@ ${draftPost.body}
                 });
                 
                 await db.logApiUsage(ctx.user.id, 'viral_learning_extract', 'llm', 100, 100);
+                
+                // === 知識庫自動更新：將爆文學習整合到鉤子庫 ===
+                try {
+                  const integrationResult = await db.processUnintegratedViralLearnings();
+                  if (integrationResult.integrated > 0) {
+                    console.log(`[知識庫更新] 成功整合 ${integrationResult.integrated} 個新鉤子到知識庫`);
+                  }
+                } catch (integrationError) {
+                  console.error('[知識庫更新] 整合失敗:', integrationError);
+                }
               } catch (e) {
                 console.error('Failed to record viral learning:', e);
               }
@@ -4333,6 +4343,43 @@ ${postsData.map((p, i) => `${i + 1}. 觸及:${p.reach} 愛心:${p.likes} 留言:
       }))
       .query(async ({ input }) => {
         return db.exportReportsData(input);
+      }),
+    
+    // ==================== 知識庫管理 API ====================
+    
+    // 取得知識庫統計
+    getKnowledgeBaseStats: adminProcedure.query(async () => {
+      return db.getKnowledgeBaseStats();
+    }),
+    
+    // 手動觸發知識庫更新
+    triggerKnowledgeBaseUpdate: adminProcedure.mutation(async () => {
+      const result = await db.processUnintegratedViralLearnings();
+      return {
+        success: true,
+        processed: result.processed,
+        integrated: result.integrated,
+        skipped: result.skipped,
+        details: result.details,
+      };
+    }),
+    
+    // 取得所有鉤子
+    getContentHooks: adminProcedure
+      .input(z.object({
+        type: z.string().optional(),
+        source: z.string().optional(),
+        limit: z.number().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return db.getContentHooks(input);
+      }),
+    
+    // 取得未整合的爆文學習記錄
+    getPendingViralLearnings: adminProcedure
+      .input(z.object({ limit: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        return db.getUnintegratedViralLearnings(input?.limit || 50);
       }),
   }),
 
