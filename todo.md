@@ -1444,3 +1444,20 @@
 - [x] 建立去重機制避免重複鉤子
 - [x] 在戰報分析時觸發自動整合
 - [x] 撰寫現有功能對使用者的幫助與操作說明文件
+
+
+## Excel 數據優化 - 真正使用爆文分析數據 (2025-01-04)
+
+- [ ] 讀取並分析三個 Excel 檔案的所有分頁
+- [ ] 提取關鍵數據並匯入 keyword_benchmarks 資料表
+- [ ] 重寫 buildViralFactorsPrompt 函數，真正使用 viralFactors 數據
+- [ ] 測試並驗證優化效果
+
+
+## Excel 數據優化 - 真正使用爆文分析數據 (2025-01-04)
+
+- [x] 讀取並分析三個 Excel 檔案的所有分頁
+- [x] 提取關鍵數據並匯入 keyword_benchmarks 資料表（52 個關鍵字）
+- [x] 重寫 buildViralFactorsPrompt 函數，真正使用 viralFactors 數據
+- [x] 測試並驗證優化效果
+- [x] 撰寫 viralFactors 單元測試（7 項通過）

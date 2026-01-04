@@ -1,0 +1,60 @@
+{
+  "query": "SELECT keyword, category, avgLikes, viralRate, bestContentType, viralFactors, optimalLengthMin, optimalLengthMax FROM keyword_benchmarks LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute SELECT keyword, category, avgLikes, viralRate, bestContentType, viralFactors, optimalLengthMin, optimalLengthMax FROM keyword_benchmarks LIMIT 5;",
+  "rows": [
+    {
+      "keyword": "MBTI",
+      "category": "性格分析",
+      "avgLikes": "1037",
+      "viralRate": "2020",
+      "bestContentType": "NULL",
+      "viralFactors": "NULL",
+      "optimalLengthMin": "36",
+      "optimalLengthMax": "233"
+    },
+    {
+      "keyword": "星座",
+      "category": "命理占卜",
+      "avgLikes": "3521",
+      "viralRate": "6816",
+      "bestContentType": "NULL",
+      "viralFactors": "NULL",
+      "optimalLengthMin": "34",
+      "optimalLengthMax": "126"
+    },
+    {
+      "keyword": "生命靈數",
+      "category": "其他",
+      "avgLikes": "2470",
+      "viralRate": "3953",
+      "bestContentType": "NULL",
+      "viralFactors": "NULL",
+      "optimalLengthMin": "66",
+      "optimalLengthMax": "241"
+    },
+    {
+      "keyword": "人類圖",
+      "category": "性格分析",
+      "avgLikes": "1527",
+      "viralRate": "2000",
+      "bestContentType": "NULL",
+      "viralFactors": "NULL",
+      "optimalLengthMin": "29",
+      "optimalLengthMax": "123"
+    },
+    {
+      "keyword": "占星",
+      "category": "其他",
+      "avgLikes": "723",
+      "viralRate": "1150",
+      "bestContentType": "NULL",
+      "viralFactors": "NULL",
+      "optimalLengthMin": "34",
+      "optimalLengthMax": "153"
+    }
+  ],
+  "messages": [],
+  "stdout": "keyword\tcategory\tavgLikes\tviralRate\tbestContentType\tviralFactors\toptimalLengthMin\toptimalLengthMax\nMBTI\t性格分析\t1037\t2020\tNULL\tNULL\t36\t233\n星座\t命理占卜\t3521\t6816\tNULL\tNULL\t34\t126\n生命靈數\t其他\t2470\t3953\tNULL\tNULL\t66\t241\n人類圖\t性格分析\t1527\t2000\tNULL\tNULL\t29\t123\n占星\t其他\t723\t1150\tNULL\tNULL\t34\t153\n",
+  "stderr": "",
+  "execution_time_ms": 1506
+}

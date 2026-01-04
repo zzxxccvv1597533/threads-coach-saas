@@ -1,0 +1,458 @@
+
+-- 清空現有數據
+DELETE FROM content_hooks;
+
+-- 匯入新數據
+INSERT INTO content_hooks (
+  hookPattern, hookType, avgLikes, viralRate, sampleCount, source, isActive
+) VALUES
+(
+      '真的不要點開喔！！！ 因為 ⠀⣠⠖⠛⠉⠙⠲⢤⠀⡠',
+      'extracted',
+      20305,
+      851303,
+      4,
+      'viral_analysis',
+      1
+    ),
+(
+      '2025年尾你現在的狀態： ○ 脫單 ○ 曖昧',
+      'extracted',
+      38593,
+      1009675,
+      2,
+      'viral_analysis',
+      1
+    ),
+(
+      '玄學提醒： 點開的人 不管你之前有多麼不順 但從',
+      'extracted',
+      47080,
+      334701,
+      2,
+      'viral_analysis',
+      1
+    ),
+(
+      '11/25 雲端發票通知中獎1000萬 扣稅實領',
+      'extracted',
+      29290,
+      69738,
+      2,
+      'viral_analysis',
+      1
+    ),
+(
+      '9/25 雲端發票通知中獎1000萬 扣稅實領7',
+      'extracted',
+      15075,
+      15045,
+      2,
+      'viral_analysis',
+      1
+    ),
+(
+      '女生自帶好磁場的三個表現： 一、很多人找你問路，',
+      'extracted',
+      16272,
+      5683,
+      2,
+      'viral_analysis',
+      1
+    ),
+(
+      '熟悉張惠妹的人都知道，她每年元旦都要回到台東部落',
+      'extracted',
+      152189,
+      15218900,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '還想說這裡怎麼沒人站😂',
+      'extracted',
+      82896,
+      8289600,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '對於隨性到連羅浮宮都能遭小偷的法國人而言，202',
+      'extracted',
+      69352,
+      6935200,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '台東跨年好扯 直播轉播沒廣告、沒有主持人浪費時間',
+      'extracted',
+      101973,
+      5098650,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '淡信線往淡水的車廂裡面有一顆沒有家的電源寶寶 幫',
+      'extracted',
+      50667,
+      5066700,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '2026最新CP 全「新」101煙火 你錄取了，',
+      'extracted',
+      39205,
+      3920500,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '正式宣布2026 threads第一個流量女王就',
+      'extracted',
+      38907,
+      3890700,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '蛤現在友情紀念冊還包含Threads了歐 我真的',
+      'extracted',
+      37451,
+      3745100,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '兩間不同的廟都博到站杯怎麼辦',
+      'extracted',
+      35452,
+      3545200,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '求解為什麼剛跨年完家裡立刻出現一條蛇 而且門窗都',
+      'extracted',
+      34637,
+      3463700,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      'Happy New Year 2026 Thai',
+      'extracted',
+      33549,
+      3354900,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '這到底是哪一間的幸運餅乾出的，我要告他 ^ ^',
+      'extracted',
+      97661,
+      3255367,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '蛤 原來台東2025跨2026 的超級演唱會 是',
+      'extracted',
+      29024,
+      2902400,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '1問朋友家神明可不可以在神明桌底下吃葡萄 2我朋',
+      'extracted',
+      24598,
+      2459800,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      'Another year without the',
+      'extracted',
+      21989,
+      2198900,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '坐到阿嬤位置賴皮不走的胖虎',
+      'extracted',
+      42229,
+      2111450,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      'New year, new platform 💪',
+      'extracted',
+      20526,
+      2052600,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '跨年主ㄔˇ人MVP非 A-Lin 莫屬 開口講話',
+      'extracted',
+      19727,
+      1972700,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '新年快樂 . 跟他打電話跨年 2025 12/3',
+      'extracted',
+      19354,
+      1935400,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '2026 全部的追星人都會搶到票',
+      'extracted',
+      37657,
+      1882850,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '講一句幹話 最屌的置頂',
+      'extracted',
+      56231,
+      1874367,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '欸為什麼所有T 都一副 全世界欠他一根屌的臉啊',
+      'extracted',
+      18468,
+      1846800,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '唐綺陽老師太有道理了： - - 「走好運不要太囂',
+      'extracted',
+      17476,
+      1747600,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '勸各位不要點開！ 因為 ⢀⣤⡀⠀⠀⠀⠀⠀⠀⠀ ⠀',
+      'extracted',
+      34352,
+      1717600,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '2025/12/24因為辦戶籍謄本，才知道原來我',
+      'extracted',
+      119706,
+      1710086,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '2026年要談一場幸福的戀愛',
+      'extracted',
+      14600,
+      1460000,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '大家都應該知道英雄的樣子『余家昶』先生',
+      'extracted',
+      153101,
+      1391827,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '今年的倫敦煙火真是有點太厲害好喜歡💕 Happy',
+      'extracted',
+      13467,
+      1346700,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '我狠下心買的電競椅 現在在被牠們輪流轉😂',
+      'extracted',
+      119454,
+      1327267,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '2026 epic scene ever!',
+      'extracted',
+      13077,
+      1307700,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '公園裡發現一個音樂盒 一個招財貓 😂',
+      'extracted',
+      283056,
+      1230678,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '難道你們不覺得「溝通」本身是一件非常複雜的事嗎？',
+      'extracted',
+      36884,
+      1229467,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '叫我不要取貨結果給我一顆星😆',
+      'extracted',
+      49026,
+      1225650,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '大約下個月這個東西的歌就要解凍了',
+      'extracted',
+      9976,
+      997600,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '徹底躺平#搞笑貓咪 #貓奴日常 #流體貓 #滑梯',
+      'extracted',
+      9761,
+      976100,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '突然想起一個很玄的事情，不知道大家信不信房屋玄學',
+      'extracted',
+      19319,
+      965950,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '林北年輕的時候啦 2008年',
+      'extracted',
+      28790,
+      959667,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '開幕兩個月掛鳳梨頭合理吧🥲 地點在三重自強路 四',
+      'extracted',
+      35512,
+      887800,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '⠀⠀ ⠀ ⠀ ⠀ ⠀ 只求2026放我一馬 而不',
+      'extracted',
+      8814,
+      881400,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '真心建議大家都去列出伴侶清單，去年又一次遇到不對',
+      'extracted',
+      8758,
+      875800,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '讓男友跟閨蜜的男友在聖誕節穿情侶裝😌',
+      'extracted',
+      59360,
+      848000,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '前陣子很流行在瀝水籃裡丟日圓一塊，因為錫離子可以',
+      'extracted',
+      24452,
+      815067,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '來自沒流量的自信就是 24小時內70粉 設計每個',
+      'extracted',
+      24276,
+      809200,
+      1,
+      'viral_analysis',
+      1
+    ),
+(
+      '2026的第一場日出並沒有蔓延在天空上... 精',
+      'extracted',
+      8050,
+      805000,
+      1,
+      'viral_analysis',
+      1
+    );

@@ -599,9 +599,20 @@ export const keywordBenchmarks = mysqlTable("keyword_benchmarks", {
   viralFactors: json("viralFactors").$type<{
     resultFlag: number; // 結果導向比例
     ctaFlag: number; // CTA 比例（負面影響）
-    turnFlag: number; // 轉折比例
+    turnFlag?: number; // 轉折比例
     questionMark: number; // 問號使用比例
+    numberFlag?: number; // 數字使用比例
+    timeFlag?: number; // 時間壓力詞比例
   }>(),
+  // 漏斗建議（TOFU/MOFU/BOFU）
+  funnelSuggestions: json("funnelSuggestions").$type<{
+    tofu?: string; // 頂部漏斗建議
+    mofu?: string; // 中部漏斗建議
+    bofu?: string; // 底部漏斗建議
+  }>(),
+  // 穩定性與爆發分數
+  stabilityScore: int("stabilityScore").default(0), // 穩定性分數 * 10000
+  burstScore: int("burstScore").default(0), // 爆發分數 * 100
   // 高頻開頭模式（JSON 陣列）
   topHooks: json("topHooks").$type<string[]>(),
   // 更新時間

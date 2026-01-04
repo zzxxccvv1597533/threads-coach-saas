@@ -2052,38 +2052,133 @@ export async function markViralLearningAsIntegrated(learningId: number): Promise
 }
 
 // 建構爆文因子提示（用於 AI 生成）
+// 爆文因子 Lift 分析結果（從 Excel 數據中提取）
+const VIRAL_FACTORS_LIFT = {
+  // 應該加入的因子（正面影響）
+  positive: [
+    { feature: 'result_flag', lift: 0.023, description: '結果導向詞（「結果」「後來」「最後」）', impact: 'Top10 命中率提升 2.3%' },
+    { feature: 'exclaim_mark', lift: 0.006, description: '驚嘆號使用', impact: 'Top10 命中率提升 0.6%' },
+    { feature: 'you_flag', lift: 0.003, description: '「你」字使用（跟讀者對話）', impact: 'Top10 命中率提升 0.3%' },
+  ],
+  // 應該避免的因子（負面影響）
+  negative: [
+    { feature: 'cta_flag', lift: -0.057, description: 'CTA 硬塞', impact: 'Top10 命中率下降 5.7%' },
+    { feature: 'turn_flag', lift: -0.042, description: '轉折詞過多（「但是」「然而」）', impact: 'Top10 命中率下降 4.2%' },
+    { feature: 'question_mark', lift: -0.039, description: '問號過多', impact: 'Top10 命中率下降 3.9%' },
+    { feature: 'has_number', lift: -0.007, description: '數字過多', impact: 'Top10 命中率下降 0.7%' },
+  ],
+};
+
 export function buildViralFactorsPrompt(benchmarks: KeywordBenchmark[]): string {
-  if (benchmarks.length === 0) return '';
+  if (benchmarks.length === 0) {
+    // 即使沒有匹配到關鍵字，也提供通用的爆文因子建議
+    return `
+=== 爆文因子建議（數據驗證，隱性優化） ===
+
+【✅ 應該加入的元素】
+1. 結果導向詞：使用「結果」「後來」「最後」等詞彙（Top10 命中率 +2.3%）
+2. 驚嘆號：適當使用「！」增加情緒張力（Top10 命中率 +0.6%）
+3. 「你」字：跟讀者直接對話（Top10 命中率 +0.3%）
+
+【❌ 應該避免的元素】
+1. CTA 硬塞：不要強迫推銷或引導追蹤（Top10 命中率 -5.7%）
+2. 轉折詞過多：減少「但是」「然而」（Top10 命中率 -4.2%）
+3. 問號過多：不要連續提問（Top10 命中率 -3.9%）
+`;
+  }
   
   const topBenchmark = benchmarks[0];
+  const factors = topBenchmark.viralFactors;
+  const funnel = (topBenchmark as any).funnelSuggestions;
   
   let prompt = `
 === 市場數據參考（隱性優化，不要在內容中提及） ===
 `;
 
+  // 基本資訊
   if (topBenchmark.keyword) {
     prompt += `相關主題：${topBenchmark.keyword}\n`;
   }
   
+  if (topBenchmark.category) {
+    prompt += `主題分類：${topBenchmark.category}\n`;
+  }
+  
   if (topBenchmark.avgLikes) {
-    prompt += `市場平均讚數：${topBenchmark.avgLikes}\n`;
+    prompt += `市場平均讚數：${topBenchmark.avgLikes.toLocaleString()}\n`;
   }
   
-  if (topBenchmark.optimalLengthMin && topBenchmark.optimalLengthMax) {
-    prompt += `建議字數範圍：${topBenchmark.optimalLengthMin}-${topBenchmark.optimalLengthMax} 字\n`;
-  }
-  
-  if (topBenchmark.bestContentType) {
-    prompt += `最佳內容類型：${topBenchmark.bestContentType}\n`;
+  if (topBenchmark.viralRate) {
+    const viralRatePct = (topBenchmark.viralRate / 100).toFixed(1);
+    prompt += `Top10 爆文率：${viralRatePct}%\n`;
   }
 
-  // 爆文因子建議
-  prompt += `
-【爆文因子建議】
-- 有結果導向（「結果」「後來」「最後」）的內容表現較好
-- 避免硬塞 CTA（會降低爆文率）
-- 保持自然的情緒流動，不要刻意轉折
-`;
+  // 根據該關鍵字的實際數據生成建議
+  prompt += `\n【✅ 應該加入的元素】\n`;
+  
+  // 結果導向
+  if (factors?.resultFlag !== undefined) {
+    const resultPct = (factors.resultFlag * 100).toFixed(1);
+    if (factors.resultFlag > 0.1) {
+      prompt += `1. ⭐ 結果導向詞：該主題爆文中 ${resultPct}% 使用結果導向，強烈建議使用「結果」「後來」「最後」\n`;
+    } else if (factors.resultFlag > 0.05) {
+      prompt += `1. 結果導向詞：建議使用「結果」「後來」「最後」（爆文中使用率 ${resultPct}%）\n`;
+    } else {
+      prompt += `1. 結果導向詞：可適度使用（通用建議，Top10 命中率 +2.3%）\n`;
+    }
+  } else {
+    prompt += `1. 結果導向詞：使用「結果」「後來」「最後」（Top10 命中率 +2.3%）\n`;
+  }
+  
+  // 驚嘆號和「你」字
+  prompt += `2. 驚嘆號：適當使用「！」增加情緒張力（Top10 命中率 +0.6%）\n`;
+  prompt += `3. 「你」字：跟讀者直接對話，增加親切感（Top10 命中率 +0.3%）\n`;
+
+  // 應該避免的元素
+  prompt += `\n【❌ 應該避免的元素】\n`;
+  
+  // CTA
+  if (factors?.ctaFlag !== undefined) {
+    const ctaPct = (factors.ctaFlag * 100).toFixed(1);
+    if (factors.ctaFlag > 0.2) {
+      prompt += `1. ⚠️ CTA 硬塞：該主題 CTA 使用率達 ${ctaPct}%，但爆文通常不硬塞 CTA（Top10 命中率 -5.7%）\n`;
+    } else if (factors.ctaFlag > 0.1) {
+      prompt += `1. CTA 硬塞：避免強迫推銷或引導追蹤（Top10 命中率 -5.7%）\n`;
+    } else {
+      prompt += `1. CTA 硬塞：該主題爆文很少用 CTA（僅 ${ctaPct}%），保持自然\n`;
+    }
+  } else {
+    prompt += `1. CTA 硬塞：不要強迫推銷或引導追蹤（Top10 命中率 -5.7%）\n`;
+  }
+  
+  // 問號
+  if (factors?.questionMark !== undefined) {
+    const qPct = (factors.questionMark * 100).toFixed(1);
+    if (factors.questionMark > 0.3) {
+      prompt += `2. ⚠️ 問號過多：該主題問號使用率 ${qPct}%，但過多問號會降低爆文率（Top10 命中率 -3.9%）\n`;
+    } else {
+      prompt += `2. 問號過多：不要連續提問（Top10 命中率 -3.9%）\n`;
+    }
+  } else {
+    prompt += `2. 問號過多：不要連續提問（Top10 命中率 -3.9%）\n`;
+  }
+  
+  // 轉折詞
+  prompt += `3. 轉折詞過多：減少「但是」「然而」（Top10 命中率 -4.2%）\n`;
+
+  // 漏斗建議（如果有）
+  if (funnel && (funnel.tofu || funnel.mofu || funnel.bofu)) {
+    prompt += `\n【🎯 內容策略建議】\n`;
+    if (funnel.tofu) {
+      prompt += `TOFU（吸引流量）：${funnel.tofu}\n`;
+    }
+    if (funnel.mofu) {
+      prompt += `MOFU（建立信任）：${funnel.mofu}\n`;
+    }
+    if (funnel.bofu) {
+      prompt += `BOFU（引導轉化）：${funnel.bofu}\n`;
+    }
+  }
 
   return prompt;
 }
