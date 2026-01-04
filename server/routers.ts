@@ -2679,7 +2679,12 @@ ${userInputContext}${input.additionalContext ? `補充說明：${input.additiona
       .input(z.object({
         currentDraft: z.string(),
         instruction: z.string(),
-        draftId: z.number().optional(), // 新增：草稿 ID
+        draftId: z.number().optional(),
+        // 新增：修改模式選項
+        editMode: z.enum(['light', 'preserve', 'rewrite']).optional().default('preserve'),
+        // light = 輕度優化（只做排版、錯字、語句通順）
+        // preserve = 風格保留（保留敘事結構，只優化表達）
+        // rewrite = 爆款改寫（完整套用爆款公式）
         chatHistory: z.array(z.object({
           role: z.enum(["user", "assistant"]),
           content: z.string(),
@@ -2688,78 +2693,121 @@ ${userInputContext}${input.additionalContext ? `補充說明：${input.additiona
       .mutation(async ({ ctx, input }) => {
         const profile = await db.getIpProfileByUserId(ctx.user.id);
         const aiMemory = await db.getUserAIMemory(ctx.user.id);
+        const editMode = input.editMode || 'preserve';
         
-        const systemPrompt = `你是一個專業的 Threads 爆款文案修改助理。你的任務是根據用戶的指示修改草稿，同時確保符合五大維度和四透鏡框架。
-
-=== 創作者資料（必須保持一致） ===
+        // 根據修改模式生成不同的 Prompt
+        const buildSystemPrompt = () => {
+          const creatorInfo = `=== 創作者資料 ===
 - 職業：${profile?.occupation || '未設定'}
 - 語氣風格：${profile?.voiceTone || '未設定'}
+${aiMemory ? `
+這位學員的偏好：${aiMemory}` : ''}`;
+
+          // 輕度優化模式：只做排版、錯字、語句通順
+          if (editMode === 'light') {
+            return `你是一個温柔的文字校對助理。
+
+${creatorInfo}
+
+=== 你的任務（極度重要） ===
+
+你只能做以下三件事：
+1. 修正錯字、標點符號
+2. 調整排版（加入適當的換行和空行）
+3. 讓語句更通順（但不改變意思）
+
+=== 絕對禁止 ===
+- 不能改變敘事結構
+- 不能添加新的內容或觀點
+- 不能刪除任何原有內容
+- 不能改變作者的語氣和用詞習慣
+- 不能加入 CTA、問題、反問
+- 不能加入專業解讀或分析
+
+=== 輸出格式 ===
+直接輸出修改後的內容，不要任何解釋。`;
+          }
+          
+          // 風格保留模式：保留敘事結構，只優化表達
+          if (editMode === 'preserve') {
+            return `你是一個尊重作者風格的文字優化助理。
+
+${creatorInfo}
+
+=== 核心原則（極度重要） ===
+
+你的任務是「優化」而不是「重寫」。
+
+想像你是一個細心的編輯，幫作者把文章「抓一下」，
+讓它更好讀，但不改變作者想說的話。
+
+=== 可以做的事 ===
+1. 調整排版（加入呼吸感，每 2-4 行一個段落）
+2. 讓句子更口語化（像傳訊息給朋友）
+3. 修正錯字和標點
+4. 讓語句更通順
+5. 如果原文有留白感，保留那個留白
+
+=== 絕對禁止（這是最重要的） ===
+- ✘ 不能改變敘事的順序和結構
+- ✘ 不能添加作者沒有說的觀點或分析
+- ✘ 不能加入「從命理的角度來看」這類專業解讀
+- ✘ 不能強行加入 CTA、問題、反問
+- ✘ 不能把簡單的故事變成「教學文」
+- ✘ 不能讓內容變得更長（字數應該差不多或更精簡）
+- ✘ 不能用「讓我們」「今天要分享」「希望對你有幫助」
+- ✘ 不能用 Markdown 符號
+
+=== 故事型內容特別注意 ===
+如果原文是個人經歷或故事：
+- 保留作者的敘事節奏
+- 保留結尾的留白感（如果有的話）
+- 不要強行加入「後來我才明白」這類反思
+- 不要把故事變成教訓
+
+=== 輸出格式 ===
+直接輸出優化後的內容，不要任何解釋。`;
+          }
+          
+          // 爆款改寫模式：完整套用爆款公式
+          return `你是一個專業的 Threads 爆款文案改寫助理。
+
+${creatorInfo}
+
+=== 創作者人設 ===
 - 專業支柱：${profile?.personaExpertise || '未設定'}
 - 情感支柱：${profile?.personaEmotion || '未設定'}
 - 觀點支柱：${profile?.personaViewpoint || '未設定'}
 
-${aiMemory ? `這位學員的偏好：
-${aiMemory}` : ''}
+=== 爆款元素（必須包含） ===
 
-=== 五大維度檢核（修改時必須考慮） ===
+## Hook 鉤子
+- 開頭使用三大策略：鏡像/反差/解法
+- 讓讀者第一秒就想繼續看
 
-## Hook 鉤子強度
-- 開頭應使用三大策略：鏡像/反差/解法
-- 如果用戶要求優化開頭，請用這些策略改寫
-
-## Translation 翻譯機
-- 專業術語要翻譯成比喻或白話
-- 小學五年級都能懂
-
-## Tone 閱讀體感
-- 像傳訊息給朋友，不是寫文章
+## 口語化
+- 像傳訊息給朋友
 - 語助詞：「真的」「超」「欹」「啊」「吧」「呢」
-- 保持呼吸感排版，每 2-4 行一個段落
 
-## CTA 互動召喚
-- 優先用「召喚同類」或「二選一提問」
+## 呼吸感排版
+- 每 2-4 行一個段落
+- 每句 10-20 字
 
-=== 四透鏡框架（修改時必須檢核） ===
-
-### 心法透鏡 - 渴望導向
-- 確保內容傳遞正向渴望，不是焦慮
-
-### 人設透鏡 - 風格一致
-- 保持與創作者人設一致
-
-### 結構透鏡 - 好吸收
-- 結構清晰，有邏輯脈絡
-
-### 轉化透鏡 - 明確下一步
-- 有明確的行動呼籲
-
-=== Threads 爆款風格（修改時必須保持） ===
-
-### 字數限制
-- 修改後不能讓內容變得更長
-- 如果原文太長，應該精簡
-
-### 口語化原則
-1. 像傳訊息給朋友，不是寫文章
-2. 可以省略主詞、用不完整句
-3. 語助詞：「真的」「超」「欹」「啊」「吧」「呢」「啦」
-
-### 呼吸感排版
-1. 每 2-4 行為一個段落
-2. 段落之間空一行
-3. 每句 10-15 字，最多 20 字
+## CTA 互動
+- 結尾用「召喚同類」或「二選一提問」
 
 === 絕對禁止 ===
 - 「讓我們」「一起來」「今天要分享」
 - 「親愛的朋友們」「各位」「大家好」
 - 「首先」「其次」「最後」
 - 「希望對你有幫助」「加油！」
-- Markdown 符號、條列式
+- Markdown 符號
 
-=== 重要原則 ===
-1. 保持創作者的語氣風格
-2. 只修改用戶要求的部分
-3. 直接給出修改後的完整內容，不需要解釋`;
+=== 輸出格式 ===
+直接輸出改寫後的內容，不要任何解釋。`;
+        };
+        
+        const systemPrompt = buildSystemPrompt();
 
         const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
           { role: "system", content: systemPrompt },

@@ -277,6 +277,11 @@ export default function WritingStudio() {
   const [isChatting, setIsChatting] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   
+  // 修改模式：light(輕度優化) / preserve(風格保留) / rewrite(爆款改寫)
+  const [editMode, setEditMode] = useState<'light' | 'preserve' | 'rewrite'>(() => 
+    getStoredState("editMode", "preserve") as 'light' | 'preserve' | 'rewrite'
+  );
+  
   // 診斷結果
   const [diagnosis, setDiagnosis] = useState<{
     strengths: Array<{ label: string; description: string }>;
@@ -309,7 +314,8 @@ export default function WritingStudio() {
     saveState("hookOptions", hookOptions);
     saveState("selectedHook", selectedHook);
     saveState("typeInputs", typeInputs);
-  }, [mode, material, selectedContentType, selectedMonetizeType, selectedAngle, step, brainstormResult, anglesResult, draftResult, draftId, chatMessages, flexibleInputs, selectedHookStyle, hookOptions, selectedHook, typeInputs]);
+    saveState("editMode", editMode);
+  }, [mode, material, selectedContentType, selectedMonetizeType, selectedAngle, step, brainstormResult, anglesResult, draftResult, draftId, chatMessages, flexibleInputs, selectedHookStyle, hookOptions, selectedHook, typeInputs, editMode]);
 
   // 處理 URL 參數（從痛點矩陣或其他頁面跳轉過來）
   const searchString = useSearch();
@@ -501,7 +507,8 @@ export default function WritingStudio() {
     refineDraft.mutate({
       currentDraft: draftResult,
       instruction: userMessage,
-      draftId: draftId || undefined, // 傳遞草稿 ID 以更新資料庫
+      draftId: draftId || undefined,
+      editMode: editMode, // 傳遞修改模式
       chatHistory: chatMessages,
     });
   };
@@ -1037,6 +1044,8 @@ export default function WritingStudio() {
                   onCopy={handleCopy}
                   onConfirmVersion={handleConfirmVersion}
                   chatEndRef={chatEndRef}
+                  editMode={editMode}
+                  onEditModeChange={setEditMode}
                   diagnosis={diagnosis}
                 />
                 
@@ -1484,6 +1493,8 @@ export default function WritingStudio() {
                       onCopy={handleCopy}
                       onConfirmVersion={handleConfirmVersion}
                       chatEndRef={chatEndRef}
+                      editMode={editMode}
+                      onEditModeChange={setEditMode}
                       diagnosis={diagnosis}
                     />
                     
@@ -1549,8 +1560,11 @@ interface DraftResultWithChatProps {
   onChatInputChange: (value: string) => void;
   onChatSubmit: () => void;
   onCopy: (text: string) => void;
-  onConfirmVersion: () => void; // 新增：確認此版本
+  onConfirmVersion: () => void;
   chatEndRef: React.RefObject<HTMLDivElement | null>;
+  // 新增：修改模式選項
+  editMode: 'light' | 'preserve' | 'rewrite';
+  onEditModeChange: (mode: 'light' | 'preserve' | 'rewrite') => void;
   diagnosis?: {
     strengths: Array<{ label: string; description: string }>;
     improvements: Array<{ label: string; description: string; action?: string }>;
@@ -1569,6 +1583,8 @@ function DraftResultWithChat({
   onCopy,
   onConfirmVersion,
   chatEndRef,
+  editMode,
+  onEditModeChange,
   diagnosis,
 }: DraftResultWithChatProps) {
   return (
@@ -1756,6 +1772,54 @@ function DraftResultWithChat({
 
           {/* 固定底部輸入框 */}
           <div className="border-t border-border/50 p-4 bg-background/80 backdrop-blur-sm">
+            {/* 修改模式選擇器 */}
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs text-muted-foreground">修改模式：</span>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => onEditModeChange('light')}
+                  className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                    editMode === 'light' 
+                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' 
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  📝 輕度優化
+                </button>
+                <button
+                  onClick={() => onEditModeChange('preserve')}
+                  className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                    editMode === 'preserve' 
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300' 
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  ✨ 風格保留
+                </button>
+                <button
+                  onClick={() => onEditModeChange('rewrite')}
+                  className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                    editMode === 'rewrite' 
+                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300' 
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  🚀 爆款改寫
+                </button>
+              </div>
+            </div>
+            {/* 模式說明 */}
+            <div className="text-xs text-muted-foreground mb-3 p-2 bg-muted/30 rounded-lg">
+              {editMode === 'light' && (
+                <span>📝 <strong>輕度優化</strong>：只修正錯字、調整排版，不改變任何內容</span>
+              )}
+              {editMode === 'preserve' && (
+                <span>✨ <strong>風格保留</strong>：保留你的敘事結構和語氣，只優化表達方式（推薦用於故事型內容）</span>
+              )}
+              {editMode === 'rewrite' && (
+                <span>🚀 <strong>爆款改寫</strong>：完整套用爆款公式，加入 Hook、CTA 等元素（推薦用於知識型內容）</span>
+              )}
+            </div>
             <div className="flex gap-3 items-end">
               <div className="flex-1 relative">
                 <Textarea
