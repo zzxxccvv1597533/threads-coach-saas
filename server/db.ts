@@ -27,6 +27,9 @@ import {
   keywordBenchmarks, KeywordBenchmark,
   contentHooks, ContentHook,
   viralLearnings, InsertViralLearning,
+  viralExamples,
+  topicTemplates,
+  contentClusters,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2456,5 +2459,424 @@ export async function getKnowledgeBaseStats(): Promise<{
     viralAnalysisHooks,
     pendingLearnings,
     integratedLearnings,
+  };
+}
+
+
+// ==================== 爆款數據優化系統 ====================
+
+// 取得爆款貼文範例（用於 Few-Shot Learning）
+export async function getViralExamples(options: {
+  keyword?: string;
+  cluster?: number;
+  funnelStage?: string;
+  isTop200?: boolean;
+  isTop20?: boolean;
+  limit?: number;
+  sortBy?: 'likes' | 'likesPerDay';
+}): Promise<Array<{
+  id: number;
+  keyword: string;
+  postText: string;
+  likes: number;
+  likesPerDay: number | null;
+  funnelStage: string | null;
+  cluster: number | null;
+  opener50: string | null;
+  charLen: number | null;
+  hasNumber: boolean;
+  resultFlag: boolean;
+  ctaFlag: boolean;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [];
+  
+  if (options.keyword) {
+    conditions.push(eq(viralExamples.keyword, options.keyword));
+  }
+  if (options.cluster !== undefined) {
+    conditions.push(eq(viralExamples.cluster, options.cluster));
+  }
+  if (options.funnelStage) {
+    conditions.push(eq(viralExamples.funnelStage, options.funnelStage));
+  }
+  if (options.isTop200 !== undefined) {
+    conditions.push(eq(viralExamples.isTop200, options.isTop200));
+  }
+  if (options.isTop20 !== undefined) {
+    conditions.push(eq(viralExamples.isTop20, options.isTop20));
+  }
+  
+  const orderColumn = options.sortBy === 'likesPerDay' 
+    ? viralExamples.likesPerDay 
+    : viralExamples.likes;
+  
+  const query = db.select({
+    id: viralExamples.id,
+    keyword: viralExamples.keyword,
+    postText: viralExamples.postText,
+    likes: viralExamples.likes,
+    likesPerDay: viralExamples.likesPerDay,
+    funnelStage: viralExamples.funnelStage,
+    cluster: viralExamples.cluster,
+    opener50: viralExamples.opener50,
+    charLen: viralExamples.charLen,
+    hasNumber: viralExamples.hasNumber,
+    resultFlag: viralExamples.resultFlag,
+    ctaFlag: viralExamples.ctaFlag,
+  }).from(viralExamples);
+  
+  if (conditions.length > 0) {
+    query.where(and(...conditions));
+  }
+  
+  query.orderBy(desc(orderColumn));
+  
+  if (options.limit) {
+    query.limit(options.limit);
+  }
+  
+  const results = await query;
+  return results.map(r => ({
+    ...r,
+    likes: r.likes || 0,
+    likesPerDay: r.likesPerDay ? parseFloat(String(r.likesPerDay)) : null,
+    hasNumber: r.hasNumber || false,
+    resultFlag: r.resultFlag || false,
+    ctaFlag: r.ctaFlag || false,
+  }));
+}
+
+// 根據關鍵字取得最佳範例（用於 Few-Shot）
+export async function getBestExamplesForKeyword(keyword: string, limit: number = 3): Promise<Array<{
+  postText: string;
+  likes: number;
+  opener50: string | null;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // 先找完全匹配的關鍵字
+  let results = await db.select({
+    postText: viralExamples.postText,
+    likes: viralExamples.likes,
+    opener50: viralExamples.opener50,
+  })
+    .from(viralExamples)
+    .where(eq(viralExamples.keyword, keyword))
+    .orderBy(desc(viralExamples.likes))
+    .limit(limit);
+  
+  // 如果沒有完全匹配，找相關的
+  if (results.length === 0) {
+    results = await db.select({
+      postText: viralExamples.postText,
+      likes: viralExamples.likes,
+      opener50: viralExamples.opener50,
+    })
+      .from(viralExamples)
+      .where(sql`${viralExamples.keyword} LIKE ${`%${keyword}%`}`)
+      .orderBy(desc(viralExamples.likes))
+      .limit(limit);
+  }
+  
+  // 如果還是沒有，返回 Top200 中最熱門的
+  if (results.length === 0) {
+    results = await db.select({
+      postText: viralExamples.postText,
+      likes: viralExamples.likes,
+      opener50: viralExamples.opener50,
+    })
+      .from(viralExamples)
+      .where(eq(viralExamples.isTop200, true))
+      .orderBy(desc(viralExamples.likes))
+      .limit(limit);
+  }
+  
+  return results.map(r => ({
+    ...r,
+    likes: r.likes || 0,
+  }));
+}
+
+// 取得選題模板
+export async function getTopicTemplates(options?: {
+  cluster?: number;
+  theme?: string;
+  limit?: number;
+}): Promise<Array<{
+  id: number;
+  cluster: number | null;
+  theme: string | null;
+  template: string | null;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [];
+  
+  if (options?.cluster !== undefined) {
+    conditions.push(eq(topicTemplates.cluster, options.cluster));
+  }
+  if (options?.theme) {
+    conditions.push(sql`${topicTemplates.theme} LIKE ${`%${options.theme}%`}`);
+  }
+  
+  const query = db.select({
+    id: topicTemplates.id,
+    cluster: topicTemplates.cluster,
+    theme: topicTemplates.theme,
+    template: topicTemplates.template,
+  }).from(topicTemplates);
+  
+  if (conditions.length > 0) {
+    query.where(and(...conditions));
+  }
+  
+  if (options?.limit) {
+    query.limit(options.limit);
+  }
+  
+  return query;
+}
+
+// 取得隨機選題建議（用於「沒靈感」流程）
+export async function getRandomTopicSuggestions(count: number = 5): Promise<Array<{
+  cluster: number | null;
+  theme: string | null;
+  template: string | null;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // 隨機取得選題模板
+  const results = await db.select({
+    cluster: topicTemplates.cluster,
+    theme: topicTemplates.theme,
+    template: topicTemplates.template,
+  })
+    .from(topicTemplates)
+    .orderBy(sql`RAND()`)
+    .limit(count);
+  
+  return results;
+}
+
+// 取得內容群集資訊
+export async function getContentClusters(): Promise<Array<{
+  id: number;
+  clusterId: number | null;
+  themeKeywords: string | null;
+  postsCount: number | null;
+  top10Rate: number | null;
+  medianLikes: number | null;
+  medianLpd: number | null;
+  topTerms: string | null;
+  tofuShare: number | null;
+  mofuShare: number | null;
+  bofuShare: number | null;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const results = await db.select().from(contentClusters);
+  return results.map(r => ({
+    ...r,
+    top10Rate: r.top10Rate ? parseFloat(String(r.top10Rate)) : null,
+    medianLpd: r.medianLpd ? parseFloat(String(r.medianLpd)) : null,
+    tofuShare: r.tofuShare ? parseFloat(String(r.tofuShare)) : null,
+    mofuShare: r.mofuShare ? parseFloat(String(r.mofuShare)) : null,
+    bofuShare: r.bofuShare ? parseFloat(String(r.bofuShare)) : null,
+  }));
+}
+
+// 根據群集 ID 取得群集資訊
+export async function getClusterById(clusterId: number): Promise<{
+  id: number;
+  clusterId: number | null;
+  themeKeywords: string | null;
+  postsCount: number | null;
+  top10Rate: number | null;
+  medianLikes: number | null;
+  topTerms: string | null;
+  tofuShare: number | null;
+  mofuShare: number | null;
+  bofuShare: number | null;
+} | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const results = await db.select()
+    .from(contentClusters)
+    .where(eq(contentClusters.clusterId, clusterId))
+    .limit(1);
+  
+  if (results.length === 0) return null;
+  
+  const r = results[0];
+  return {
+    ...r,
+    top10Rate: r.top10Rate ? parseFloat(String(r.top10Rate)) : null,
+    tofuShare: r.tofuShare ? parseFloat(String(r.tofuShare)) : null,
+    mofuShare: r.mofuShare ? parseFloat(String(r.mofuShare)) : null,
+    bofuShare: r.bofuShare ? parseFloat(String(r.bofuShare)) : null,
+  };
+}
+
+// 根據內容推薦最適合的群集
+export async function suggestClusterForContent(content: string): Promise<{
+  clusterId: number;
+  themeKeywords: string;
+  confidence: number;
+} | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const clusters = await getContentClusters();
+  if (clusters.length === 0) return null;
+  
+  // 簡單的關鍵字匹配算法
+  let bestMatch: { clusterId: number; themeKeywords: string; score: number } | null = null;
+  
+  for (const cluster of clusters) {
+    if (!cluster.themeKeywords || !cluster.clusterId) continue;
+    
+    const keywords = cluster.themeKeywords.toLowerCase().split(/[,、，\s]+/);
+    const contentLower = content.toLowerCase();
+    
+    let score = 0;
+    for (const keyword of keywords) {
+      if (keyword && contentLower.includes(keyword.trim())) {
+        score += 1;
+      }
+    }
+    
+    if (score > 0 && (!bestMatch || score > bestMatch.score)) {
+      bestMatch = {
+        clusterId: cluster.clusterId,
+        themeKeywords: cluster.themeKeywords,
+        score,
+      };
+    }
+  }
+  
+  if (!bestMatch) return null;
+  
+  return {
+    clusterId: bestMatch.clusterId,
+    themeKeywords: bestMatch.themeKeywords,
+    confidence: Math.min(bestMatch.score / 3, 1), // 正規化為 0-1
+  };
+}
+
+// 取得群集的選題模板
+export async function getClusterTopicTemplates(clusterId: number): Promise<Array<{
+  theme: string | null;
+  template: string | null;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select({
+    theme: topicTemplates.theme,
+    template: topicTemplates.template,
+  })
+    .from(topicTemplates)
+    .where(eq(topicTemplates.cluster, clusterId));
+}
+
+// 建立 Few-Shot Prompt（用於草稿生成）
+export async function buildFewShotPrompt(keyword: string, count: number = 3): Promise<string> {
+  const examples = await getBestExamplesForKeyword(keyword, count);
+  
+  if (examples.length === 0) {
+    return '';
+  }
+  
+  let prompt = `\n【參考範例】以下是「${keyword}」主題的高讚貼文範例：\n\n`;
+  
+  examples.forEach((example, index) => {
+    prompt += `範例 ${index + 1}（${example.likes} 讚）：\n`;
+    prompt += `${example.postText.substring(0, 500)}${example.postText.length > 500 ? '...' : ''}\n\n`;
+  });
+  
+  prompt += `請參考以上範例的寫作風格和結構，但不要直接複製內容。\n`;
+  
+  return prompt;
+}
+
+// 取得爆款開頭範例（用於 Hook 生成）
+export async function getViralOpeners(options?: {
+  keyword?: string;
+  limit?: number;
+}): Promise<Array<{
+  opener50: string;
+  likes: number;
+  keyword: string;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [
+    sql`${viralExamples.opener50} IS NOT NULL`,
+    sql`${viralExamples.opener50} != ''`,
+  ];
+  
+  if (options?.keyword) {
+    conditions.push(eq(viralExamples.keyword, options.keyword));
+  }
+  
+  const results = await db.select({
+    opener50: viralExamples.opener50,
+    likes: viralExamples.likes,
+    keyword: viralExamples.keyword,
+  })
+    .from(viralExamples)
+    .where(and(...conditions))
+    .orderBy(desc(viralExamples.likes))
+    .limit(options?.limit || 10);
+  
+  return results.map(r => ({
+    opener50: r.opener50 || '',
+    likes: r.likes || 0,
+    keyword: r.keyword,
+  }));
+}
+
+// 統計爆款數據
+export async function getViralDataStats(): Promise<{
+  totalExamples: number;
+  top200Count: number;
+  top20Count: number;
+  topicTemplatesCount: number;
+  clustersCount: number;
+  keywordsCount: number;
+}> {
+  const db = await getDb();
+  if (!db) return {
+    totalExamples: 0,
+    top200Count: 0,
+    top20Count: 0,
+    topicTemplatesCount: 0,
+    clustersCount: 0,
+    keywordsCount: 0,
+  };
+  
+  const [totalResult] = await db.select({ count: sql<number>`COUNT(*)` }).from(viralExamples);
+  const [top200Result] = await db.select({ count: sql<number>`COUNT(*)` }).from(viralExamples).where(eq(viralExamples.isTop200, true));
+  const [top20Result] = await db.select({ count: sql<number>`COUNT(*)` }).from(viralExamples).where(eq(viralExamples.isTop20, true));
+  const [templatesResult] = await db.select({ count: sql<number>`COUNT(*)` }).from(topicTemplates);
+  const [clustersResult] = await db.select({ count: sql<number>`COUNT(*)` }).from(contentClusters);
+  const [keywordsResult] = await db.select({ count: sql<number>`COUNT(DISTINCT keyword)` }).from(viralExamples);
+  
+  return {
+    totalExamples: Number(totalResult?.count) || 0,
+    top200Count: Number(top200Result?.count) || 0,
+    top20Count: Number(top20Result?.count) || 0,
+    topicTemplatesCount: Number(templatesResult?.count) || 0,
+    clustersCount: Number(clustersResult?.count) || 0,
+    keywordsCount: Number(keywordsResult?.count) || 0,
   };
 }

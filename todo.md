@@ -1481,3 +1481,93 @@
 - [x] 確認查詢邏輯是否正確匹配關鍵字
 - [x] 修復發現的問題（欄位名稱不匹配）
 - [x] 单元測試全部通過（242 項）
+
+
+## Excel 數據全面運用檢查 (2025-01-05)
+
+### 開頭鉤子庫匯入
+- [x] 匯入 80 個開頭鉤子到 content_hooks 資料表（已匯入 80 筆，總數 130 筆）
+- [x] 驗證匯入結果
+
+### 數據使用狀況檢查
+- [x] 檢查 keyword_benchmarks 資料表現有數據（52 筆關鍵字數據）
+- [x] 檢查 buildViralFactorsPrompt 實際使用邏輯（已正確整合）
+- [x] 確認爆文因子建議是否真正使用數據庫數據（已確認正確使用）
+
+### Excel 各分頁使用狀況分析
+- [ ] 1_Keyword_Metrics：是否已使用？
+- [ ] 2_爆文因子_Lift：是否已使用？
+- [ ] 3_開頭鉤子庫_Top80：匯入中
+- [ ] 4_Top貼文素材庫_Top200：是否已使用？
+- [ ] 5_Top20_by_Keyword：是否已使用？
+- [ ] 6_ContentMap_Clusters：是否已使用？
+- [ ] 7_Keyword_Funnel：是否已使用？
+- [ ] 8_漏斗路徑建議：是否已使用？
+- [ ] 9_選題庫_Cluster模板：是否已使用？
+- [ ] 10_實驗清單：是否已使用？
+
+### 優化建議
+- [ ] 根據分析結果提出具體優化方案
+
+
+## P0+P1 數據優化實作 (2025-01-05)
+
+### 資料庫建立與數據匯入
+- [ ] 建立 viral_examples 資料表
+- [ ] 建立 topic_templates 資料表
+- [ ] 建立 content_clusters 資料表
+- [ ] 匯入 Top200 爆款貼文 (D1)
+- [ ] 匯入 48 個選題模板 (D2)
+- [ ] 匯入 8 個內容群集 (D3)
+- [ ] 匯入 Top20_by_Keyword 1040 筆 (D4)
+
+### P0 功能整合（第一批）
+- [ ] F5 腦力激盪：整合選題庫模板
+- [ ] F8 草稿生成：整合 Top200 Few-Shot
+- [ ] F15 引導式寫作 Step 1：整合選題庫
+
+### P1 功能整合（第二批）
+- [ ] F5 腦力激盪：整合群集 + Top200
+- [ ] F7 Hook 生成：整合 Top200 opener
+- [ ] F8 草稿生成：整合 Top20_by_Keyword
+- [ ] F4 矩陣選題生成：整合選題庫 + 群集
+
+### P2 功能整合（第三批）
+- [ ] F6 切角分析：整合群集 + Top200
+- [ ] F10 文案健檢：整合群集 + Top200
+- [ ] F14 戰報洞察：整合群集 + Top20
+- [ ] F15 引導式寫作 Step 5-6：整合 Few-Shot
+
+
+## P0+P1 數據優化實作 (2025-01-05) ✅
+
+### 資料庫建立與數據匯入
+- [x] 建立資料庫 Schema（viral_examples, topic_templates, content_clusters）
+- [x] 匯入 Top200 爆款貼文（200 筆）
+- [x] 匯入 Top20_by_Keyword（1040 筆）
+- [x] 匯入選題庫（48 筆）
+- [x] 匯入內容群集（8 筆）
+- [x] 匯入 80 個開頭鉤子到 content_hooks 表（總數 130 筆）
+
+### 資料庫查詢函數
+- [x] 建立 getViralExamples 函數
+- [x] 建立 getBestExamplesForKeyword 函數
+- [x] 建立 getTopicTemplates 函數
+- [x] 建立 getRandomTopicSuggestions 函數
+- [x] 建立 getContentClusters 函數
+- [x] 建立 getClusterById 函數
+- [x] 建立 suggestClusterForContent 函數
+- [x] 建立 buildFewShotPrompt 函數
+- [x] 建立 getViralOpeners 函數
+- [x] 建立 getViralDataStats 函數
+- [x] 建立 getClusterTopicTemplates 函數
+
+### 功能整合
+- [x] 整合到 F5 腦力激盪（brainstorm API）- 選題庫 + 群集 + Top200
+- [x] 整合到 F8 草稿生成（generateDraft API）- Few-Shot Learning
+- [x] 整合到 F15 引導式寫作流程 - 透過 brainstorm API
+- [x] 整合到 F7 Hook 生成（generateHooks API）- 爆款開頭範例
+- [x] 整合到 F4 矩陣選題（generateSubTopics API）- 選題庫 + 群集
+
+### 單元測試
+- [x] 撰寫 viral-data.test.ts（22 個測試全部通過）

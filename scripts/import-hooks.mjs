@@ -1,80 +1,80 @@
-#!/usr/bin/env node
-/**
- * 將開頭鉤子匯入資料庫
- */
+import Database from 'better-sqlite3';
+import * as XLSX from 'xlsx';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
-import { readFileSync } from 'fs';
-import mysql from 'mysql2/promise';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// 讀取真實鉤子數據
-const realHooks = JSON.parse(
-  readFileSync('/home/ubuntu/real_hooks_data.json', 'utf-8')
-);
+// 讀取 Excel 檔案
+const excelFile = '/home/ubuntu/upload/2_爆款分析儀表板_7大成果物_Part1(1).xlsx';
+const workbook = XLSX.readFile(excelFile);
+const sheet = workbook.Sheets['3_開頭鉤子庫_Top80'];
+const data = XLSX.utils.sheet_to_json(sheet);
 
-// 讀取手動整理的鉤子模式
-const manualHooks = JSON.parse(
-  readFileSync('/home/ubuntu/hooks_data.json', 'utf-8')
-);
-
-console.log(`準備匯入 ${realHooks.length} 個真實鉤子 + ${manualHooks.length} 個模式鉤子...`);
+console.log('讀取到', data.length, '個鉤子');
 
 // 連接資料庫
-const connection = await mysql.createConnection(process.env.DATABASE_URL);
+const dbPath = path.join(__dirname, '..', 'local.db');
+const db = new Database(dbPath);
 
-// 建立 INSERT 語句
-const insertSQL = `
-  INSERT INTO content_hooks 
-  (hookPattern, hookType, avgLikes, sampleCount, source, isActive)
-  VALUES (?, ?, ?, ?, ?, ?)
-  ON DUPLICATE KEY UPDATE
-    hookType = VALUES(hookType),
-    avgLikes = VALUES(avgLikes),
-    sampleCount = VALUES(sampleCount),
-    updatedAt = NOW()
-`;
+// 檢查 content_hooks 表是否存在
+const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='content_hooks'").get();
+console.log('content_hooks 表存在:', !!tableExists);
 
-let successCount = 0;
-let errorCount = 0;
+if (!tableExists) {
+  console.log('創建 content_hooks 表...');
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS content_hooks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      hook_text TEXT NOT NULL,
+      hook_type TEXT DEFAULT 'general',
+      source TEXT DEFAULT 'excel_import',
+      effectiveness_score REAL,
+      usage_count INTEGER DEFAULT 0,
+      median_likes REAL,
+      median_lpd REAL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+}
 
-// 匯入真實鉤子
-for (const hook of realHooks) {
-  try {
-    await connection.execute(insertSQL, [
-      hook.pattern.substring(0, 500), // 限制長度
-      hook.type,
-      hook.avgLikes,
-      hook.sampleCount,
-      'viral_analysis',
-      true
-    ]);
-    successCount++;
-  } catch (error) {
-    console.error(`匯入真實鉤子失敗:`, error.message);
-    errorCount++;
+// 清空現有數據
+db.exec('DELETE FROM content_hooks');
+console.log('已清空現有數據');
+
+// 插入新數據
+const insertStmt = db.prepare(`
+  INSERT INTO content_hooks (hook_text, hook_type, source, median_likes, median_lpd, created_at)
+  VALUES (?, ?, ?, ?, ?, datetime('now'))
+`);
+
+let inserted = 0;
+for (const row of data) {
+  const hookText = row.first_line || '';
+  if (hookText.trim()) {
+    insertStmt.run(
+      hookText.trim(),
+      'top80',
+      'excel_import',
+      row.median_likes || 0,
+      row.median_lpd || 0
+    );
+    inserted++;
   }
 }
 
-// 匯入手動整理的模式鉤子
-for (const hook of manualHooks) {
-  try {
-    await connection.execute(insertSQL, [
-      hook.pattern,
-      hook.type,
-      0, // 模式鉤子沒有具體讚數
-      0,
-      'manual',
-      true
-    ]);
-    successCount++;
-  } catch (error) {
-    // 忽略重複的
-    if (!error.message.includes('Duplicate')) {
-      console.error(`匯入模式鉤子失敗:`, error.message);
-      errorCount++;
-    }
-  }
-}
+console.log('成功匯入', inserted, '個鉤子');
 
-await connection.end();
+// 驗證
+const count = db.prepare('SELECT COUNT(*) as count FROM content_hooks').get();
+console.log('資料庫中現有鉤子數量:', count.count);
 
-console.log(`\n匯入完成！成功: ${successCount}, 失敗: ${errorCount}`);
+// 顯示前 5 個
+const samples = db.prepare('SELECT * FROM content_hooks LIMIT 5').all();
+console.log('\n前 5 個鉤子:');
+samples.forEach((h, i) => {
+  console.log(`${i+1}. ${h.hook_text.substring(0, 50)}... (likes: ${h.median_likes})`);
+});
+
+db.close();

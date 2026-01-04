@@ -547,6 +547,27 @@ ${cleanAudiences.map(a => `- "${a}"`).join('\n')}
         const randomSeed = Math.random().toString(36).substring(7);
         const randomAngle = ['SEO關鍵字思維', '受眾痛點導向', '創作者專業導向', '市場趨勢導向', '競爭差異化導向'][Math.floor(Math.random() * 5)];
         
+        // ✅ P0+P1 優化：取得選題庫和群集參考
+        const topicTemplates = await db.getRandomTopicSuggestions(6);
+        const clusters = await db.getContentClusters();
+        
+        let topicLibraryContext = '';
+        if (topicTemplates.length > 0) {
+          topicLibraryContext = `\n=== 選題庫參考（經過驗證的高表現子主題結構） ===\n`;
+          topicTemplates.forEach((t, i) => {
+            topicLibraryContext += `${i + 1}. ${t.theme || ''}：${t.template || ''}\n`;
+          });
+        }
+        
+        let clusterContext = '';
+        if (clusters.length > 0) {
+          clusterContext = `\n=== 內容群集參考（爆文率較高的主題類型） ===\n`;
+          clusters.forEach(c => {
+            const top10Rate = c.top10Rate ? (c.top10Rate * 100).toFixed(1) : '0';
+            clusterContext += `- ${c.themeKeywords || ''}（爆文率 ${top10Rate}%）\n`;
+          });
+        }
+        
 const prompt = `你是一位 Threads 內容策略專家。請根據以下創作者資訊，將其專業領域拆解成 3-5 個具體的「子主題」作為內容支柱。
 
 === 創作者 IP 地基 ===
@@ -615,6 +636,8 @@ ${audiences.join('、')}
 2. 名稱是否超過 8 個字？
 3. 是否包含冒號、引號、長形容詞？
 
+${topicLibraryContext}
+${clusterContext}
 === 隨機種子 ===
 ${randomSeed}
 
@@ -1252,6 +1275,30 @@ ${input.content}` }
         
         const strategy = stageStrategy[currentStage as keyof typeof stageStrategy] || stageStrategy.startup;
         
+        // ✅ P0+P1 優化：取得選題庫和群集數據
+        const topicSuggestions = await db.getRandomTopicSuggestions(5);
+        const clusters = await db.getContentClusters();
+        
+        // 建構選題庫參考
+        let topicLibraryContext = '';
+        if (topicSuggestions.length > 0) {
+          topicLibraryContext = `\n=== 選題庫參考（經過驗證的高表現選題模板） ===\n`;
+          topicSuggestions.forEach((t, i) => {
+            topicLibraryContext += `${i + 1}. [主題${t.cluster || ''}] ${t.theme || ''}：${t.template || ''}\n`;
+          });
+          topicLibraryContext += `\n請參考以上選題模板的結構和切入點，但要結合創作者的專業領域和受眾痛點來調整。\n`;
+        }
+        
+        // 建構群集資訊
+        let clusterContext = '';
+        if (clusters.length > 0) {
+          clusterContext = `\n=== 內容群集分析（爆文率參考） ===\n`;
+          clusters.forEach(c => {
+            const top10Rate = c.top10Rate ? (c.top10Rate * 100).toFixed(1) : '0';
+            clusterContext += `- 群集${c.clusterId}：${c.themeKeywords || ''}（爆文率 ${top10Rate}%）\n`;
+          });
+        }
+        
         const systemPrompt = `${SYSTEM_PROMPTS.contentGeneration}
 
 === 創作者 IP 地基（必須參考） ===
@@ -1274,7 +1321,11 @@ ${coreProduct ? `核心產品：${coreProduct.name}` : '未設定'}
 2. 主題必須能觸動目標受眾的痛點
 3. 建議的內容類型要符合主題特性
 4. 每個主題都要能展現創作者的人設
-5. 優先推薦符合當前經營階段的內容類型（但不強制）`;
+5. 優先推薦符合當前經營階段的內容類型（但不強制）
+6. 參考選題庫的模板結構，但要結合創作者特色來調整
+7. 優先選擇爆文率較高的內容群集主題
+${topicLibraryContext}
+${clusterContext}`;
 
         const response = await invokeLLM({
           messages: [
@@ -1512,6 +1563,17 @@ ${audienceContext || '未設定'}
         
         const selectedStyle = input.hookStyle ? hookStyleGuide[input.hookStyle] : '請給出多種不同風格的 Hook';
         
+        // ✅ P0+P1 優化：取得爆款開頭範例
+        const viralOpeners = await db.getViralOpeners({ keyword: input.topic, limit: 5 });
+        let viralOpenersContext = '';
+        if (viralOpeners.length > 0) {
+          viralOpenersContext = `\n=== 爆款開頭範例（參考結構，不要複製） ===\n`;
+          viralOpeners.forEach((o, i) => {
+            viralOpenersContext += `${i + 1}. 「${o.opener50}」（${o.likes} 讚）\n`;
+          });
+          viralOpenersContext += `\n請參考以上開頭的結構和語氣，但要結合創作者的風格來調整。\n`;
+        }
+        
         const systemPrompt = `${SYSTEM_PROMPTS.contentGeneration}
 
 === 創作者 IP 地基 ===
@@ -1522,7 +1584,7 @@ ${audienceContext || '未設定'}
 
 === Hook 風格指南 ===
 ${selectedStyle}
-
+${viralOpenersContext}
 === 重要指示 ===
 1. 每個 Hook 不超過 15 字（理想 10 字）
 2. Hook 要能讓人停下來想繼續看
@@ -1744,6 +1806,9 @@ ${selectedStyle}
         // === 開頭鉤子庫：根據內容類型取得推薦鉤子 ===
         const recommendedHooks = await db.getRecommendedHooks(input.contentType, 3);
         const hooksPrompt = db.buildHooksPrompt(recommendedHooks);
+        
+        // ✅ P0+P1 優化：Few-Shot Learning - 取得爆款貼文範例
+        const fewShotPrompt = await db.buildFewShotPrompt(materialContent, 3);
         
         // 建構 IP 地基資料字串（強化版）
         const buildIpContext = () => {
@@ -2206,6 +2271,8 @@ ${viralElementsPrompt}
 ${viralFactorsPrompt}
 
 ${hooksPrompt}
+
+${fewShotPrompt}
 
 === 四透鏡框架（創作時必須檢核） ===
 

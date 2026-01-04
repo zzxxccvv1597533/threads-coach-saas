@@ -1,0 +1,110 @@
+{
+  "query": "SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'viral_examples' AND TABLE_SCHEMA = DATABASE() ORDER BY ORDINAL_POSITION",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'viral_examples' AND TABLE_SCHEMA = DATABASE() ORDER BY ORDINAL_POSITION",
+  "rows": [
+    {
+      "COLUMN_NAME": "id",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "keyword",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "postText",
+      "DATA_TYPE": "text"
+    },
+    {
+      "COLUMN_NAME": "likes",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "likesPerDay",
+      "DATA_TYPE": "decimal"
+    },
+    {
+      "COLUMN_NAME": "postDate",
+      "DATA_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "account",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "threadUrl",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "funnelStage",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "cluster",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "opener50",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "charLen",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "hasNumber",
+      "DATA_TYPE": "tinyint"
+    },
+    {
+      "COLUMN_NAME": "questionMark",
+      "DATA_TYPE": "tinyint"
+    },
+    {
+      "COLUMN_NAME": "exclaimMark",
+      "DATA_TYPE": "tinyint"
+    },
+    {
+      "COLUMN_NAME": "youFlag",
+      "DATA_TYPE": "tinyint"
+    },
+    {
+      "COLUMN_NAME": "iFlag",
+      "DATA_TYPE": "tinyint"
+    },
+    {
+      "COLUMN_NAME": "ctaFlag",
+      "DATA_TYPE": "tinyint"
+    },
+    {
+      "COLUMN_NAME": "timePressureFlag",
+      "DATA_TYPE": "tinyint"
+    },
+    {
+      "COLUMN_NAME": "resultFlag",
+      "DATA_TYPE": "tinyint"
+    },
+    {
+      "COLUMN_NAME": "turnFlag",
+      "DATA_TYPE": "tinyint"
+    },
+    {
+      "COLUMN_NAME": "isTop200",
+      "DATA_TYPE": "tinyint"
+    },
+    {
+      "COLUMN_NAME": "isTop20",
+      "DATA_TYPE": "tinyint"
+    },
+    {
+      "COLUMN_NAME": "source",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "createdAt",
+      "DATA_TYPE": "timestamp"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\tDATA_TYPE\nid\tint\nkeyword\tvarchar\npostText\ttext\nlikes\tint\nlikesPerDay\tdecimal\npostDate\ttimestamp\naccount\tvarchar\nthreadUrl\tvarchar\nfunnelStage\tvarchar\ncluster\tint\nopener50\tvarchar\ncharLen\tint\nhasNumber\ttinyint\nquestionMark\ttinyint\nexclaimMark\ttinyint\nyouFlag\ttinyint\niFlag\ttinyint\nctaFlag\ttinyint\ntimePressureFlag\ttinyint\nresultFlag\ttinyint\nturnFlag\ttinyint\nisTop200\ttinyint\nisTop20\ttinyint\nsource\tvarchar\ncreatedAt\ttimestamp\n",
+  "stderr": "",
+  "execution_time_ms": 1596
+}

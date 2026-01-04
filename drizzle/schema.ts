@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, json } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, json, decimal } from "drizzle-orm/mysql-core";
 
 // ==================== 用戶系統 ====================
 
@@ -676,3 +676,78 @@ export const viralLearnings = mysqlTable("viral_learnings", {
 
 export type ViralLearning = typeof viralLearnings.$inferSelect;
 export type InsertViralLearning = typeof viralLearnings.$inferInsert;
+
+
+// ==================== 爆款數據優化系統 ====================
+
+// 爆款貼文範例庫（Top200 + Top20_by_Keyword）
+export const viralExamples = mysqlTable("viral_examples", {
+  id: int("id").autoincrement().primaryKey(),
+  keyword: varchar("keyword", { length: 64 }).notNull(), // 關鍵字
+  postText: text("postText").notNull(), // 貼文完整內容
+  likes: int("likes").default(0), // 讚數
+  likesPerDay: decimal("likesPerDay", { precision: 10, scale: 2 }), // 每日讚數
+  postDate: timestamp("postDate"), // 發文日期
+  account: varchar("account", { length: 64 }), // 帳號
+  threadUrl: varchar("threadUrl", { length: 256 }), // 貼文連結
+  // 內容特徵
+  funnelStage: varchar("funnelStage", { length: 16 }), // TOFU, MOFU, BOFU
+  cluster: int("cluster"), // 內容群集 ID
+  opener50: varchar("opener50", { length: 200 }), // 開頭前 50 字
+  charLen: int("charLen"), // 字數
+  // 特徵標記
+  hasNumber: boolean("hasNumber").default(false),
+  questionMark: boolean("questionMark").default(false),
+  exclaimMark: boolean("exclaimMark").default(false),
+  youFlag: boolean("youFlag").default(false),
+  iFlag: boolean("iFlag").default(false),
+  ctaFlag: boolean("ctaFlag").default(false),
+  timePressureFlag: boolean("timePressureFlag").default(false),
+  resultFlag: boolean("resultFlag").default(false),
+  turnFlag: boolean("turnFlag").default(false),
+  // 來源標記
+  isTop200: boolean("isTop200").default(false), // 是否來自 Top200
+  isTop20: boolean("isTop20").default(false), // 是否來自 Top20_by_Keyword
+  source: varchar("source", { length: 64 }).default("excel_import"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ViralExample = typeof viralExamples.$inferSelect;
+export type InsertViralExample = typeof viralExamples.$inferInsert;
+
+// 選題模板庫（48 個選題模板）
+export const topicTemplates = mysqlTable("topic_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  cluster: int("cluster"), // 內容群集 ID
+  theme: varchar("theme", { length: 128 }), // 主題（如：2026／MBTI／塔羅占卜）
+  template: text("template").notNull(), // 選題模板
+  // 使用統計
+  usageCount: int("usageCount").default(0),
+  isActive: boolean("isActive").default(true),
+  source: varchar("source", { length: 64 }).default("excel_import"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TopicTemplate = typeof topicTemplates.$inferSelect;
+export type InsertTopicTemplate = typeof topicTemplates.$inferInsert;
+
+// 內容群集（8 個群集）
+export const contentClusters = mysqlTable("content_clusters", {
+  id: int("id").autoincrement().primaryKey(),
+  clusterId: int("clusterId").notNull().unique(), // 群集 ID（0-7）
+  themeKeywords: varchar("themeKeywords", { length: 256 }), // 主題關鍵字（如：2026／MBTI／塔羅占卜）
+  postsCount: int("postsCount").default(0), // 貼文數量
+  top10Rate: decimal("top10Rate", { precision: 5, scale: 4 }), // Top10 爆文率
+  medianLikes: int("medianLikes").default(0), // 中位數讚數
+  medianLpd: decimal("medianLpd", { precision: 10, scale: 2 }), // 中位數每日讚數
+  topTerms: text("topTerms"), // 高頻詞彙
+  // TOFU/MOFU/BOFU 分布
+  tofuShare: decimal("tofuShare", { precision: 5, scale: 4 }),
+  mofuShare: decimal("mofuShare", { precision: 5, scale: 4 }),
+  bofuShare: decimal("bofuShare", { precision: 5, scale: 4 }),
+  source: varchar("source", { length: 64 }).default("excel_import"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ContentCluster = typeof contentClusters.$inferSelect;
+export type InsertContentCluster = typeof contentClusters.$inferInsert;

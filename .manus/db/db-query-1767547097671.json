@@ -1,0 +1,85 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'viral_examples' ORDER BY ORDINAL_POSITION",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'viral_examples' ORDER BY ORDINAL_POSITION",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "keyword"
+    },
+    {
+      "COLUMN_NAME": "postText"
+    },
+    {
+      "COLUMN_NAME": "likes"
+    },
+    {
+      "COLUMN_NAME": "likesPerDay"
+    },
+    {
+      "COLUMN_NAME": "postDate"
+    },
+    {
+      "COLUMN_NAME": "account"
+    },
+    {
+      "COLUMN_NAME": "threadUrl"
+    },
+    {
+      "COLUMN_NAME": "funnelStage"
+    },
+    {
+      "COLUMN_NAME": "cluster"
+    },
+    {
+      "COLUMN_NAME": "opener50"
+    },
+    {
+      "COLUMN_NAME": "charLen"
+    },
+    {
+      "COLUMN_NAME": "hasNumber"
+    },
+    {
+      "COLUMN_NAME": "questionMark"
+    },
+    {
+      "COLUMN_NAME": "exclaimMark"
+    },
+    {
+      "COLUMN_NAME": "youFlag"
+    },
+    {
+      "COLUMN_NAME": "iFlag"
+    },
+    {
+      "COLUMN_NAME": "ctaFlag"
+    },
+    {
+      "COLUMN_NAME": "timePressureFlag"
+    },
+    {
+      "COLUMN_NAME": "resultFlag"
+    },
+    {
+      "COLUMN_NAME": "turnFlag"
+    },
+    {
+      "COLUMN_NAME": "isTop200"
+    },
+    {
+      "COLUMN_NAME": "isTop20"
+    },
+    {
+      "COLUMN_NAME": "source"
+    },
+    {
+      "COLUMN_NAME": "createdAt"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\nkeyword\npostText\nlikes\nlikesPerDay\npostDate\naccount\nthreadUrl\nfunnelStage\ncluster\nopener50\ncharLen\nhasNumber\nquestionMark\nexclaimMark\nyouFlag\niFlag\nctaFlag\ntimePressureFlag\nresultFlag\nturnFlag\nisTop200\nisTop20\nsource\ncreatedAt\n",
+  "stderr": "",
+  "execution_time_ms": 1482
+}
