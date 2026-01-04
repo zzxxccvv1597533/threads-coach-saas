@@ -68,13 +68,14 @@ describe('爆文優化系統', () => {
       
       const prompt = db.buildViralFactorsPrompt(mockBenchmarks);
       expect(prompt).toContain('星座');
-      expect(prompt).toContain('4614');
-      expect(prompt).toContain('爆文因子建議');
+      expect(prompt).toContain('4,614'); // 數字有千分位格式化
+      expect(prompt).toContain('應該加入的元素');
     });
 
-    it('空 Benchmark 應該返回空字串', () => {
+    it('空 Benchmark 應該返回通用建議', () => {
       const prompt = db.buildViralFactorsPrompt([]);
-      expect(prompt).toBe('');
+      // 修改後的行為：即使沒有匹配到關鍵字，也提供通用的爆文因子建議
+      expect(prompt).toContain('應該加入的元素');
     });
   });
 

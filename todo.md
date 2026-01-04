@@ -1461,3 +1461,23 @@
 - [x] 重寫 buildViralFactorsPrompt 函數，真正使用 viralFactors 數據
 - [x] 測試並驗證優化效果
 - [x] 撰寫 viralFactors 單元測試（7 項通過）
+
+
+## Bug 修復 - 爆款改寫模式未參照用戶輸入 (2025-01-04)
+
+- [x] 檢查爆款改寫模式的程式碼邏輯
+- [x] 確保用戶輸入的「整理主題」「原始資料/清單」「節省了什麼」「補充切角方向」被正確傳遞到 AI
+- [x] 修復後測試驗證
+- [x] 修復欄位名稱不匹配問題（前端 inputFields vs 後端 typeSpecificPrompts）
+
+
+## 全面檢查 - flexibleInput 傳遞 + 爆文因子使用 (2025-01-05)
+
+- [x] 檢查引導模式所有類型貼文的 flexibleInput 傳遞
+- [x] 檢查進階模式所有類型貼文的 flexibleInput 傳遞
+- [x] 確認 typeSpecificPrompts 是否覆蓋所有貼文類型（全部 11 種都有）
+- [x] 檢查 buildViralFactorsPrompt 是否真正使用資料庫數據（已修復，現在會根據實際數據生成差異化建議）
+- [x] 確認 keyword_benchmarks 資料表是否有正確填入數據（52 個關鍵字已匯入）
+- [x] 確認查詢邏輯是否正確匹配關鍵字
+- [x] 修復發現的問題（欄位名稱不匹配）
+- [x] 单元測試全部通過（242 項）

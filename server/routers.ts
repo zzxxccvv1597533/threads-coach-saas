@@ -1623,6 +1623,31 @@ ${selectedStyle}
           symptoms: z.string().optional(),
           diagnosis_label: z.string().optional(),
           explanation: z.string().optional(),
+          // 整理型貼文欄位
+          summary_topic: z.string().optional(),
+          raw_data: z.string().optional(),
+          save_what: z.string().optional(),
+          // 故事型貼文欄位
+          event_conflict: z.string().optional(),
+          turning_point: z.string().optional(),
+          emotion_change: z.string().optional(),
+          core_insight: z.string().optional(),
+          story_source: z.string().optional(),
+          // 知識型貼文欄位
+          specific_problem: z.string().optional(),
+          professional_concept: z.string().optional(),
+          key_points: z.string().optional(),
+          // 觀點型貼文欄位
+          phenomenon: z.string().optional(),
+          unique_stance: z.string().optional(),
+          underlying_value: z.string().optional(),
+          // 對話型貼文欄位
+          dialogue_roles: z.string().optional(),
+          situation_conflict: z.string().optional(),
+          punchline: z.string().optional(),
+          // 投票型貼文欄位
+          binary_choice: z.string().optional(),
+          survey_purpose: z.string().optional(),
         }).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -1660,8 +1685,30 @@ ${selectedStyle}
 
           // 其餘常見欄位確保為 string（避免 object 被 template 或 spread）
           const stringKeys = [
-            'topic','stance','reason','common_belief','truth','question','context',
-            'quote','reflection','count','symptoms','diagnosis_label','explanation'
+            // 提問型
+            'simple_topic','target_audience','topic',
+            // 投票型
+            'binary_choice','survey_purpose',
+            // 觀點型
+            'phenomenon','unique_stance','underlying_value','stance','reason',
+            // 反差型
+            'two_opposites','specific_scene','purpose','common_belief','truth',
+            // 閒聊型
+            'current_mood','life_fragment',
+            // 對話型
+            'dialogue_roles','situation_conflict','punchline','question','context',
+            // 引用型
+            'original_quote','your_reaction','extended_view','quote','reflection',
+            // 診斷型
+            'symptoms','diagnosis_label','explanation',
+            // 整理型
+            'summary_topic','raw_data','save_what',
+            // 故事型
+            'story_source','event_conflict','turning_point','emotion_change','core_insight',
+            // 知識型
+            'specific_problem','professional_concept','key_points',
+            // 其他
+            'count'
           ];
           for (const k of stringKeys) {
             if (out[k] !== undefined && out[k] !== null && typeof out[k] !== 'string') {
@@ -1675,7 +1722,11 @@ ${selectedStyle}
         const flexibleInput = normalizeFlexibleInput(input.flexibleInput);
 
         // 開發時 debug log
-        console.log('[generateDraft] normalized flexibleInput type:', typeof flexibleInput, 'options type:', Array.isArray(flexibleInput.options) ? 'array' : typeof flexibleInput.options, 'options:', flexibleInput.options);
+        console.log('[generateDraft] normalized flexibleInput:', JSON.stringify(flexibleInput, null, 2));
+        console.log('[generateDraft] contentType:', input.contentType);
+        console.log('[generateDraft] summary_topic:', flexibleInput.summary_topic);
+        console.log('[generateDraft] raw_data:', flexibleInput.raw_data);
+        console.log('[generateDraft] save_what:', flexibleInput.save_what);
         // -----------------------------------------------------------------
         
         const profile = await db.getIpProfileByUserId(ctx.user.id);
@@ -1919,7 +1970,8 @@ ${selectedStyle}
         const typeSpecificPrompts: Record<string, string> = {
           question: `寫一篇「提問型」貼文，引發討論。
 
-主題：${flexibleInput.topic || input.material || ''}
+主題：${flexibleInput.simple_topic || flexibleInput.topic || input.material || ''}
+目標受眾：${flexibleInput.target_audience || ''}
 
 結構要求：
 1. 直接拋出問題，不需要長篇大論
@@ -1942,8 +1994,9 @@ ${selectedStyle}
           
           viewpoint: `寫一篇「觀點型」貼文，表達立場。
 
-觀點：${flexibleInput.stance || input.material || ''}
-原因：${flexibleInput.reason || ''}
+觀察到的現象：${flexibleInput.phenomenon || ''}
+你的獨特立場：${flexibleInput.unique_stance || flexibleInput.stance || input.material || ''}
+背後的價值觀：${flexibleInput.underlying_value || flexibleInput.reason || ''}
 
 結構要求：
 1. 開頭直接說出你的立場
@@ -1954,8 +2007,9 @@ ${selectedStyle}
           
           contrast: `寫一篇「反差型」貼文，打破認知。
 
-大家以為：${flexibleInput.common_belief || ''}
-其實是：${flexibleInput.truth || ''}
+兩個對立面：${flexibleInput.two_opposites || flexibleInput.common_belief || ''}
+具體場景：${flexibleInput.specific_scene || ''}
+目的：${flexibleInput.purpose || flexibleInput.truth || ''}
 
 結構要求：
 1. 開頭：「很多人以為...」
@@ -1967,7 +2021,8 @@ ${selectedStyle}
           
           casual: `寫一篇「閒聊型」貼文，輕鬆分享。
 
-話題：${flexibleInput.topic || input.material || ''}
+當下心情/狀態：${flexibleInput.current_mood || ''}
+生活片段：${flexibleInput.life_fragment || flexibleInput.topic || input.material || ''}
 
 結構要求：
 1. 像在跟朋友聊天
@@ -1978,8 +2033,9 @@ ${selectedStyle}
           
           dialogue: `寫一篇「對話型」貼文，問答形式。
 
-問題：${flexibleInput.question || ''}
-想回答的方向：${flexibleInput.context || ''}
+對話角色：${flexibleInput.dialogue_roles || ''}
+情境/衝突：${flexibleInput.situation_conflict || flexibleInput.question || ''}
+金句/亮點：${flexibleInput.punchline || flexibleInput.context || ''}
 
 結構要求：
 1. 開頭：「最近有人問我...」或「朋友問我...」
@@ -1990,8 +2046,9 @@ ${selectedStyle}
           
           quote: `寫一篇「引用型」貼文，分享感想。
 
-引用：${flexibleInput.quote || ''}
-感想：${flexibleInput.reflection || ''}
+原文引用：${flexibleInput.original_quote || flexibleInput.quote || ''}
+你的反應：${flexibleInput.your_reaction || ''}
+延伸觀點：${flexibleInput.extended_view || flexibleInput.reflection || ''}
 
 結構要求：
 1. 開頭引用這句話
@@ -2020,6 +2077,54 @@ ${selectedStyle}
    - 邀請讀者留言分享
 
 風格：像朋友幫你分析，有溫度不評判，讓讀者覺得「天啊這就是在說我」`,
+          
+          summary: `寫一篇「整理型」貼文（懶人包），讓讀者想「收藏」。
+
+整理主題：${flexibleInput.summary_topic || input.material || ''}
+原始資料/清單：${flexibleInput.raw_data || ''}
+節省了什麼：${flexibleInput.save_what || ''}
+
+結構要求（嚴格遵守）：
+1. 開頭必須有數字：「5個」「3種」「7件事」
+   - 數字要具體，不要用「幾個」「一些」
+2. 每點獨立成段，每點都是可單獨截圖的金句
+   - 每點不超過 2-3 行
+   - 用 Emoji 作為清單開頭（✨/👉/🔮）
+3. 結尾問：「你中了幾個？」「還有什麼想補充的？」
+
+風格：像在幫朋友整理資訊，讓人想收藏`,
+          
+          story: `寫一篇「故事型」貼文，建立信任與個人品牌。
+
+故事來源：${flexibleInput.story_source === 'self' ? '自己的故事' : '案例故事（個案/客戶）'}
+具體事件/衝突點：${flexibleInput.event_conflict || input.material || ''}
+轉折點：${flexibleInput.turning_point || ''}
+情感變化：${flexibleInput.emotion_change || ''}
+核心啟發：${flexibleInput.core_insight || ''}
+
+結構要求（英雄旅程架構）：
+1. 開頭用具體時間和人物製造真實感：「昨天」「上週」「前幾天」
+2. 描述衝突/困境：讓讀者產生共鳴
+3. 帶入轉折點：「沒想到」「結果」「後來」
+4. 展現情感變化：讓故事更有溫度
+5. 結尾帶出核心啟發：「這件事讓我明白...」
+6. 最後用開放式問題引導互動
+
+風格：像在跟朋友分享真實經歷，有溫度有轉折`,
+          
+          knowledge: `寫一篇「知識型」貼文，展現專業但要「說人話」。
+
+解決的具體問題：${flexibleInput.specific_problem || input.material || ''}
+專業概念的「白話翻譯」：${flexibleInput.professional_concept || ''}
+步驟或重點：${flexibleInput.key_points || ''}
+
+結構要求（目標是讓「小學五年級」都能懂）：
+1. 開頭用數字或問題：「90%的人都不知道...」「你有沒有想過...」
+2. 歸納成 3 個重點/步驟，分點清晰
+3. 每點獨立成金句，用大白話解釋專業概念
+4. 結尾給行動建議：「下次遇到這種情況，你可以...」
+
+風格：像在跟朋友分享實用技巧，不說教`,
         };
         
         // 默認的完整結構提示詞（故事型、知識型、整理型）
