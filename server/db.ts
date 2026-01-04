@@ -2730,6 +2730,7 @@ export async function suggestClusterForContent(content: string): Promise<{
   clusterId: number;
   themeKeywords: string;
   confidence: number;
+  top10Rate: number | null;
 } | null> {
   const db = await getDb();
   if (!db) return null;
@@ -2738,7 +2739,7 @@ export async function suggestClusterForContent(content: string): Promise<{
   if (clusters.length === 0) return null;
   
   // 簡單的關鍵字匹配算法
-  let bestMatch: { clusterId: number; themeKeywords: string; score: number } | null = null;
+  let bestMatch: { clusterId: number; themeKeywords: string; score: number; top10Rate: number | null } | null = null;
   
   for (const cluster of clusters) {
     if (!cluster.themeKeywords || !cluster.clusterId) continue;
@@ -2758,6 +2759,7 @@ export async function suggestClusterForContent(content: string): Promise<{
         clusterId: cluster.clusterId,
         themeKeywords: cluster.themeKeywords,
         score,
+        top10Rate: cluster.top10Rate,
       };
     }
   }
@@ -2768,6 +2770,7 @@ export async function suggestClusterForContent(content: string): Promise<{
     clusterId: bestMatch.clusterId,
     themeKeywords: bestMatch.themeKeywords,
     confidence: Math.min(bestMatch.score / 3, 1), // 正規化為 0-1
+    top10Rate: bestMatch.top10Rate ?? null,
   };
 }
 

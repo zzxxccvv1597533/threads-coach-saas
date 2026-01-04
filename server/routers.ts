@@ -2525,6 +2525,48 @@ ${fewShotPrompt}
         const coreProduct = products.find(p => p.productType === 'core');
         const leadProduct = products.find(p => p.productType === 'lead');
         
+        // ✅ 爆款數據整合：取得 Few-Shot 範例和爆款開頭
+        const contentTypeKeywords: Record<string, string> = {
+          profile_intro: '自介 個人品牌 職業',
+          plus_one: '互動 留言 免費',
+          free_value: '價值 分享 教學',
+          success_story: '案例 故事 轉變',
+        };
+        const searchKeyword = contentTypeKeywords[input.contentType] || '變現 導流';
+        
+        // 取得爆款貼文範例（Few-Shot Learning）
+        const viralExamples = await db.getBestExamplesForKeyword(searchKeyword, 3);
+        let fewShotContext = '';
+        if (viralExamples.length > 0) {
+          fewShotContext = `\n=== 爆款貼文範例（參考結構和語氣，不要複製內容） ===\n`;
+          viralExamples.forEach((ex, i) => {
+            const opener = ex.opener50 || (ex.postText ? ex.postText.substring(0, 50) : '');
+            fewShotContext += `\n範例 ${i + 1}（${ex.likes} 讚）：\n開頭：「${opener}」\n`;
+            if (ex.postText && ex.postText.length > 100) {
+              fewShotContext += `結構特點：${ex.postText.length < 300 ? '精簡有力' : '故事完整'}，${ex.postText.includes('?') || ex.postText.includes('？') ? '有互動提問' : '直接分享'}\n`;
+            }
+          });
+          fewShotContext += `\n請參考以上範例的開頭結構和語氣，但要結合創作者的風格來寫。\n`;
+        }
+        
+        // 取得爆款開頭範例
+        const viralOpeners = await db.getViralOpeners({ keyword: searchKeyword, limit: 5 });
+        let viralOpenersContext = '';
+        if (viralOpeners.length > 0) {
+          viralOpenersContext = `\n=== 爆款開頭句型參考 ===\n`;
+          viralOpeners.forEach((o, i) => {
+            viralOpenersContext += `${i + 1}. 「${o.opener50}」（${o.likes} 讚）\n`;
+          });
+        }
+        
+        // 取得內容群集推薦
+        const clusterSuggestion = await db.suggestClusterForContent(searchKeyword);
+        let clusterContext = '';
+        if (clusterSuggestion) {
+          const top10Rate = clusterSuggestion.top10Rate ? (clusterSuggestion.top10Rate * 100).toFixed(1) : '0';
+          clusterContext = `\n=== 內容群集參考 ===\n這類內容屬於「${clusterSuggestion.themeKeywords}」群集，爆文率 ${top10Rate}%\n`;
+        }
+        
         // Hook 策略和專業「說人話」原則
         const hookStrategies = `
 ## Hook 有效的三大心理學原理
@@ -2756,7 +2798,9 @@ ${fewShotPrompt}
         const systemPrompt = `你是一位專業的 Threads 變現內容創作教練，專門幫助創作者產出高互動的變現貼文。
 
 ${hookStrategies}
-
+${fewShotContext}
+${viralOpenersContext}
+${clusterContext}
 === 創作者 IP 地基（必須在內容中展現） ===
 ${ipContext}
 
