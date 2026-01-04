@@ -1604,6 +1604,8 @@ ${selectedStyle}
         material: z.string().optional(),
         contentType: z.string(),
         angle: z.string().optional(),
+        // 生成模式：light(輕度優化) / preserve(風格保留) / rewrite(爆款改寫)
+        editMode: z.enum(['light', 'preserve', 'rewrite']).optional().default('rewrite'),
         // 靈活化輸入欄位
         flexibleInput: z.object({
           topic: z.string().optional(),
@@ -2223,6 +2225,72 @@ ${hooksPrompt}
         if (input.angle) {
           userPrompt = `【切角方向】請從「${input.angle}」這個角度來寫這篇貼文。\n\n${userPrompt}`;
         }
+        
+        // 根據 editMode 調整生成策略
+        const editMode = input.editMode || 'rewrite';
+        let editModeInstruction = '';
+        
+        if (editMode === 'light') {
+          // 輕度優化：幾乎不改變內容
+          editModeInstruction = `
+=== 生成模式：輕度優化 ===
+重要：用戶希望保留原始素材的內容，只做最小幅度的調整。
+
+【可以做的】
+- 修正錯字、標點符號
+- 調整排版（加入適當的換行和空行）
+- 輕微潤飾語句（但不改變意思）
+
+【絕對禁止】
+- 不能改變敘事結構
+- 不能添加新的內容或觀點
+- 不能套用爆款公式
+- 不能加入 Hook 或 CTA（除非原文已有）
+- 不能改變語氣和風格
+
+輸出格式：直接輸出優化後的內容，不需要三種 Hook 選項。`;
+        } else if (editMode === 'preserve') {
+          // 風格保留：保留敘事結構和語氣
+          editModeInstruction = `
+=== 生成模式：風格保留 ===
+重要：用戶希望保留自己的敘事結構和語氣，只優化表達方式。
+
+【可以做的】
+- 優化句子的表達（讓它更流暢）
+- 調整排版（加入呼吸感）
+- 加入適當的情緒詞和語氣詞
+- 強化開頭的吸引力（但保留原本的故事起點）
+- 加入簡單的 CTA（如果原文沒有）
+
+【絕對禁止】
+- 不能改變敘事的主要結構和流程
+- 不能添加原文沒有的情節或觀點
+- 不能把故事改寫成完全不同的版本
+- 不能過度「爆款化」，要保留原本的溫度和真誠感
+
+輸出格式：直接輸出優化後的內容，不需要三種 Hook 選項。`;
+        } else {
+          // 爆款改寫：完整套用爆款公式（默認）
+          editModeInstruction = `
+=== 生成模式：爆款改寫 ===
+重要：用戶希望完整套用爆款公式，讓內容更有吸引力。
+
+【必須執行】
+- 加入強力的 Hook 開頭（提供三種選項）
+- 套用爆款結構（開頭、轉折、高潮、CTA）
+- 加入情緒推動和轉折詞
+- 加入互動引導 CTA
+- 確保呼吸感排版
+
+【可以做的】
+- 重新組織內容結構
+- 添加新的觀點或轉折
+- 強化情緒張力
+
+輸出格式：提供三種 Hook 選項 + 完整貼文 + CTA。`;
+        }
+        
+        userPrompt = editModeInstruction + '\n\n' + userPrompt;
 
         const response = await invokeLLM({
           messages: [

@@ -473,6 +473,7 @@ export default function WritingStudio() {
       contentType: selectedContentType,
       angle: selectedAngle || undefined,
       flexibleInput: Object.keys(filledFlexibleInputs).length > 0 ? filledFlexibleInputs as any : undefined,
+      editMode: editMode, // 傳遞生成模式
     });
   };
 
@@ -757,6 +758,64 @@ export default function WritingStudio() {
                   rows={5}
                   className="resize-none"
                 />
+                {/* 生成模式選擇器 */}
+                <div className="space-y-3 p-4 bg-muted/30 rounded-lg border border-border/50">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">生成模式</span>
+                    <span className="text-xs text-muted-foreground">（選擇 AI 如何處理你的素材）</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setEditMode('light')}
+                      className={`flex-1 px-3 py-2.5 text-sm rounded-lg transition-all border ${
+                        editMode === 'light' 
+                          ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800' 
+                          : 'bg-background text-muted-foreground border-border hover:bg-muted/50'
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-1">
+                        <span>📝 輕度優化</span>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setEditMode('preserve')}
+                      className={`flex-1 px-3 py-2.5 text-sm rounded-lg transition-all border ${
+                        editMode === 'preserve' 
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800' 
+                          : 'bg-background text-muted-foreground border-border hover:bg-muted/50'
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-1">
+                        <span>✨ 風格保留</span>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setEditMode('rewrite')}
+                      className={`flex-1 px-3 py-2.5 text-sm rounded-lg transition-all border ${
+                        editMode === 'rewrite' 
+                          ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800' 
+                          : 'bg-background text-muted-foreground border-border hover:bg-muted/50'
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-1">
+                        <span>🚀 爆款改寫</span>
+                      </div>
+                    </button>
+                  </div>
+                  {/* 模式說明 */}
+                  <div className="text-xs text-muted-foreground p-2 bg-background/50 rounded-md">
+                    {editMode === 'light' && (
+                      <span>📝 <strong>輕度優化</strong>：只修正錯字、調整排版，幾乎不改變任何內容</span>
+                    )}
+                    {editMode === 'preserve' && (
+                      <span>✨ <strong>風格保留</strong>：保留你的敘事結構和語氣，只優化表達方式（推薦用於故事型內容）</span>
+                    )}
+                    {editMode === 'rewrite' && (
+                      <span>🚀 <strong>爆款改寫</strong>：完整套用爆款公式，加入 Hook、CTA 等元素（推薦用於知識型內容）</span>
+                    )}
+                  </div>
+                </div>
+
                 <div className="flex gap-3">
                   <Button 
                     onClick={handleAnalyzeAngles}
