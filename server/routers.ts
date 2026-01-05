@@ -1279,6 +1279,11 @@ ${input.content}` }
         const topicSuggestions = await db.getRandomTopicSuggestions(5);
         const clusters = await db.getContentClusters();
         
+        // ✅ 整合 52 個關鍵字數據：根據用戶輸入的參考方向查詢市場數據
+        const searchContent = input.topic || profile?.occupation || '';
+        const matchingKeywords = await db.findMatchingKeywords(searchContent);
+        const viralFactorsPrompt = db.buildViralFactorsPrompt(matchingKeywords);
+        
         // 建構選題庫參考
         let topicLibraryContext = '';
         if (topicSuggestions.length > 0) {
@@ -1324,8 +1329,10 @@ ${coreProduct ? `核心產品：${coreProduct.name}` : '未設定'}
 5. 優先推薦符合當前經營階段的內容類型（但不強制）
 6. 參考選題庫的模板結構，但要結合創作者特色來調整
 7. 優先選擇爆文率較高的內容群集主題
+8. 開頭 Hook 要符合爆文因子建議（結果導向、避免 CTA 硬塞）
 ${topicLibraryContext}
-${clusterContext}`;
+${clusterContext}
+${viralFactorsPrompt}`;
 
         const response = await invokeLLM({
           messages: [
@@ -2248,6 +2255,33 @@ ${viralOpenersContext}
 【互動技巧】${viralElements.ctaTips}
 【避免事項】${viralElements.avoidTips}` : '';
         
+        // ✅ 進階模式整合選題庫和群集數據
+        const topicSuggestions = await db.getRandomTopicSuggestions(3);
+        const clusters = await db.getContentClusters();
+        
+        // 建構選題庫參考
+        let topicLibraryContext = '';
+        if (topicSuggestions.length > 0) {
+          topicLibraryContext = `\n=== 選題庫參考（結構參考） ===\n`;
+          topicSuggestions.forEach((t, i) => {
+            topicLibraryContext += `${i + 1}. ${t.template || ''}\n`;
+          });
+        }
+        
+        // 建構群集資訊
+        let clusterContext = '';
+        if (clusters.length > 0) {
+          // 根據內容類型推薦適合的群集
+          const relevantClusters = clusters.filter(c => c.top10Rate && c.top10Rate > 0.05).slice(0, 3);
+          if (relevantClusters.length > 0) {
+            clusterContext = `\n=== 高爆文率內容群集（參考主題方向） ===\n`;
+            relevantClusters.forEach(c => {
+              const top10Rate = c.top10Rate ? (c.top10Rate * 100).toFixed(1) : '0';
+              clusterContext += `- ${c.themeKeywords || ''}（爆文率 ${top10Rate}%）\n`;
+            });
+          }
+        }
+        
         // ✅ 根據內容類型動態設定字數限制
         const contentTypeWordLimits: Record<string, { min: number; max: number; style: string }> = {
           // 短型內容（150-200 字）
@@ -2304,6 +2338,8 @@ ${viralFactorsPrompt}
 ${hooksPrompt}
 
 ${fewShotPrompt}
+${topicLibraryContext}
+${clusterContext}
 
 === 四透鏡框架（創作時必須檢核） ===
 
@@ -2480,6 +2516,9 @@ ${fewShotPrompt}
         }
         
         userPrompt = editModeInstruction + '\n\n' + userPrompt;
+        
+        // ✅ 在 User Prompt 結尾再次強調字數限制
+        userPrompt += `\n\n❗❗❗ 最後提醒：此貼文字數必須在 ${wordLimit.min}-${wordLimit.max} 字之間！超過 ${wordLimit.max} 字 = 失敗，請精簡！`;
 
         const response = await invokeLLM({
           messages: [
@@ -2509,6 +2548,15 @@ ${fewShotPrompt}
           enableSimplify: false, // 暴力降維預設關閉
         });
         
+        // ✅ 字數檢查和警告
+        const actualWordCount = generatedContent.length;
+        let wordCountWarning = '';
+        if (actualWordCount > wordLimit.max) {
+          wordCountWarning = `⚠️ 字數超過上限（${actualWordCount} 字，應為 ${wordLimit.min}-${wordLimit.max} 字），建議精簡內容`;
+        } else if (actualWordCount < wordLimit.min) {
+          wordCountWarning = `⚠️ 字數不足（${actualWordCount} 字，應為 ${wordLimit.min}-${wordLimit.max} 字），建議補充內容`;
+        }
+        
         // 創建草稿
         const draft = await db.createDraft({
           userId: ctx.user.id,
@@ -2518,11 +2566,22 @@ ${fewShotPrompt}
         
         // 生成後診斷結果（快速版 - 不額外調用 LLM）
         const quickDiagnosis = generateQuickDiagnosis(generatedContent, profile, contentTypeInfo);
+        
+        // 如果有字數警告，加入診斷結果
+        if (wordCountWarning && quickDiagnosis.improvements) {
+          quickDiagnosis.improvements.unshift({
+            label: '字數控制',
+            description: wordCountWarning,
+            action: '建議使用「對話修改」請 AI 幫你精簡或擴充內容'
+          });
+        }
 
         return {
           content: generatedContent,
           draftId: draft?.id,
           diagnosis: quickDiagnosis,
+          wordCount: actualWordCount,
+          wordLimit: { min: wordLimit.min, max: wordLimit.max },
         };
       }),
 
@@ -2583,6 +2642,10 @@ ${fewShotPrompt}
           const top10Rate = clusterSuggestion.top10Rate ? (clusterSuggestion.top10Rate * 100).toFixed(1) : '0';
           clusterContext = `\n=== 內容群集參考 ===\n這類內容屬於「${clusterSuggestion.themeKeywords}」群集，爆文率 ${top10Rate}%\n`;
         }
+        
+        // ✅ 整合 52 個關鍵字數據：查詢市場數據和爆文因子建議
+        const matchingKeywords = await db.findMatchingKeywords(searchKeyword);
+        const viralFactorsPrompt = db.buildViralFactorsPrompt(matchingKeywords);
         
         // Hook 策略和專業「說人話」原則
         const hookStrategies = `
@@ -2818,6 +2881,7 @@ ${hookStrategies}
 ${fewShotContext}
 ${viralOpenersContext}
 ${clusterContext}
+${viralFactorsPrompt}
 === 創作者 IP 地基（必須在內容中展現） ===
 ${ipContext}
 

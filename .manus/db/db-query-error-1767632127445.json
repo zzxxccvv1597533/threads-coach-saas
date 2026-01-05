@@ -1,0 +1,8 @@
+{
+  "query": "SELECT keyword, top_10_rate, avg_likes, viral_rate, viral_factors FROM keyword_benchmarks LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute SELECT keyword, top_10_rate, avg_likes, viral_rate, viral_factors FROM keyword_benchmarks LIMIT 5;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'top_10_rate' in 'field list'"
+  ]
+}

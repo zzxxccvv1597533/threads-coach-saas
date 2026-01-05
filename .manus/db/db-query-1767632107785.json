@@ -1,0 +1,13 @@
+{
+  "query": "SELECT COUNT(*) as total_keywords FROM keyword_benchmarks;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute SELECT COUNT(*) as total_keywords FROM keyword_benchmarks;",
+  "rows": [
+    {
+      "total_keywords": "52"
+    }
+  ],
+  "messages": [],
+  "stdout": "total_keywords\n52\n",
+  "stderr": "",
+  "execution_time_ms": 1532
+}

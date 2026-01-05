@@ -1,0 +1,80 @@
+{
+  "query": "SELECT keyword, category, avgLikes, viralRate, bestContentType FROM keyword_benchmarks LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute SELECT keyword, category, avgLikes, viralRate, bestContentType FROM keyword_benchmarks LIMIT 10;",
+  "rows": [
+    {
+      "keyword": "心理測驗",
+      "category": "不穩但會爆（AB衝刺）",
+      "avgLikes": "2346",
+      "viralRate": "766",
+      "bestContentType": "NULL"
+    },
+    {
+      "keyword": "脈輪",
+      "category": "不穩也不爆（降權/換角度）",
+      "avgLikes": "279",
+      "viralRate": "74",
+      "bestContentType": "NULL"
+    },
+    {
+      "keyword": "塔羅",
+      "category": "不穩也不爆（降權/換角度）",
+      "avgLikes": "579",
+      "viralRate": "192",
+      "bestContentType": "NULL"
+    },
+    {
+      "keyword": "2026",
+      "category": "又穩又爆（主力支柱）",
+      "avgLikes": "15233",
+      "viralRate": "3836",
+      "bestContentType": "NULL"
+    },
+    {
+      "keyword": "水晶",
+      "category": "不穩但會爆（AB衝刺）",
+      "avgLikes": "2321",
+      "viralRate": "614",
+      "bestContentType": "NULL"
+    },
+    {
+      "keyword": "風水",
+      "category": "又穩又爆（主力支柱）",
+      "avgLikes": "2994",
+      "viralRate": "1288",
+      "bestContentType": "NULL"
+    },
+    {
+      "keyword": "星座",
+      "category": "又穩又爆（主力支柱）",
+      "avgLikes": "3521",
+      "viralRate": "1165",
+      "bestContentType": "NULL"
+    },
+    {
+      "keyword": "開運",
+      "category": "又穩又爆（主力支柱）",
+      "avgLikes": "880",
+      "viralRate": "552",
+      "bestContentType": "NULL"
+    },
+    {
+      "keyword": "內在小孩",
+      "category": "不穩也不爆（降權/換角度）",
+      "avgLikes": "1084",
+      "viralRate": "424",
+      "bestContentType": "NULL"
+    },
+    {
+      "keyword": "2026運勢",
+      "category": "又穩又爆（主力支柱）",
+      "avgLikes": "53772",
+      "viralRate": "7846",
+      "bestContentType": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "keyword\tcategory\tavgLikes\tviralRate\tbestContentType\n心理測驗\t不穩但會爆（AB衝刺）\t2346\t766\tNULL\n脈輪\t不穩也不爆（降權/換角度）\t279\t74\tNULL\n塔羅\t不穩也不爆（降權/換角度）\t579\t192\tNULL\n2026\t又穩又爆（主力支柱）\t15233\t3836\tNULL\n水晶\t不穩但會爆（AB衝刺）\t2321\t614\tNULL\n風水\t又穩又爆（主力支柱）\t2994\t1288\tNULL\n星座\t又穩又爆（主力支柱）\t3521\t1165\tNULL\n開運\t又穩又爆（主力支柱）\t880\t552\tNULL\n內在小孩\t不穩也不爆（降權/換角度）\t1084\t424\tNULL\n2026運勢\t又穩又爆（主力支柱）\t53772\t7846\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1518
+}

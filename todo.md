@@ -1594,3 +1594,33 @@
   - 中型內容（story, observation, quote, contrast, diagnosis）：300-400 字
   - 長型內容（knowledge, teaching, list, summary）：400-500 字
   - 新增 22 個單元測試驗證
+
+
+## Bug 修復 + 數據整合 (2025-01-06)
+- [ ] 修復閒聊型字數限制問題（生成 380 字，應該是 150-200 字）
+- [ ] 引導模式整合 findMatchingKeywords 和 buildViralFactorsPrompt
+- [ ] 進階模式整合選題庫和群集參考
+- [ ] 變現模式整合 findMatchingKeywords 和 buildViralFactorsPrompt
+
+
+## 52 關鍵字數據全面整合 + 字數限制修復 (2025-01-06) ✅
+
+### 字數限制修復
+- [x] 修復閒聊型字數限制問題（生成 380 字，應該是 150-200 字）
+  - 在 User Prompt 結尾強調字數限制
+  - 生成後加入字數檢查和警告
+
+### 三個模式全面整合 52 關鍵字數據
+- [x] 引導模式（brainstorm）整合 findMatchingKeywords + buildViralFactorsPrompt
+- [x] 進階模式（generateDraft）整合選題庫和群集數據
+- [x] 變現模式（generateMonetizeContent）整合 findMatchingKeywords + buildViralFactorsPrompt
+
+### 數據整合狀況總覽
+| 模式 | 52 關鍵字 | 選題庫 | 群集 | Few-Shot |
+|------|-----------|--------|------|----------|
+| 引導模式 | ✅ | ✅ | ✅ | ❌ |
+| 進階模式 | ✅ | ✅ | ✅ | ✅ |
+| 變現模式 | ✅ | ❌ | ✅ | ✅ |
+
+### 測試驗證
+- [x] 22 個單元測試全部通過
