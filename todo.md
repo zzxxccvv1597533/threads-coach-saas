@@ -1584,3 +1584,13 @@
   - 問題原因：對話歷史處理方式導致 AI 上下文混亂
   - 解決方案：簡化對話結構，明確標記新指令為「必須執行」
   - 新增 11 個單元測試驗證修復
+
+
+## 問題調查 - 內容類型字數差異 (2025-01-05)
+- [x] 檢查不同內容類型的字數設定是否有正確實作
+  - 問題：字數限制只寫在通用 Prompt 中，沒有根據 contentType 動態調整
+- [x] 修復：根據內容類型動態注入明確的字數限制到 Prompt
+  - 短型內容（casual, viewpoint, question, poll, dialogue）：150-200 字
+  - 中型內容（story, observation, quote, contrast, diagnosis）：300-400 字
+  - 長型內容（knowledge, teaching, list, summary）：400-500 字
+  - 新增 22 個單元測試驗證

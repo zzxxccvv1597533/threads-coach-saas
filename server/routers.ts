@@ -2247,6 +2247,36 @@ ${viralOpenersContext}
 【內容技巧】${viralElements.contentTips}
 【互動技巧】${viralElements.ctaTips}
 【避免事項】${viralElements.avoidTips}` : '';
+        
+        // ✅ 根據內容類型動態設定字數限制
+        const contentTypeWordLimits: Record<string, { min: number; max: number; style: string }> = {
+          // 短型內容（150-200 字）
+          casual: { min: 150, max: 200, style: '短小精悄、一個核心觀點、快速引發互動' },
+          viewpoint: { min: 150, max: 200, style: '短小精悄、一個核心觀點、快速引發互動' },
+          question: { min: 150, max: 200, style: '短小精悄、一個核心觀點、快速引發互動' },
+          poll: { min: 150, max: 200, style: '短小精悄、一個核心觀點、快速引發互動' },
+          dialogue: { min: 150, max: 200, style: '短小精悄、一個核心觀點、快速引發互動' },
+          // 中型內容（300-400 字）
+          story: { min: 300, max: 400, style: '有轉折、有情緒推進、但不囉唆' },
+          observation: { min: 300, max: 400, style: '有轉折、有情緒推進、但不囉唆' },
+          quote: { min: 300, max: 400, style: '有轉折、有情緒推進、但不囉唆' },
+          contrast: { min: 300, max: 400, style: '有轉折、有情緒推進、但不囉唆' },
+          diagnosis: { min: 300, max: 400, style: '有轉折、有情緒推進、但不囉唆' },
+          // 長型內容（400-500 字）
+          knowledge: { min: 400, max: 500, style: '有乾貨、但要用故事包裝，不是条列式' },
+          teaching: { min: 400, max: 500, style: '有乾貨、但要用故事包裝，不是条列式' },
+          list: { min: 400, max: 500, style: '有乾貨、但要用故事包裝，不是条列式' },
+          summary: { min: 400, max: 500, style: '有乾貨、但要用故事包裝，不是条列式' },
+        };
+        const wordLimit = contentTypeWordLimits[input.contentType] || { min: 300, max: 400, style: '適中長度、有轉折' };
+        
+        // 建構明確的字數限制提示
+        const wordLimitPrompt = `
+=== ❗❗❗ 字數限制（強制執行，超過 = 失敗） ❗❗❗ ===
+【當前內容類型】${contentTypeInfo?.name || input.contentType}
+【字數範圍】${wordLimit.min}-${wordLimit.max} 字（含空格和換行）
+【風格要求】${wordLimit.style}
+【重要】超過 ${wordLimit.max} 字 = 失敗，必須精簡！少於 ${wordLimit.min} 字 = 內容不足！`;
 
         const systemPrompt = `${SYSTEM_PROMPTS.contentGeneration}
 
@@ -2267,6 +2297,7 @@ ${userStyleContext}
 類型：${contentTypeInfo?.name || input.contentType}
 說明：${contentTypeInfo?.description || ''}
 ${viralElementsPrompt}
+${wordLimitPrompt}
 
 ${viralFactorsPrompt}
 
@@ -2300,21 +2331,7 @@ ${fewShotPrompt}
 
 === Threads 爆款風格（最重要 - 必須嚴格執行） ===
 
-### 字數限制（根據內容類型動態調整）
-
-「閃聊型 / 觀點型 / 提問型 / 投票型」：
-- 字數範圍：150-200 字
-- 特色：短小精悍、一個核心觀點、快速引發互動
-
-「故事型 / 觀察型 / 引言型」：
-- 字數範圍：300-400 字
-- 特色：有轉折、有情緒推進、但不囉唆
-
-「知識型 / 教學型 / 清單型」：
-- 字數範圍：400-500 字
-- 特色：有乾貨、但要用故事包裝，不是条列式
-
-「超過字數限制 = 失敗，必須精簡」
+### 字數限制（已在上方「內容類型」區塊動態設定，請嚴格遵守）
 
 ### 口語化原則（像傳訊息給朋友）
 1. 【傳訊息感】像在 LINE 跟朋友聊天，不是寫部落格文章
