@@ -3093,21 +3093,44 @@ ${creatorInfo}
         
         const systemPrompt = buildSystemPrompt();
 
+        // ✅ 修復：簡化對話結構，確保 AI 清楚知道要修改什麼
+        // 不再傳送完整對話歷史，而是直接傳送當前草稿 + 修改指令
         const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `當前草稿：
-
-${input.currentDraft}` },
         ];
 
-        // 加入對話歷史
+        // 如果有對話歷史，只取最後一次的修改指令作為參考（讓 AI 知道之前做過什麼）
         if (input.chatHistory && input.chatHistory.length > 0) {
-          for (const msg of input.chatHistory) {
-            messages.push({ role: msg.role, content: msg.content });
+          // 取得最後 2 輪對話作為上下文（避免過長）
+          const recentHistory = input.chatHistory.slice(-4);
+          const historyContext = recentHistory
+            .filter(msg => msg.role === 'user')
+            .map(msg => `- ${msg.content}`)
+            .join('\n');
+          
+          if (historyContext) {
+            messages.push({ 
+              role: "user", 
+              content: `之前的修改指令（參考即可）：\n${historyContext}\n\n當前草稿（請基於這個版本修改）：\n\n${input.currentDraft}` 
+            });
+          } else {
+            messages.push({ 
+              role: "user", 
+              content: `當前草稿：\n\n${input.currentDraft}` 
+            });
           }
+        } else {
+          messages.push({ 
+            role: "user", 
+            content: `當前草稿：\n\n${input.currentDraft}` 
+          });
         }
 
-        messages.push({ role: "user", content: `請根據以下指示修改：${input.instruction}` });
+        // ✅ 重點：明確告訴 AI 這是「新的修改指令」，必須執行
+        messages.push({ 
+          role: "user", 
+          content: `【新的修改指令 - 必須執行】\n${input.instruction}\n\n請根據以上指令修改草稿，直接輸出修改後的完整內容。` 
+        });
 
         const response = await invokeLLM({ messages });
         const rawContent = response.choices[0]?.message?.content;
