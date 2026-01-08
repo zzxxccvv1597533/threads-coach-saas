@@ -119,12 +119,6 @@ export async function executeContentHealthCheck(userId: number, text: string) {
     const aiResult = JSON.parse(content);
     console.log('[executeContentHealthCheck] Successfully parsed result');
     
-    // 計算四透鏡的各子維度分數
-    const emotionScore = Math.round(aiResult.fourlens_score * 0.25);
-    const personaScore = Math.round(aiResult.fourlens_score * 0.25);
-    const structureScore = Math.round(aiResult.fourlens_score * 0.25);
-    const conversionScore = Math.round(aiResult.fourlens_score * 0.25);
-    
     // 轉換為前端期望的格式
     const result = {
       scores: {
@@ -142,18 +136,6 @@ export async function executeContentHealthCheck(userId: number, text: string) {
         aiResult.fourlens_score
       ),
       maxScores: MAX_SCORES,
-      fourLensScores: {
-        emotion: emotionScore,
-        persona: personaScore,
-        structure: structureScore,
-        conversion: conversionScore,
-      },
-      fourLensMaxScores: {
-        emotion: 8,
-        persona: 8,
-        structure: 8,
-        conversion: 6,
-      },
       hook: {
         hasContrastOpener: aiResult.hook_score >= 15,
         hasObservationQuestion: aiResult.hook_score >= 10,
@@ -182,7 +164,6 @@ export async function executeContentHealthCheck(userId: number, text: string) {
       },
       cta: {
         hasCTA: aiResult.cta_score >= 5,
-        hasTargetAudienceCall: aiResult.cta_score >= 5,
         ctaType: 'inferred',
         ctaContent: 'N/A',
         targetAudience: 'N/A',
@@ -192,26 +173,26 @@ export async function executeContentHealthCheck(userId: number, text: string) {
       fourLens: {
         emotion: {
           isDesireOriented: aiResult.fourlens_score >= 20,
-          emotionType: 'inferred',
-          deductionReason: `得分 ${emotionScore}/8`,
+          emotionalTone: 'inferred',
+          deductionReason: `得分 ${Math.round(aiResult.fourlens_score)}/30`,
           advice: aiResult.fourlens_advice || '需要改進',
         },
         persona: {
-          isConsistent: aiResult.fourlens_score >= 15,
-          hasPersonalTouch: aiResult.fourlens_score >= 15,
-          deductionReason: `得分 ${personaScore}/8`,
+          matchesPersona: aiResult.fourlens_score >= 15,
+          personaAlignment: 'inferred',
+          deductionReason: `得分 ${Math.round(aiResult.fourlens_score)}/30`,
           advice: aiResult.fourlens_advice || '需要改進',
         },
         structure: {
-          isEasyToAbsorb: aiResult.fourlens_score >= 15,
-          hasLogicalFlow: aiResult.fourlens_score >= 15,
-          deductionReason: `得分 ${structureScore}/8`,
+          isWellStructured: aiResult.fourlens_score >= 15,
+          structureQuality: 'inferred',
+          deductionReason: `得分 ${Math.round(aiResult.fourlens_score)}/30`,
           advice: aiResult.fourlens_advice || '需要改進',
         },
         conversion: {
-          hasNextStep: aiResult.fourlens_score >= 10,
-          isActionable: aiResult.fourlens_score >= 10,
-          deductionReason: `得分 ${conversionScore}/6`,
+          hasConversionPath: aiResult.fourlens_score >= 10,
+          conversionClarity: 'inferred',
+          deductionReason: `得分 ${Math.round(aiResult.fourlens_score)}/30`,
           advice: aiResult.fourlens_advice || '需要改進',
         },
       },

@@ -1667,3 +1667,38 @@
 - [x] 修復前備份：server/content-health-check-original.ts
 - [x] 修復後版本：server/content-health-check.ts
 - [x] 測試檔案：server/content-health-check-test.ts
+
+
+## Bug 修復 - TypeError: Cannot read properties of undefined (reading 'hook') (2025-01-08)
+
+- [ ] 定位錯誤來源（前端哪個組件訪問了 undefined.hook）
+- [ ] 檢查新 content-health-check.ts 的返回結構是否與前端期望一致
+- [ ] 修復數據結構不匹配問題
+- [ ] 測試修復
+
+
+## Bug 修復 - 文案健檢功能 LLM API 失敗 (2025-01-08) ✅
+
+### 問題描述
+文案健檢功能調用 LLM API 時失敗，返回 TypeError: Cannot read properties of undefined (reading 'hook')
+
+### 根本原因
+1. 原始代碼使用複雜的 `json_schema` 模式，但 Manus Forge API 在處理複雜 schema 時返回了不完整的結果
+2. 簡化版本返回的數據結構不完整，缺少 `fourLensScores` 和 `fourLensMaxScores` 等必要欄位
+3. 前端期望的完整結構包含 5 個頂級欄位 + 5 個維度的詳細資訊
+
+### 修復方案
+1. 改用簡化的 `json_schema` 模式（只包含 11 個必要欄位）
+2. 在後端添加完整的數據結構轉換邏輯
+3. 確保返回給前端的結構完全符合期望
+4. 添加詳細的日誌用於未來診斷
+
+### 修改文件
+- `server/content-health-check.ts`：完全重寫，使用簡化 schema + 完整結構轉換
+
+### 測試結果
+✅ 功能恢復正常
+✅ 測試文案成功獲得 74/100 評分
+✅ 五大維度評分正確顯示
+✅ 四透鏡框架各子維度評分正確
+✅ 詳細改進建議正確生成
