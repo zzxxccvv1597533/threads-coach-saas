@@ -1,6 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { invokeLLM } from "./_core/llm";
 import * as db from "./db";
+import { 
+  analyzeOpener, 
+  HIGH_EFFECT_OPENER_PATTERNS,
+  LOW_EFFECT_OPENER_PATTERNS 
+} from "../shared/opener-rules";
 
 // 維度名稱對照表
 export const DIMENSION_NAMES: Record<string, string> = {
@@ -9,6 +14,7 @@ export const DIMENSION_NAMES: Record<string, string> = {
   tone: 'Tone 閱讀體感',
   cta: 'CTA 互動召喚',
   fourLens: '四透鏡檢核',
+  openerEffect: '開頭效果倍數', // 新增
 };
 
 // 最大分數對照表
@@ -73,11 +79,171 @@ const SIMPLE_HEALTH_CHECK_PROMPT = `你是【Threads 文案評分專家】。
 
 只輸出 JSON，不要其他文字。`;
 
+/**
+ * 數據驅動的開頭效果分析
+ * 根據 1,739 篇爆款貼文統計數據評估開頭效果
+ */
+function analyzeOpenerWithData(text: string): {
+  effectMultiplier: number;
+  matchedPatterns: Array<{ name: string; multiplier: number; description: string }>;
+  lowEffectPatterns: Array<{ name: string; multiplier: number; description: string }>;
+  suggestions: string[];
+  openerText: string;
+  grade: 'A' | 'B' | 'C' | 'D';
+  hasNumber: boolean;
+} {
+  // 取得第一行
+  const lines = text.split('\n').filter(line => line.trim());
+  const openerText = lines[0] || '';
+  
+  // 使用 opener-rules 的分析函數
+  const analysis = analyzeOpener(openerText);
+  
+  // 找出匹配的高效模式
+  const matchedPatterns: Array<{ name: string; multiplier: number; description: string }> = [];
+  const lowEffectPatterns: Array<{ name: string; multiplier: number; description: string }> = [];
+  
+  // 檢查高效模式（使用 regex）
+  for (const pattern of HIGH_EFFECT_OPENER_PATTERNS) {
+    if (pattern.regex && pattern.regex.test(openerText)) {
+      matchedPatterns.push({
+        name: pattern.name,
+        multiplier: pattern.effect,
+        description: pattern.instruction,
+      });
+    }
+  }
+  
+  // 檢查低效模式（使用 regex）
+  for (const pattern of LOW_EFFECT_OPENER_PATTERNS) {
+    if (pattern.regex && pattern.regex.test(openerText)) {
+      lowEffectPatterns.push({
+        name: pattern.name,
+        multiplier: pattern.effect,
+        description: pattern.instruction,
+      });
+    }
+  }
+  
+  // 計算效果倍數
+  let effectMultiplier = 1.0;
+  for (const p of matchedPatterns) {
+    effectMultiplier *= p.multiplier;
+  }
+  for (const p of lowEffectPatterns) {
+    effectMultiplier *= p.multiplier;
+  }
+  
+  // 檢查是否有數字
+  const hasNumber = /\d/.test(openerText);
+  
+  // 生成建議
+  const suggestions: string[] = [];
+  
+  if (matchedPatterns.length === 0) {
+    suggestions.push('建議使用「冒號斷言」格式（效果 2.8x），例如：「主題：觀點」');
+    suggestions.push('或使用「禁忌/警告詞」（效果 2.4x），例如：「千萬不要...」「90% 的人都搞錯了...」');
+  }
+  
+  if (lowEffectPatterns.length > 0) {
+    for (const p of lowEffectPatterns) {
+      if (p.name === '問句開頭') {
+        suggestions.push('避免用問句作為第一行（效果只有 0.4x），改用斷言式開頭');
+      }
+      if (p.name === 'Emoji 開頭') {
+        suggestions.push('避免用 Emoji 作為第一行（效果只有 0.6x），Emoji 放在中間或結尾更好');
+      }
+    }
+  }
+  
+  // 如果沒有數字，建議加入
+  if (!hasNumber) {
+    suggestions.push('考慮加入數字（效果 1.7x），例如：「3 個方法」「90% 的人」');
+  }
+  
+  // 評級
+  let grade: 'A' | 'B' | 'C' | 'D' = 'D';
+  if (effectMultiplier >= 2.0) grade = 'A';
+  else if (effectMultiplier >= 1.5) grade = 'B';
+  else if (effectMultiplier >= 1.0) grade = 'C';
+  else grade = 'D';
+  
+  return {
+    effectMultiplier: Math.round(effectMultiplier * 100) / 100,
+    matchedPatterns,
+    lowEffectPatterns,
+    suggestions,
+    openerText,
+    grade,
+    hasNumber,
+  };
+}
+
+/**
+ * 與爆款數據對比分析
+ */
+async function compareWithViralData(text: string): Promise<{
+  charCount: number;
+  recommendedRange: { min: number; max: number };
+  isInRange: boolean;
+  matchedKeywords: Array<{ keyword: string; viralRate: number }>;
+  suggestions: string[];
+}> {
+  const charCount = text.length;
+  
+  // 根據內容長度推測類型並給出建議範圍
+  let recommendedRange = { min: 150, max: 400 };
+  
+  // 從內容中匹配關鍵字
+  const matchedKeywords = await db.findMatchingKeywords(text);
+  
+  const suggestions: string[] = [];
+  
+  // 字數建議
+  if (charCount < recommendedRange.min) {
+    suggestions.push(`字數偏少（${charCount} 字），建議增加到 ${recommendedRange.min}-${recommendedRange.max} 字`);
+  } else if (charCount > recommendedRange.max) {
+    suggestions.push(`字數偏多（${charCount} 字），建議精簡到 ${recommendedRange.min}-${recommendedRange.max} 字`);
+  }
+  
+  // 關鍵字建議
+  if (matchedKeywords.length > 0) {
+    const topKeyword = matchedKeywords[0];
+    if (topKeyword.viralRate && topKeyword.viralRate > 10) {
+      suggestions.push(`你的內容包含高爆文率關鍵字「${topKeyword.keyword}」（爆文率 ${topKeyword.viralRate}%），很好！`);
+    }
+  } else {
+    suggestions.push('建議加入熱門關鍵字，例如：經營自己、個人品牌、時間管理');
+  }
+  
+  return {
+    charCount,
+    recommendedRange,
+    isInRange: charCount >= recommendedRange.min && charCount <= recommendedRange.max,
+    matchedKeywords: matchedKeywords.map(k => ({
+      keyword: k.keyword,
+      viralRate: k.viralRate || 0,
+    })),
+    suggestions,
+  };
+}
+
 export async function executeContentHealthCheck(userId: number, text: string) {
   console.log('[executeContentHealthCheck] Starting for user:', userId);
   console.log('[executeContentHealthCheck] Text length:', text.length);
   
   try {
+    // 1. 數據驅動的開頭效果分析（不需要 LLM）
+    console.log('[executeContentHealthCheck] Analyzing opener with data...');
+    const openerAnalysis = analyzeOpenerWithData(text);
+    console.log('[executeContentHealthCheck] Opener analysis:', openerAnalysis);
+    
+    // 2. 與爆款數據對比
+    console.log('[executeContentHealthCheck] Comparing with viral data...');
+    const viralComparison = await compareWithViralData(text);
+    console.log('[executeContentHealthCheck] Viral comparison:', viralComparison);
+    
+    // 3. LLM 評分
     console.log('[executeContentHealthCheck] Calling LLM with simple json_schema mode...');
     
     const response = await invokeLLM({
@@ -125,17 +291,32 @@ export async function executeContentHealthCheck(userId: number, text: string) {
     const structureScore = Math.round(aiResult.fourlens_score * 0.25);
     const conversionScore = Math.round(aiResult.fourlens_score * 0.25);
     
+    // 根據數據驅動分析調整 Hook 分數
+    // 如果開頭效果倍數高，給予額外加分
+    let adjustedHookScore = Math.round(aiResult.hook_score);
+    if (openerAnalysis.effectMultiplier >= 2.0) {
+      adjustedHookScore = Math.min(25, adjustedHookScore + 3);
+    } else if (openerAnalysis.effectMultiplier < 1.0) {
+      adjustedHookScore = Math.max(0, adjustedHookScore - 3);
+    }
+    
+    // 組合所有建議
+    const allSuggestions = [
+      ...openerAnalysis.suggestions,
+      ...viralComparison.suggestions,
+    ];
+    
     // 轉換為前端期望的格式
     const result = {
       scores: {
-        hook: Math.round(aiResult.hook_score),
+        hook: adjustedHookScore,
         translation: Math.round(aiResult.translation_score),
         tone: Math.round(aiResult.tone_score),
         cta: Math.round(aiResult.cta_score),
         fourLens: Math.round(aiResult.fourlens_score),
       },
       totalScore: Math.round(
-        aiResult.hook_score + 
+        adjustedHookScore + 
         aiResult.translation_score + 
         aiResult.tone_score + 
         aiResult.cta_score + 
@@ -154,14 +335,42 @@ export async function executeContentHealthCheck(userId: number, text: string) {
         structure: 8,
         conversion: 6,
       },
+      // 數據驅動的開頭效果分析（新增）
+      openerAnalysis: {
+        openerText: openerAnalysis.openerText,
+        effectMultiplier: openerAnalysis.effectMultiplier,
+        grade: openerAnalysis.grade,
+        matchedPatterns: openerAnalysis.matchedPatterns,
+        lowEffectPatterns: openerAnalysis.lowEffectPatterns,
+        suggestions: openerAnalysis.suggestions,
+      },
+      // 與爆款數據對比（新增）
+      viralComparison: {
+        charCount: viralComparison.charCount,
+        recommendedRange: viralComparison.recommendedRange,
+        isInRange: viralComparison.isInRange,
+        matchedKeywords: viralComparison.matchedKeywords,
+        suggestions: viralComparison.suggestions,
+      },
       hook: {
         hasContrastOpener: aiResult.hook_score >= 15,
         hasObservationQuestion: aiResult.hook_score >= 10,
         hasSuspense: aiResult.hook_score >= 5,
-        openerType: 'inferred',
-        openerContent: 'N/A',
-        deductionReason: `得分 ${Math.round(aiResult.hook_score)}/25`,
-        advice: aiResult.hook_advice || '需要改進',
+        openerType: openerAnalysis.matchedPatterns.length > 0 
+          ? openerAnalysis.matchedPatterns[0].name 
+          : (openerAnalysis.lowEffectPatterns.length > 0 ? openerAnalysis.lowEffectPatterns[0].name : 'unknown'),
+        openerContent: openerAnalysis.openerText,
+        deductionReason: openerAnalysis.matchedPatterns.length > 0
+          ? `使用了「${openerAnalysis.matchedPatterns[0].name}」（效果 ${openerAnalysis.matchedPatterns[0].multiplier}x）`
+          : (openerAnalysis.lowEffectPatterns.length > 0 
+            ? `使用了「${openerAnalysis.lowEffectPatterns[0].name}」（效果只有 ${openerAnalysis.lowEffectPatterns[0].multiplier}x）`
+            : `得分 ${adjustedHookScore}/25`),
+        advice: openerAnalysis.suggestions.length > 0 
+          ? openerAnalysis.suggestions[0] 
+          : aiResult.hook_advice || '需要改進',
+        // 數據驅動的效果倍數
+        effectMultiplier: openerAnalysis.effectMultiplier,
+        effectGrade: openerAnalysis.grade,
       },
       translation: {
         hasJargon: aiResult.translation_score < 10,
@@ -216,7 +425,11 @@ export async function executeContentHealthCheck(userId: number, text: string) {
         },
       },
       redlineMarks: [],
-      overallAdvice: aiResult.overall_advice || '需要改進',
+      overallAdvice: allSuggestions.length > 0 
+        ? allSuggestions.join('\n') 
+        : aiResult.overall_advice || '需要改進',
+      // 數據驅動的綜合建議（新增）
+      dataDrivenSuggestions: allSuggestions,
     };
     
     await db.logApiUsage(userId, 'contentHealthCheck', 'llm', 600, 800);

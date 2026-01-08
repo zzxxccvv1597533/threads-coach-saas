@@ -1,0 +1,82 @@
+{
+  "query": "DESCRIBE draft_posts;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute DESCRIBE draft_posts;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "userId",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "contentType",
+      "Type": "enum('knowledge','summary','story','viewpoint','contrast','casual','dialogue','question','poll','quote','diagnosis','profile_intro','service_intro','lead_promo','success_story','limited_offer','plus_one','lead_magnet','free_value')",
+      "Null": "YES",
+      "Key": "",
+      "Default": "story",
+      "Extra": ""
+    },
+    {
+      "Field": "title",
+      "Type": "varchar(120)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "body",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "cta",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "status",
+      "Type": "enum('draft','published','archived')",
+      "Null": "YES",
+      "Key": "",
+      "Default": "draft",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updatedAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint(11)\tNO\tPRI\tNULL\tauto_increment\nuserId\tint(11)\tNO\t\tNULL\t\ncontentType\tenum('knowledge','summary','story','viewpoint','contrast','casual','dialogue','question','poll','quote','diagnosis','profile_intro','service_intro','lead_promo','success_story','limited_offer','plus_one','lead_magnet','free_value')\tYES\t\tstory\t\ntitle\tvarchar(120)\tYES\t\tNULL\t\nbody\ttext\tYES\t\tNULL\t\ncta\ttext\tYES\t\tNULL\t\nstatus\tenum('draft','published','archived')\tYES\t\tdraft\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\n",
+  "stderr": "",
+  "execution_time_ms": 1496
+}

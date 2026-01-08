@@ -421,6 +421,44 @@ export const appRouter = router({
         const emotionAngles = ['焦慮型', '困惑型', '無奈型', '渴望型', '自我懷疑型', '比較心態型'];
         const selectedEmotions = emotionAngles.sort(() => Math.random() - 0.5).slice(0, 3);
         
+        // === 數據驅動：從爆款數據庫中提取高互動痛點參考 ===
+        let viralPainPointsContext = '';
+        try {
+          // 根據主題匹配關鍵字
+          const themeKeywords = themes.join(' ');
+          const matchingKeywords = await db.findMatchingKeywords(themeKeywords);
+          
+          if (matchingKeywords.length > 0) {
+            // 取得與主題相關的爆款範例
+            const topKeyword = matchingKeywords[0];
+            const viralExamplesResult = await db.getViralExamples({ keyword: topKeyword.keyword, limit: 5 });
+            
+            if (viralExamplesResult.length > 0) {
+              // 提取爆款貼文中的痛點模式
+              const painPointPatterns = viralExamplesResult
+                .filter((e: { opener50: string | null }) => e.opener50)
+                .map((e: { opener50: string | null; likes: number }) => `「${e.opener50}」（${e.likes} 讚）`)
+                .slice(0, 3);
+              
+              if (painPointPatterns.length > 0) {
+                viralPainPointsContext = `
+=== 數據驅動的爆款痛點參考（來自 1,739 篇爆款貼文分析） ===
+關鍵字「${topKeyword.keyword}」的高互動開頭：
+${painPointPatterns.join('\n')}
+
+這些開頭的共同特點：
+- 直擊痛點，不繞彎子
+- 使用具體場景而非抽象描述
+- 帶有情緒張力（焦慮、困惑、渴望）
+
+請參考這些爆款痛點的寫法風格，生成更有共鳴的 Trigger。`;
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Failed to fetch viral pain points:', e);
+        }
+        
 const prompt = `你是一位 Threads 內容策略專家。請根據以下資訊，進行「Y軸（受眾）× X軸（子主題）」的交叉分析，生成痛點矩陣。
 
 === 創作者 IP 地基 ===
@@ -461,6 +499,7 @@ ${themes.map((t, i) => `${i + 1}. ${t}`).join('\n')}
 - 身分標籤：「二寶媽」「想離職的人」「創業第三年」
 - 數字引導：「3 個徵兆」「90% 的人都...」
 - 反差對比：「明明...卻...」「以為...結果...」
+${viralPainPointsContext}
 
 === 隨機種子 ===
 ${randomSeed}
@@ -3913,15 +3952,56 @@ ${input.context ? `貼文內容是關於：${input.context}` : ''}
 - 同類貼文爆文率：${(viralRate * 100).toFixed(1)}%`;
               }
               
+              // === 數據驅動的開頭效果分析 ===
+              const { analyzeOpener, HIGH_EFFECT_OPENER_PATTERNS } = await import('../shared/opener-rules');
+              const firstLine = draftPost.body.split('\n').filter((l: string) => l.trim())[0] || '';
+              const openerAnalysis = analyzeOpener(firstLine);
+              
+              let openerContext = '';
+              if (openerAnalysis.matchedHighEffect.length > 0) {
+                const pattern = openerAnalysis.matchedHighEffect[0];
+                openerContext = `
+開頭效果分析：
+- 使用了「${pattern.name}」模式（效果 ${pattern.effect}x）
+- 開頭效果評分：${openerAnalysis.score.toFixed(1)}x`;
+              } else if (openerAnalysis.matchedLowEffect.length > 0) {
+                const pattern = openerAnalysis.matchedLowEffect[0];
+                openerContext = `
+開頭效果分析：
+- 使用了「${pattern.name}」模式（效果只有 ${pattern.effect}x）
+- 建議改用「冒號斷言」（2.8x）或「禁忌/警告詞」（2.4x）`;
+              } else {
+                openerContext = `
+開頭效果分析：
+- 開頭效果評分：${openerAnalysis.score.toFixed(1)}x
+- 建議使用「冒號斷言」（2.8x）或「禁忌/警告詞」（2.4x）來提升開頭效果`;
+              }
+              
+              // === 字數對比 ===
+              const charCount = draftPost.body.length;
+              const recommendedRange = { min: 150, max: 400 };
+              let charCountContext = '';
+              if (charCount < recommendedRange.min) {
+                charCountContext = `
+字數分析：${charCount} 字（偏少，建議 ${recommendedRange.min}-${recommendedRange.max} 字）`;
+              } else if (charCount > recommendedRange.max) {
+                charCountContext = `
+字數分析：${charCount} 字（偏多，建議精簡到 ${recommendedRange.min}-${recommendedRange.max} 字）`;
+              } else {
+                charCountContext = `
+字數分析：${charCount} 字（在建議範圍內，很好！）`;
+              }
+              
               const insightResponse = await invokeLLM({
                 messages: [
-                  { role: "system", content: `你是一位 Threads 經營教練，根據貼文表現數據和市場 Benchmark 提供簡短策略建議。
+                  { role: "system", content: `你是一位 Threads 經營教練，根據貼文表現數據、市場 Benchmark 和數據驅動分析提供簡短策略建議。
 回覆要求：
 1. 最多 3 句話
 2. 具體可執行
 3. 針對這篇貼文的特性
 4. 如果有 Benchmark 數據，要參考市場表現給建議
-5. 不要笼統的建議` },
+5. 特別關注開頭效果分析的建議
+6. 不要笼統的建議` },
                   { role: "user", content: `貼文內容：
 ${draftPost.body.substring(0, 500)}
 
@@ -3932,6 +4012,8 @@ ${draftPost.body.substring(0, 500)}
 - 收藏：${metrics.saves || 0}
 - 表現等級：${performanceLevel === 'hit' ? '爆文' : performanceLevel === 'low' ? '低迷' : '正常'}
 ${benchmarkContext}
+${openerContext}
+${charCountContext}
 ${topComment ? `最熱門留言：${topComment}` : ''}
 ${selfReflection ? `創作者反思：${selfReflection}` : ''}
 

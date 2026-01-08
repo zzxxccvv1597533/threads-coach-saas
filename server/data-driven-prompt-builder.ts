@@ -46,8 +46,11 @@ export async function collectDataDrivenContext(
   contentType: string,
   material: string
 ): Promise<DataDrivenPromptContext> {
+  console.log('[DataDriven] collectDataDrivenContext called with:', { contentType, materialLength: material?.length });
+  
   // 1. 從素材匹配關鍵字
   const matchedKeywords = await db.findMatchingKeywords(material);
+  console.log('[DataDriven] matchedKeywords:', matchedKeywords.length);
   
   // 2. 取得該類型的推薦鉤子
   const recommendedHooks = await db.getRecommendedHooks(contentType, 5);
@@ -98,6 +101,11 @@ export async function collectDataDrivenContext(
   
   // 6. 選擇開頭模式
   const selectedOpenerPattern = selectRandomOpenerPattern(contentType);
+  
+  console.log('[DataDriven] selectedOpenerPattern:', selectedOpenerPattern?.name);
+  console.log('[DataDriven] materialKeywords:', materialKeywords);
+  console.log('[DataDriven] viralOpeners count:', viralOpeners.length);
+  console.log('[DataDriven] fewShotExamples count:', fewShotExamples.length);
   
   return {
     contentType,
