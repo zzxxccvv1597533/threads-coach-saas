@@ -12,6 +12,9 @@ import { eq } from "drizzle-orm";
 import { KNOWLEDGE_BASE, SYSTEM_PROMPTS, CONTENT_TYPES_WITH_VIRAL_ELEMENTS, FORBIDDEN_PHRASES, THREADS_STYLE_GUIDE, FOUR_LENS_FRAMEWORK } from "../shared/knowledge-base";
 import { executeContentHealthCheck, MAX_SCORES, DIMENSION_NAMES } from "./content-health-check";
 import { applyContentFilters, extractPreservedWords, cleanAIOutput, filterProfanity } from "./contentFilters";
+import { buildDataDrivenSystemPrompt, buildDataDrivenUserPrompt, analyzeGeneratedContent, getDataDrivenSummary, collectDataDrivenContext } from "./data-driven-prompt-builder";
+import { selectRandomOpenerPattern, extractMaterialKeywords } from "../shared/opener-rules";
+import { getContentTypeRule } from "../shared/content-type-rules";
 
 // Admin procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -1817,6 +1820,11 @@ ${viralOpenersContext}
         // ✅ P0+P1 優化：Few-Shot Learning - 取得爆款貼文範例
         const fewShotPrompt = await db.buildFewShotPrompt(materialContent, 3);
         
+        // ✅ 數據驅動三層提示詞系統（新增）
+        const dataDrivenContext = await collectDataDrivenContext(input.contentType, materialContent);
+        const selectedOpenerPattern = dataDrivenContext.selectedOpenerPattern;
+        const materialKeywords = dataDrivenContext.materialKeywords;
+        
         // 建構 IP 地基資料字串（強化版）
         const buildIpContext = () => {
           const parts: string[] = [];
@@ -2409,10 +2417,16 @@ ${clusterContext}
 - 第一句後必須空一行
 - 第一句就是 Hook，讓人停下來
 
-「第一句必須是三選一」：
-1. 衝突：「明明很努力，為什麼還是沒人看？」
-2. 提問：「你有沒有過，明明很累卻睡不著？」
-3. 強烈觀點：「不是你不夠好，是你太容易妥協。」
+=== 數據驅動開頭規則（本次生成必須使用） ===
+
+【本次指定開頭模式】${selectedOpenerPattern?.name || '冠號斷言'}
+【效果倍數】${selectedOpenerPattern?.effect || 2.8}x
+【格式說明】${selectedOpenerPattern?.instruction || '使用「主題：觀點」格式'}
+【範例】
+${selectedOpenerPattern?.examples?.slice(0, 3).map((e: string, i: number) => `${i + 1}. ${e}`).join('\n') || '1. 學習的真相：不是你不夠努力\n2. 90% 的人都搞錯了這件事'}
+
+【重要】第一行必須使用上述模式，不能使用其他開頭方式！
+【禁止】直接複製範例，必須根據素材內容創作新的開頭
 
 「禁止開頭方式」：
 - 不能用「你有沒有過這樣的經驗？」開頭（太制式）
@@ -2420,6 +2434,8 @@ ${clusterContext}
 - 不能用「最近很多人問我...」開頭（除非真的有）
 - 不能用「其實」「其實呢」開頭（太弱）
 - 不能用「我覺得」開頭（太平）
+- 不能用問句開頭（效果僅 0.4x）
+- 不能用 Emoji 開頭（效果僅 0.6x）
 
 ### 禁止結尾方式
 - 不能用「希望對你有幫助」結尾
@@ -2576,12 +2592,22 @@ ${clusterContext}
           });
         }
 
+        // ✅ 數據驅動分析結果
+        const dataDrivenAnalysis = analyzeGeneratedContent(generatedContent, input.contentType);
+        
         return {
           content: generatedContent,
           draftId: draft?.id,
           diagnosis: quickDiagnosis,
           wordCount: actualWordCount,
           wordLimit: { min: wordLimit.min, max: wordLimit.max },
+          // 數據驅動分析結果
+          dataDriven: {
+            usedOpenerPattern: selectedOpenerPattern?.name || null,
+            openerEffectiveness: selectedOpenerPattern?.effect || null,
+            materialKeywords: materialKeywords,
+            analysis: dataDrivenAnalysis,
+          },
         };
       }),
 
