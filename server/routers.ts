@@ -3610,7 +3610,15 @@ ${input.text}` }
         draftId: z.number().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        return executeContentHealthCheck(ctx.user.id, input.text);
+        try {
+          console.log('[contentHealthCheck] Starting for user:', ctx.user.id);
+          const result = await executeContentHealthCheck(ctx.user.id, input.text);
+          console.log('[contentHealthCheck] Success');
+          return result;
+        } catch (error) {
+          console.error('[contentHealthCheck] Error:', error);
+          throw error;
+        }
       }),
 
     // 「聽得懂」檢查

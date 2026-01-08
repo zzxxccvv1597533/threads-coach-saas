@@ -328,5 +328,9 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     );
   }
 
-  return (await response.json()) as InvokeResult;
+  const result = (await response.json()) as InvokeResult;
+  console.log('[invokeLLM] Full API response:', JSON.stringify(result, null, 2));
+  console.log('[invokeLLM] Response choices:', result.choices);
+  console.log('[invokeLLM] Response choices length:', result.choices?.length);
+  return result;
 }
