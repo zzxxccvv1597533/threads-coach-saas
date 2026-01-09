@@ -212,63 +212,73 @@ const PROFANITY_LIST: string[] = [
   'F!', 'FK!', 'fk!',
 ];
 
-// 髒話替代詞（用於替換而非刪除）
-const PROFANITY_REPLACEMENTS: Record<string, string> = {
-  // 中文髒話替代
-  '靠': '天啊',
-  '靠北': '天啊',
-  '靠幸': '天啊',
-  '靠啊': '天啊',
-  '靠夫': '天啊',
-  '靠杯': '天啊',
-  '幹': '天啊',
-  '幹嗎': '天啊',
-  '幹拍': '天啊',
-  '幹話': '傻話',
-  '幹！': '天啊！',
-  '媽的': '真的假的',
-  '他媽的': '真的假的',
-  '你媽的': '真的假的',
-  '他媽': '真的',
-  '你媽': '真的',
-  '屁': '傻眼',
-  '屁話': '傻話',
-  '放屁': '胡說',
-  '屁啦': '傻眼啦',
-  '屁嗆': '傻眼嗆',
-  '屁！': '傻眼！',
-  '白癡': '傻眼',
-  '白吃': '傻眼',
-  '智障': '傻眼',
-  '弱智': '傻眼',
-  // 英文髒話替代（各種變體）
-  'Fuck': '天啊',
-  'fuck': '天啊',
-  'FUCK': '天啊',
-  'F*ck': '天啊',
-  'f*ck': '天啊',
-  'F**k': '天啊',
-  'f**k': '天啊',
-  'FK': '天啊',
-  'fk': '天啊',
-  'Fk': '天啊',
-  'fK': '天啊',
-  'FK!': '天啊！',
-  'fk!': '天啊！',
-  'F!': '天啊！',
-  'Shit': '傻眼',
-  'shit': '傻眼',
-  'SHIT': '傻眼',
-  'sh*t': '傻眼',
-  'Sh*t': '傻眼',
-  'SH*T': '傻眼',
-  'Damn': '天啊',
-  'damn': '天啊',
-  'DAMN': '天啊',
-  'WTF': '傻眼',
-  'wtf': '傻眼',
-  'Wtf': '傻眼',
-  // 特殊字元替代（常用來代替髒話）
+// 髮話替代詞（用於替換而非刪除）- 使用多樣化替換詞避免重複
+const PROFANITY_REPLACEMENTS_ARRAY: Record<string, string[]> = {
+  // 中文髮話替代 - 「靠」系列
+  '靠': ['我的天', '真的假的', '傻眼'],
+  '靠北': ['我的天', '真的假的', '傻眼'],
+  '靠幸': ['我的天', '真的假的', '傻眼'],
+  '靠啊': ['我的天', '真的假的', '傻眼'],
+  '靠夫': ['我的天', '真的假的', '傻眼'],
+  '靠杯': ['我的天', '真的假的', '傻眼'],
+  // 中文髮話替代 - 「幹」系列
+  '幹': ['傻眼', '無言', '暈'],
+  '幹嗎': ['怎樣', '幹嘴', '怕什麼'],
+  '幹拍': ['傻眼', '無言', '暈'],
+  '幹話': ['傻話', '廢話', '鬼話'],
+  '幹！': ['傻眼！', '無言！', '暈！'],
+  // 中文髮話替代 - 「媽」系列
+  '媽的': ['真的假的', '誠實說', '老實說'],
+  '他媽的': ['真的假的', '誠實說', '老實說'],
+  '你媽的': ['真的假的', '誠實說', '老實說'],
+  '他媽': ['真的', '誠實', '老實'],
+  '你媽': ['真的', '誠實', '老實'],
+  // 中文髮話替代 - 「屁」系列
+  '屁': ['傻眼', '無言', '暈'],
+  '屁話': ['傻話', '廢話', '鬼話'],
+  '放屁': ['胡說', '亂講', '鬼抉'],
+  '屁啦': ['傻眼啦', '無言啦', '暈啦'],
+  '屁嗆': ['傻眼嗆', '無言嗆', '暈嗆'],
+  '屁！': ['傻眼！', '無言！', '暈！'],
+  // 中文髮話替代 - 侵犯性詞彙
+  '白癡': ['傻眼', '無言', '暈'],
+  '白吃': ['傻眼', '無言', '暈'],
+  '智障': ['傻眼', '無言', '暈'],
+  '弱智': ['傻眼', '無言', '暈'],
+  // 英文髮話替代 - F 系列
+  'Fuck': ['我的天', '傻眼', '無言'],
+  'fuck': ['我的天', '傻眼', '無言'],
+  'FUCK': ['我的天', '傻眼', '無言'],
+  'F*ck': ['我的天', '傻眼', '無言'],
+  'f*ck': ['我的天', '傻眼', '無言'],
+  'F**k': ['我的天', '傻眼', '無言'],
+  'f**k': ['我的天', '傻眼', '無言'],
+  'FK': ['我的天', '傻眼', '無言'],
+  'fk': ['我的天', '傻眼', '無言'],
+  'Fk': ['我的天', '傻眼', '無言'],
+  'fK': ['我的天', '傻眼', '無言'],
+  'FK!': ['我的天！', '傻眼！', '無言！'],
+  'fk!': ['我的天！', '傻眼！', '無言！'],
+  'F!': ['我的天！', '傻眼！', '無言！'],
+  // 英文髮話替代 - S 系列
+  'Shit': ['傻眼', '無言', '暈'],
+  'shit': ['傻眼', '無言', '暈'],
+  'SHIT': ['傻眼', '無言', '暈'],
+  'sh*t': ['傻眼', '無言', '暈'],
+  'Sh*t': ['傻眼', '無言', '暈'],
+  'SH*T': ['傻眼', '無言', '暈'],
+  // 英文髮話替代 - D 系列
+  'Damn': ['我的天', '真的假的', '傻眼'],
+  'damn': ['我的天', '真的假的', '傻眼'],
+  'DAMN': ['我的天', '真的假的', '傻眼'],
+  // 英文髮話替代 - WTF 系列
+  'WTF': ['傻眼', '無言', '暈'],
+  'wtf': ['傻眼', '無言', '暈'],
+  'Wtf': ['傻眼', '無言', '暈'],
+};
+
+// 特殊字元替代（常用來代替髮話）
+const SPECIAL_CHAR_REPLACEMENTS: Record<string, string> = {
   'X': '',
   'x': '',
   '×': '',
@@ -317,7 +327,8 @@ const CONTENT_TYPE_COEFFICIENTS: Record<string, number> = {
 // ============================================
 
 /**
- * 髒話過濾器（絕對禁止，不受強度影響）
+ * 髮話過濾器（絕對禁止，不受強度影響）
+ * 使用多樣化替換詞避免重複
  */
 export function filterProfanity(content: string): string {
   let result = content;
@@ -327,17 +338,43 @@ export function filterProfanity(content: string): string {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   };
   
-  // 優先替換有替代詞的髒話
-  for (const [profanity, replacement] of Object.entries(PROFANITY_REPLACEMENTS)) {
-    // 轉義特殊字元後再建立正則表達式
+  // 記錄已使用的替換詞，避免連續重複
+  const usedReplacements: string[] = [];
+  
+  // 替換有替代詞的髮話（使用多樣化替換）
+  for (const [profanity, replacements] of Object.entries(PROFANITY_REPLACEMENTS_ARRAY)) {
     const escaped = escapeRegex(profanity);
     const regex = new RegExp(`\\b${escaped}\\b|${escaped}`, 'gi');
+    
+    // 對每個匹配項隨機選擇替換詞，優先選擇未使用過的
+    result = result.replace(regex, () => {
+      // 找出未使用過的替換詞
+      const unusedReplacements = replacements.filter(r => !usedReplacements.includes(r));
+      const availableReplacements = unusedReplacements.length > 0 ? unusedReplacements : replacements;
+      
+      // 隨機選擇一個
+      const replacement = availableReplacements[Math.floor(Math.random() * availableReplacements.length)];
+      usedReplacements.push(replacement);
+      
+      // 保持最近 5 個使用過的替換詞，避免連續重複
+      if (usedReplacements.length > 5) {
+        usedReplacements.shift();
+      }
+      
+      return replacement;
+    });
+  }
+  
+  // 替換特殊字元
+  for (const [char, replacement] of Object.entries(SPECIAL_CHAR_REPLACEMENTS)) {
+    const escaped = escapeRegex(char);
+    const regex = new RegExp(escaped, 'g');
     result = result.replace(regex, replacement);
   }
   
-  // 刪除沒有替代詞的髒話
+  // 刪除沒有替代詞的髮話
   for (const profanity of PROFANITY_LIST) {
-    if (!PROFANITY_REPLACEMENTS[profanity]) {
+    if (!PROFANITY_REPLACEMENTS_ARRAY[profanity]) {
       const escaped = escapeRegex(profanity);
       const regex = new RegExp(`\\b${escaped}\\b|${escaped}`, 'gi');
       result = result.replace(regex, '');
