@@ -232,6 +232,35 @@ export default function Reports() {
 
   const openMetricsDialog = (postId: number) => {
     setSelectedPostId(postId);
+    // 載入該貼文的現有數據
+    const post = posts?.find(p => p.id === postId);
+    const existingMetrics = (post as any)?.metrics?.[0];
+    if (existingMetrics) {
+      setMetrics({
+        reach: existingMetrics.reach || 0,
+        likes: existingMetrics.likes || 0,
+        comments: existingMetrics.comments || 0,
+        reposts: existingMetrics.reposts || 0,
+        saves: existingMetrics.saves || 0,
+        postingTime: existingMetrics.postingTime || '',
+        topComment: existingMetrics.topComment || '',
+        selfReflection: existingMetrics.selfReflection || '',
+        isViral: existingMetrics.isViral || false,
+      });
+    } else {
+      // 如果沒有現有數據，重置為預設值
+      setMetrics({
+        reach: 0,
+        likes: 0,
+        comments: 0,
+        reposts: 0,
+        saves: 0,
+        postingTime: '',
+        topComment: '',
+        selfReflection: '',
+        isViral: false,
+      });
+    }
     setMetricsDialogOpen(true);
   };
 
@@ -856,14 +885,14 @@ export default function Reports() {
 
         {/* Metrics Dialog */}
         <Dialog open={metricsDialogOpen} onOpenChange={setMetricsDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
+          <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+            <DialogHeader className="flex-shrink-0">
               <DialogTitle>更新貼文數據</DialogTitle>
               <DialogDescription>
                 輸入最新的互動數據
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 pt-4">
+            <div className="flex-1 overflow-y-auto space-y-4 pt-4 pr-2">
               {/* 基本數據 */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -991,6 +1020,8 @@ export default function Reports() {
                 </div>
               </div>
 
+            </div>
+            <div className="flex-shrink-0 pt-4 border-t mt-4">
               <Button onClick={handleAddMetrics} className="w-full">
                 儲存數據
               </Button>
