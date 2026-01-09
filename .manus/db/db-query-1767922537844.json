@@ -1,0 +1,70 @@
+{
+  "query": "SELECT id, name, email, role FROM users ORDER BY id DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute SELECT id, name, email, role FROM users ORDER BY id DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "17460002",
+      "name": "潘懷恩",
+      "email": "secretrain80@gmail.com",
+      "role": "user"
+    },
+    {
+      "id": "16650060",
+      "name": "吳逸虎",
+      "email": "langyuwu@gmail.com",
+      "role": "user"
+    },
+    {
+      "id": "16140057",
+      "name": "陳安琪",
+      "email": "angel.app2682@gmail.com",
+      "role": "user"
+    },
+    {
+      "id": "16140035",
+      "name": "何品萱",
+      "email": "mincful.cute.tiger@gmail.com",
+      "role": "user"
+    },
+    {
+      "id": "15750010",
+      "name": "謝郅瑋",
+      "email": "gnod100@gmail.com",
+      "role": "user"
+    },
+    {
+      "id": "15270040",
+      "name": "謝澄漢",
+      "email": "oo08280826@gmail.com",
+      "role": "user"
+    },
+    {
+      "id": "15030009",
+      "name": "ARTHER WU",
+      "email": "arther235@gmail.com",
+      "role": "user"
+    },
+    {
+      "id": "13260325",
+      "name": "許凱柔",
+      "email": "afra.hsu@hotmail.com",
+      "role": "user"
+    },
+    {
+      "id": "13260020",
+      "name": "張紋婷",
+      "email": "emma20001224@gmail.com",
+      "role": "user"
+    },
+    {
+      "id": "12990144",
+      "name": "偌希 史",
+      "email": "shih369477@gmail.com",
+      "role": "user"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\trole\n17460002\t潘懷恩\tsecretrain80@gmail.com\tuser\n16650060\t吳逸虎\tlangyuwu@gmail.com\tuser\n16140057\t陳安琪\tangel.app2682@gmail.com\tuser\n16140035\t何品萱\tmincful.cute.tiger@gmail.com\tuser\n15750010\t謝郅瑋\tgnod100@gmail.com\tuser\n15270040\t謝澄漢\too08280826@gmail.com\tuser\n15030009\tARTHER WU\tarther235@gmail.com\tuser\n13260325\t許凱柔\tafra.hsu@hotmail.com\tuser\n13260020\t張紋婷\temma20001224@gmail.com\tuser\n12990144\t偌希 史\tshih369477@gmail.com\tuser\n",
+  "stderr": "",
+  "execution_time_ms": 1538
+}

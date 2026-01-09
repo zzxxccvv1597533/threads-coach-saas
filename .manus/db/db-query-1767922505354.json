@@ -1,0 +1,124 @@
+{
+  "query": "SHOW TABLES;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute SHOW TABLES;",
+  "rows": [
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "__drizzle_migrations"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "api_usage_logs"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "audience_segments"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "audit_logs"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "content_clusters"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "content_hooks"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "content_pillars"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "conversation_messages"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "conversation_summaries"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "conversations"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "draft_hooks"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "draft_posts"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "draft_versions"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "interaction_tasks"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "invitation_codes"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "ip_profile_versions"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "ip_profiles"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "kb_documents"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "keyword_benchmarks"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "optimization_sessions"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "order_items"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "orders"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "payment_records"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "post_metrics"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "posts"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "products"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "prompt_templates"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "raw_materials"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "subscriptions"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "success_stories"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "topic_templates"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "user_growth_metrics"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "user_products"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "user_settings"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "user_writing_styles"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "users"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "viral_examples"
+    },
+    {
+      "Tables_in_ZwXGmk4u6xh72xjKSDXePb": "viral_learnings"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_ZwXGmk4u6xh72xjKSDXePb\n__drizzle_migrations\napi_usage_logs\naudience_segments\naudit_logs\ncontent_clusters\ncontent_hooks\ncontent_pillars\nconversation_messages\nconversation_summaries\nconversations\ndraft_hooks\ndraft_posts\ndraft_versions\ninteraction_tasks\ninvitation_codes\nip_profile_versions\nip_profiles\nkb_documents\nkeyword_benchmarks\noptimization_sessions\norder_items\norders\npayment_records\npost_metrics\nposts\nproducts\nprompt_templates\nraw_materials\nsubscriptions\nsuccess_stories\ntopic_templates\nuser_growth_metrics\nuser_products\nuser_settings\nuser_writing_styles\nusers\nviral_examples\nviral_learnings\n",
+  "stderr": "",
+  "execution_time_ms": 1527
+}

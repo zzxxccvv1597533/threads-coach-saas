@@ -1,0 +1,35 @@
+{
+  "query": "SELECT id, name, email FROM users LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute SELECT id, name, email FROM users LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Ding Ding",
+      "email": "zzxxccvv1597533@gmail.com"
+    },
+    {
+      "id": "510005",
+      "name": "恩恩",
+      "email": "yingchun0312@gmail.com"
+    },
+    {
+      "id": "570028",
+      "name": "黃凱筑",
+      "email": "sweetmini27@gmail.com"
+    },
+    {
+      "id": "1260001",
+      "name": "丁仔",
+      "email": "erm54889101@gmail.com"
+    },
+    {
+      "id": "1440026",
+      "name": "偌C",
+      "email": "sophia.true.art@gmail.com"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\n1\tDing Ding\tzzxxccvv1597533@gmail.com\n510005\t恩恩\tyingchun0312@gmail.com\n570028\t黃凱筑\tsweetmini27@gmail.com\n1260001\t丁仔\term54889101@gmail.com\n1440026\t偌C\tsophia.true.art@gmail.com\n",
+  "stderr": "",
+  "execution_time_ms": 1529
+}

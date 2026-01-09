@@ -623,58 +623,93 @@ export default function Reports() {
               </div>
             ) : posts && posts.length > 0 ? (
               <div className="space-y-4">
-                {posts.map((post) => (
+                {posts.map((post) => {
+                  const metrics = (post as any).metrics?.[0];
+                  const hasMetrics = metrics && (metrics.reach > 0 || metrics.likes > 0 || metrics.comments > 0);
+                  
+                  return (
                   <div 
                     key={post.id}
                     className="rounded-xl border border-border/50 hover:border-primary/30 transition-all overflow-hidden"
                   >
                     {/* 主要內容區 */}
-                    <div className="flex items-start gap-4 p-4">
-                      <button
-                        onClick={() => toggleExpand(post.id)}
-                        className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 hover:bg-primary/20 transition-colors"
-                      >
-                        {expandedPostId === post.id ? (
-                          <ChevronUp className="w-5 h-5 text-primary" />
-                        ) : (
-                          <FileText className="w-5 h-5 text-primary" />
-                        )}
-                      </button>
-                      
-                      <div className="flex-1 min-w-0">
-                        {/* 標題和日期 */}
-                        <div className="flex items-center gap-2 mb-1">
+                    <div className="p-4">
+                      {/* 第一行：標題、日期、爆文徽章 */}
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <div className="flex-1 min-w-0">
                           <button
                             onClick={() => toggleExpand(post.id)}
-                            className="text-sm font-medium text-foreground hover:text-primary transition-colors text-left"
+                            className="text-base font-medium text-foreground hover:text-primary transition-colors text-left line-clamp-2"
                           >
                             {getPostTitle(post)}
                           </button>
+                          <div className="flex items-center gap-2 mt-1">
+                            <a 
+                              href={post.threadUrl || '#'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary hover:underline flex items-center gap-1"
+                            >
+                              <Link className="w-3 h-3" />
+                              查看原文
+                            </a>
+                            <span className="text-xs text-muted-foreground">
+                              {post.postedAt ? format(new Date(post.postedAt), 'yyyy/MM/dd', { locale: zhTW }) : '-'}
+                            </span>
+                            {/* 爆文徽章 */}
+                            {metrics?.isViral && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-orange-500 to-red-500 text-white">
+                                <Flame className="w-3 h-3" />
+                                爆文
+                              </span>
+                            )}
+                          </div>
                         </div>
                         
-                        <div className="flex items-center gap-2">
-                          <a 
-                            href={post.threadUrl || '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline flex items-center gap-1"
-                          >
-                            <Link className="w-3 h-3" />
-                            查看原文
-                          </a>
-                          <span className="text-xs text-muted-foreground">
-                            {post.postedAt ? format(new Date(post.postedAt), 'yyyy/MM/dd', { locale: zhTW }) : '-'}
-                          </span>
-                          {/* 爆文徽章 */}
-                          {(post as any).metrics?.[0]?.isViral && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-orange-500 to-red-500 text-white">
-                              <Flame className="w-3 h-3" />
-                              爆文
-                            </span>
+                        {/* 展開/收合按鈕 */}
+                        <button
+                          onClick={() => toggleExpand(post.id)}
+                          className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center shrink-0 hover:bg-muted transition-colors"
+                        >
+                          {expandedPostId === post.id ? (
+                            <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 text-muted-foreground" />
                           )}
-                        </div>
+                        </button>
                       </div>
+                      
+                      {/* 第二行：數據摘要 */}
+                      {hasMetrics ? (
+                        <div className="flex items-center gap-4 mb-3 py-2 px-3 bg-muted/30 rounded-lg">
+                          <div className="flex items-center gap-1.5">
+                            <Eye className="w-4 h-4 text-blue-500" />
+                            <span className="text-sm font-medium">{metrics?.reach || 0}</span>
+                            <span className="text-xs text-muted-foreground">觸及</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Heart className="w-4 h-4 text-pink-500" />
+                            <span className="text-sm font-medium">{metrics?.likes || 0}</span>
+                            <span className="text-xs text-muted-foreground">愛心</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <MessageSquare className="w-4 h-4 text-green-500" />
+                            <span className="text-sm font-medium">{metrics?.comments || 0}</span>
+                            <span className="text-xs text-muted-foreground">留言</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Bookmark className="w-4 h-4 text-purple-500" />
+                            <span className="text-sm font-medium">{metrics?.saves || 0}</span>
+                            <span className="text-xs text-muted-foreground">收藏</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 mb-3 py-2 px-3 bg-muted/20 rounded-lg">
+                          <span className="text-xs text-muted-foreground">尚未記錄數據，點擊「更新數據」來新增</span>
+                        </div>
+                      )}
 
+                      {/* 第三行：操作按鈕 */}
                       <div className="flex items-center gap-2">
                         {/* 爆文標記按鈕 */}
                         <Button
@@ -801,7 +836,8 @@ export default function Reports() {
                       </div>
                     )}
                   </div>
-                ))}
+                );
+                })}
               </div>
             ) : (
               <div className="text-center py-12">
