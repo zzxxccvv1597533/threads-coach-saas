@@ -1,7 +1,38 @@
 import { describe, it, expect } from 'vitest';
-import { filterProfanity, applyContentFilters } from './contentFilters';
+import { filterProfanity, applyContentFilters, extractEmotionWords } from './contentFilters';
 
 describe('Profanity Filter', () => {
+  describe('filterProfanity function with user emotion words', () => {
+    it('should prioritize user emotion words when available', () => {
+      const userEmotionWords = ['我的天', '救命', '崩潰'];
+      // 由於有 70% 機率使用用戶詞彙，我們多次測試以確保至少有一次使用用戶詞彙
+      let usedUserWord = false;
+      for (let i = 0; i < 20; i++) {
+        const result = filterProfanity('靠北，這什麼鬼東西', userEmotionWords);
+        if (userEmotionWords.some(word => result.includes(word))) {
+          usedUserWord = true;
+          break;
+        }
+      }
+      expect(usedUserWord).toBe(true);
+    });
+
+    it('should use default replacements when no user emotion words', () => {
+      const result = filterProfanity('靠北，這什麼鬼東西', []);
+      // 應該使用預設替換詞
+      const defaultReplacements = ['我的天', '真的假的', '傻眼'];
+      expect(defaultReplacements.some(word => result.includes(word))).toBe(true);
+    });
+
+    it('should filter out invalid user emotion words', () => {
+      // 太長的詞應該被過濾掉
+      const userEmotionWords = ['這是一個很長的情緒詞彙', '我的天'];
+      const result = filterProfanity('靠北', userEmotionWords);
+      // 不應該包含太長的詞
+      expect(result.includes('這是一個很長的情緒詞彙')).toBe(false);
+    });
+  });
+
   describe('filterProfanity function', () => {
     it('should replace Chinese profanity 靠 with appropriate alternatives', () => {
       const input = '靠，這也太扯了吧';
@@ -175,5 +206,46 @@ describe('Profanity Filter', () => {
       const result = filterProfanity(input);
       expect(result).not.toContain('靠');
     });
+  });
+});
+
+
+describe('extractEmotionWords function', () => {
+
+  it('should extract emotion words from viralElements', () => {
+    const userStyle = {
+      viralElements: {
+        emotionWords: ['崩潰', '救命', '心累'],
+      },
+    };
+    const result = extractEmotionWords(userStyle);
+    expect(result).toContain('崩潰');
+    expect(result).toContain('救命');
+    expect(result).toContain('心累');
+  });
+
+  it('should fallback to catchphrases when no emotionWords', () => {
+    const userStyle = {
+      catchphrases: ['天啊', '救命'],
+      viralElements: {},
+    };
+    const result = extractEmotionWords(userStyle);
+    expect(result).toContain('天啊');
+    expect(result).toContain('救命');
+  });
+
+  it('should filter out long catchphrases', () => {
+    const userStyle = {
+      catchphrases: ['這是一個很長的口頭禪', '救命'],
+      viralElements: {},
+    };
+    const result = extractEmotionWords(userStyle);
+    expect(result).not.toContain('這是一個很長的口頭禪');
+    expect(result).toContain('救命');
+  });
+
+  it('should return empty array for null userStyle', () => {
+    const result = extractEmotionWords(null);
+    expect(result).toEqual([]);
   });
 });

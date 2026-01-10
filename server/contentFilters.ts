@@ -329,8 +329,14 @@ const CONTENT_TYPE_COEFFICIENTS: Record<string, number> = {
 /**
  * 髮話過濾器（絕對禁止，不受強度影響）
  * 使用多樣化替換詞避免重複
+ * 
+ * @param content - 要過濾的內容
+ * @param userEmotionWords - 用戶自己的情緒詞彙（優先使用）
  */
-export function filterProfanity(content: string): string {
+export function filterProfanity(
+  content: string, 
+  userEmotionWords: string[] = []
+): string {
   let result = content;
   
   // 輔助函數：轉義正則表達式特殊字元
@@ -341,16 +347,43 @@ export function filterProfanity(content: string): string {
   // 記錄已使用的替換詞，避免連續重複
   const usedReplacements: string[] = [];
   
+  // 過濾用戶情緒詞，只保留適合用作替換的詞彙
+  // 排除太長的詞（超過 4 字）或包含特殊字元的詞
+  const validUserWords = userEmotionWords.filter(word => 
+    word && 
+    word.length >= 1 && 
+    word.length <= 4 && 
+    !/[\n\r\t]/.test(word)
+  );
+  
+  // 如果用戶有自己的情緒詞，優先使用
+  const hasUserWords = validUserWords.length > 0;
+  
   // 替換有替代詞的髮話（使用多樣化替換）
-  for (const [profanity, replacements] of Object.entries(PROFANITY_REPLACEMENTS_ARRAY)) {
+  for (const [profanity, defaultReplacements] of Object.entries(PROFANITY_REPLACEMENTS_ARRAY)) {
     const escaped = escapeRegex(profanity);
     const regex = new RegExp(`\\b${escaped}\\b|${escaped}`, 'gi');
     
-    // 對每個匹配項隨機選擇替換詞，優先選擇未使用過的
+    // 對每個匹配項隨機選擇替換詞
     result = result.replace(regex, () => {
+      // 建構替換詞池：用戶詞彙優先，然後是預設詞彙
+      let replacementPool: string[];
+      
+      if (hasUserWords) {
+        // 用戶有自己的情緒詞：70% 機率使用用戶詞彙，30% 使用預設
+        if (Math.random() < 0.7) {
+          replacementPool = validUserWords;
+        } else {
+          replacementPool = defaultReplacements;
+        }
+      } else {
+        // 沒有用戶詞彙，使用預設
+        replacementPool = defaultReplacements;
+      }
+      
       // 找出未使用過的替換詞
-      const unusedReplacements = replacements.filter(r => !usedReplacements.includes(r));
-      const availableReplacements = unusedReplacements.length > 0 ? unusedReplacements : replacements;
+      const unusedReplacements = replacementPool.filter(r => !usedReplacements.includes(r));
+      const availableReplacements = unusedReplacements.length > 0 ? unusedReplacements : replacementPool;
       
       // 隨機選擇一個
       const replacement = availableReplacements[Math.floor(Math.random() * availableReplacements.length)];
@@ -523,6 +556,7 @@ export function applyContentFilters(
     contentType?: string;
     hasUserStyle?: boolean;
     userPreservedWords?: string[];
+    userEmotionWords?: string[];  // 用戶的情緒詞彙（用於髮話替換）
     enableIdiomFilter?: boolean;
     enableFillerFilter?: boolean;
     enableEmotionFilter?: boolean;
@@ -534,6 +568,7 @@ export function applyContentFilters(
     contentType,
     hasUserStyle = false,
     userPreservedWords = [],
+    userEmotionWords = [],
     enableIdiomFilter = true,
     enableFillerFilter = true,
     enableEmotionFilter = true,
@@ -545,8 +580,9 @@ export function applyContentFilters(
   
   let result = content;
   
-  // 0. 髒話過濾（最優先，絕對禁止，不受強度影響）
-  result = filterProfanity(result);
+  // 0. 髮話過濾（最優先，絕對禁止，不受強度影響）
+  // 如果用戶有自己的情緒詞彙，優先使用這些詞彙來替換髮話
+  result = filterProfanity(result, userEmotionWords);
   
   // 1. 成語殺手
   if (enableIdiomFilter) {
@@ -756,6 +792,22 @@ export function cleanAIOutput(content: string): string {
 // 工具函數
 // ============================================
 
+// 安全地將值轉換為陣列的輔助函數
+const toArray = (value: unknown): string[] => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.filter((v): v is string => typeof v === 'string');
+  }
+  if (typeof value === 'string') {
+    return value.split(/[,;，；]/).map(s => s.trim()).filter(Boolean);
+  }
+  return [];
+};
+
+/**
+ * 從用戶風格分析中提取保留詞
+ * 安全處理各種可能的資料格式（陣列、字串、物件等）
+ */
 export function extractPreservedWords(userStyle: {
   commonPhrases?: string[] | string | null;
   catchphrases?: string[] | string | null;
@@ -768,18 +820,6 @@ export function extractPreservedWords(userStyle: {
   if (!userStyle) return [];
   
   const preserved: string[] = [];
-  
-  // 安全地將值轉換為陣列
-  const toArray = (value: unknown): string[] => {
-    if (!value) return [];
-    if (Array.isArray(value)) {
-      return value.filter((v): v is string => typeof v === 'string');
-    }
-    if (typeof value === 'string') {
-      return value.split(/[,;，；]/).map(s => s.trim()).filter(Boolean);
-    }
-    return [];
-  };
   
   // 處理 commonPhrases
   preserved.push(...toArray(userStyle.commonPhrases));
@@ -806,4 +846,43 @@ export function extractPreservedWords(userStyle: {
   }
   
   return preserved;
+}
+
+/**
+ * 從用戶風格分析中提取情緒詞彙
+ * 用於髮話過濾器的替換詞
+ */
+export function extractEmotionWords(userStyle: {
+  viralElements?: {
+    identityTags?: string[];
+    emotionWords?: string[];
+    ctaStyles?: string[];
+  } | string[] | string | null;
+  catchphrases?: string[] | string | null;
+} | null): string[] {
+  if (!userStyle) return [];
+  
+  const emotionWords: string[] = [];
+  
+  // 優先從 viralElements.emotionWords 提取
+  if (userStyle.viralElements) {
+    if (typeof userStyle.viralElements === 'object' && !Array.isArray(userStyle.viralElements)) {
+      const ve = userStyle.viralElements as {
+        emotionWords?: string[];
+      };
+      if (ve.emotionWords) {
+        emotionWords.push(...toArray(ve.emotionWords));
+      }
+    }
+  }
+  
+  // 如果沒有情緒詞，從 catchphrases 中提取短詞（可能是情緒表達）
+  if (emotionWords.length === 0 && userStyle.catchphrases) {
+    const catchphrases = toArray(userStyle.catchphrases);
+    // 只保留 1-4 字的短詞（可能是情緒表達）
+    const shortPhrases = catchphrases.filter(p => p.length >= 1 && p.length <= 4);
+    emotionWords.push(...shortPhrases);
+  }
+  
+  return emotionWords;
 }

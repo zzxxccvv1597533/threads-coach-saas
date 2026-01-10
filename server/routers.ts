@@ -11,7 +11,7 @@ import { postMetrics, ipProfiles } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { KNOWLEDGE_BASE, SYSTEM_PROMPTS, CONTENT_TYPES_WITH_VIRAL_ELEMENTS, FORBIDDEN_PHRASES, THREADS_STYLE_GUIDE, FOUR_LENS_FRAMEWORK } from "../shared/knowledge-base";
 import { executeContentHealthCheck, MAX_SCORES, DIMENSION_NAMES } from "./content-health-check";
-import { applyContentFilters, extractPreservedWords, cleanAIOutput, filterProfanity } from "./contentFilters";
+import { applyContentFilters, extractPreservedWords, extractEmotionWords, cleanAIOutput, filterProfanity } from "./contentFilters";
 import { buildDataDrivenSystemPrompt, buildDataDrivenUserPrompt, analyzeGeneratedContent, getDataDrivenSummary, collectDataDrivenContext } from "./data-driven-prompt-builder";
 import { selectRandomOpenerPattern, extractMaterialKeywords } from "../shared/opener-rules";
 import { getContentTypeRule } from "../shared/content-type-rules";
@@ -2592,11 +2592,13 @@ ${selectedOpenerPattern?.examples?.slice(0, 3).map((e: string, i: number) => `${
         // 應用漸進式去 AI 化過濾器
         const hasUserStyle = !!(userStyle && userStyle.toneStyle);
         const preservedWords = extractPreservedWords(userStyle as any);
+        const emotionWords = extractEmotionWords(userStyle as any);
         generatedContent = applyContentFilters(generatedContent, {
           voiceTone: profile?.voiceTone || undefined,
           contentType: input.contentType,
           hasUserStyle,
           userPreservedWords: preservedWords,
+          userEmotionWords: emotionWords,  // 用戶的情緒詞彙，用於髮話替換
           enableIdiomFilter: true,
           enableFillerFilter: true,
           enableEmotionFilter: true,
@@ -3080,11 +3082,13 @@ ${userInputContext}${input.additionalContext ? `補充說明：${input.additiona
         const userStyle = await db.getUserWritingStyle(ctx.user.id);
         const hasUserStyle = !!(userStyle && userStyle.toneStyle);
         const preservedWords = extractPreservedWords(userStyle as any);
+        const emotionWords = extractEmotionWords(userStyle as any);
         generatedContent = applyContentFilters(generatedContent, {
           voiceTone: profile?.voiceTone || undefined,
           contentType: input.contentType,
           hasUserStyle,
           userPreservedWords: preservedWords,
+          userEmotionWords: emotionWords,  // 用戶的情緒詞彙，用於髮話替換
           enableIdiomFilter: true,
           enableFillerFilter: true,
           enableEmotionFilter: true,
@@ -3291,10 +3295,12 @@ ${creatorInfo}
         const userStyle = await db.getUserWritingStyle(ctx.user.id);
         const hasUserStyle = !!(userStyle && userStyle.toneStyle);
         const preservedWords = extractPreservedWords(userStyle as any);
+        const emotionWords = extractEmotionWords(userStyle as any);
         newContent = applyContentFilters(newContent, {
           voiceTone: profile?.voiceTone || undefined,
           hasUserStyle,
           userPreservedWords: preservedWords,
+          userEmotionWords: emotionWords,  // 用戶的情緒詞彙，用於髮話替換
           enableIdiomFilter: true,
           enableFillerFilter: true,
           enableEmotionFilter: true,
@@ -3646,10 +3652,12 @@ ${input.text}` }
         const userStyle = await db.getUserWritingStyle(ctx.user.id);
         const hasUserStyle = !!(userStyle && userStyle.toneStyle);
         const preservedWords = extractPreservedWords(userStyle as any);
+        const emotionWords = extractEmotionWords(userStyle as any);
         optimizedContent = applyContentFilters(optimizedContent, {
           voiceTone: profile?.voiceTone || undefined,
           hasUserStyle,
           userPreservedWords: preservedWords,
+          userEmotionWords: emotionWords,  // 用戶的情緒詞彙，用於髮話替換
           enableIdiomFilter: true,
           enableFillerFilter: true,
           enableEmotionFilter: true,
