@@ -1771,3 +1771,48 @@
 - [ ] 優化 Prompt 減少固定句式模板
 - [ ] 增加開頭多樣性
 - [x] 撰寫 AI 生成內容分析報告（優點、缺點、改善方向）
+
+
+## 第一階段優化：基礎建設（1-2 週）
+
+### Step 1: Data Storage
+- [x] 新增 opener_templates 表格（儲存開頭模板和權重）
+- [x] 新增 prompt_avoid_list 表格（儲存禁止句式清單）
+- [x] 新增 openers_candidates 表格（儲存所有生成的候選）
+- [x] 新增 template_stats 表格（儲存模板統計數據）
+- [x] 新增 ai_detector_logs 表格（儲存 AI 檢測記錄）
+- [x] 新增 system_event_logs 表格（系統事件日誌）
+
+### Step 2: Avoid-list + Prompt Service
+- [x] 建立 Prompt Service 模組
+- [x] 實作 getActiveTemplates() 函數
+- [x] 實作 getAvoidList() 函數
+- [x] 實作 assemblePrompt() 函數
+- [x] 建立預設禁止句式清單（26 個）
+- [x] 建立預設開頭模板庫（14 個）
+
+### Step 3: AI Detector 規則版
+- [x] 實作 Avoid-list 匹配檢測
+- [x] 實作重複模式檢測
+- [x] 實作 AI 短語檢測
+- [x] 實作句式密度檢測
+- [x] 實作分數計算和動作建議
+- [x] 實作日誌記錄功能
+- [x] 29 個單元測試全部通過
+- [ ] 實作典型 AI 短語檢測
+- [ ] 實作句式密度檢測
+- [ ] 整合到內容生成流程
+
+### Step 4: Observability 基礎
+- [ ] 建立 logging 機制
+- [ ] 記錄 generate_request 事件
+- [ ] 記錄 candidate_written 事件
+- [ ] 記錄 ai_detector_triggered 事件
+
+
+### Step 4: Observability 基礎
+- [x] 建立系統事件日誌記錄 (logEvent, logError, logUserAction, logSystemEvent)
+- [x] 建立內容生成事件記錄 (logGeneration, logTemplateUsage)
+- [x] 建立候選內容追蹤 (markCandidateSelected, updateCandidatePerformance)
+- [x] 建立指標查詢函數 (getGenerationMetrics, getAiDetectionStats, getRecentEvents)
+- [x] 建立便捷工具 (createTimer, withObservability)

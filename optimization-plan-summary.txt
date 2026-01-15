@@ -1,0 +1,55 @@
+# 優化計劃摘要（從 PDF 提取）
+
+## 第一階段：基礎建設（1-2 週）
+
+### 2.1 優化項目清單
+| 項目 | 說明 | 工時 |
+|-----|------|-----|
+| Data Storage | 新增必要的 DB tables | 1-2 天 |
+| Prompt Service | 集中管理 prompt 和 template | 2-3 天 |
+| Avoid-list | 建立禁止句式清單 | 1 天 |
+| AI Detector（規則版）| 檢測 AI 痕跡並標記 | 2-3 天 |
+| Observability（基礎）| 建立 logging 和埋點 | 2 天 |
+
+### 2.2.1 Data Storage（資料儲存）
+新增的表格：
+- opener_templates：儲存開頭模板和權重
+- prompt_avoid_list：儲存禁止句式清單
+- openers_candidates：儲存所有生成的候選
+- template_stats：儲存模板統計數據
+- ai_detector_logs：儲存 AI 檢測記錄
+
+### 2.2.2 Prompt Service（Prompt 管理服務）
+功能：
+- getActiveTemplates()：取得所有啟用的模板
+- getTemplateById(id)：取得特定模板
+- getAvoidList()：取得禁止句式清單
+- assemblePrompt(templateId, context)：組裝完整的 prompt
+- updateTemplateWeight(id, weight)：更新模板權重
+
+好處：集中管理、版本控制、動態更新、A/B 測試、權重調整
+
+### 2.2.3 Avoid-list（禁止句式清單）
+預設禁止的句式：
+| 類型 | 範例 |
+|-----|------|
+| 開頭句式 | 「你是不是也這樣？」「你有沒有發現...」|
+| 過渡句式 | 「其實...」「說真的...」「不得不說...」|
+| 結尾句式 | 「你覺得呢？」「留言告訴我」|
+| AI 特徵詞 | 「作為一個...」「首先...其次...最後...」|
+
+好處：立即見效、可動態更新、風險低、用戶可參與
+
+### 2.2.4 AI Detector（AI 痕跡檢測）
+檢測規則：
+- Avoid-list 匹配：檢查是否包含禁止句式
+- 重複模式檢測：檢查是否有重複的句式結構
+- 典型 AI 短語：檢查是否有常見的 AI 用語
+- 句式密度：檢查特定句式的出現頻率
+
+好處：最後一道防線、可量化追蹤、用戶可見改善、先標記不刪除
+
+### 2.2.5 Observability（可觀測性）
+記錄的事件：
+- generate_request：用戶發起生成請求
+- candidate_written：候選寫入 DB

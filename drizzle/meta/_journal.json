@@ -162,6 +162,13 @@
       "when": 1767545829339,
       "tag": "0022_fixed_madripoor",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "5",
+      "when": 1768441554641,
+      "tag": "0023_equal_owl",
+      "breakpoints": true
     }
   ]
 }

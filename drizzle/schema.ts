@@ -751,3 +751,162 @@ export const contentClusters = mysqlTable("content_clusters", {
 
 export type ContentCluster = typeof contentClusters.$inferSelect;
 export type InsertContentCluster = typeof contentClusters.$inferInsert;
+
+
+// ==================== AI 優化系統（第一階段）====================
+
+// 開頭模板庫
+export const openerTemplates = mysqlTable("opener_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 128 }).notNull(), // 模板名稱
+  category: mysqlEnum("category", ["mirror", "contrast", "scene", "question", "data", "story", "emotion"]).default("mirror"), // 模板類型
+  template: text("template").notNull(), // 模板內容（可含變數如 {{topic}}）
+  description: text("description"), // 模板說明
+  example: text("example"), // 使用範例
+  // 權重與統計
+  weight: decimal("weight", { precision: 5, scale: 4 }).default("1.0000"), // 使用權重（0-1）
+  usageCount: int("usageCount").default(0), // 使用次數
+  successCount: int("successCount").default(0), // 成功次數（爆文）
+  successRate: decimal("successRate", { precision: 5, scale: 4 }).default("0.0000"), // 成功率
+  // 狀態
+  isActive: boolean("isActive").default(true),
+  isDefault: boolean("isDefault").default(false), // 是否為預設模板
+  createdBy: int("createdBy"), // 創建者（null 為系統預設）
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type OpenerTemplate = typeof openerTemplates.$inferSelect;
+export type InsertOpenerTemplate = typeof openerTemplates.$inferInsert;
+
+// 禁止句式清單
+export const promptAvoidList = mysqlTable("prompt_avoid_list", {
+  id: int("id").autoincrement().primaryKey(),
+  pattern: varchar("pattern", { length: 256 }).notNull(), // 禁止的句式模式
+  patternType: mysqlEnum("patternType", ["opener", "transition", "ending", "ai_phrase", "filler"]).default("opener"), // 類型
+  description: text("description"), // 說明為什麼要禁止
+  replacement: text("replacement"), // 建議的替代方式
+  severity: mysqlEnum("severity", ["block", "warn", "suggest"]).default("warn"), // 嚴重程度
+  // 統計
+  matchCount: int("matchCount").default(0), // 匹配次數
+  // 狀態
+  isActive: boolean("isActive").default(true),
+  isUserDefined: boolean("isUserDefined").default(false), // 是否為用戶自訂
+  userId: int("userId"), // 如果是用戶自訂，記錄用戶 ID
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PromptAvoidList = typeof promptAvoidList.$inferSelect;
+export type InsertPromptAvoidList = typeof promptAvoidList.$inferInsert;
+
+// 開頭候選記錄（儲存所有生成的候選）
+export const openersCandidates = mysqlTable("openers_candidates", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  draftId: int("draftId"), // 關聯的草稿 ID
+  templateId: int("templateId"), // 使用的模板 ID
+  // 生成內容
+  openerText: text("openerText").notNull(), // 生成的開頭文字
+  fullContent: text("fullContent"), // 完整內容（如果有）
+  // 生成參數
+  topic: varchar("topic", { length: 256 }), // 主題
+  contentType: varchar("contentType", { length: 64 }), // 內容類型
+  hookStyle: varchar("hookStyle", { length: 64 }), // Hook 風格
+  // 選擇與效果
+  isSelected: boolean("isSelected").default(false), // 是否被用戶選中
+  selectedAt: timestamp("selectedAt"), // 選中時間
+  // 效果追蹤（發布後更新）
+  wasPublished: boolean("wasPublished").default(false), // 是否發布
+  publishedAt: timestamp("publishedAt"),
+  reach: int("reach"), // 觸及數
+  likes: int("likes"), // 愛心數
+  comments: int("comments"), // 留言數
+  isViral: boolean("isViral").default(false), // 是否為爆文
+  // AI 檢測結果
+  aiScore: decimal("aiScore", { precision: 5, scale: 4 }), // AI 痕跡分數（0-1，越低越好）
+  aiFlags: json("aiFlags").$type<string[]>(), // AI 痕跡標記
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type OpenerCandidate = typeof openersCandidates.$inferSelect;
+export type InsertOpenerCandidate = typeof openersCandidates.$inferInsert;
+
+// 模板統計數據
+export const templateStats = mysqlTable("template_stats", {
+  id: int("id").autoincrement().primaryKey(),
+  templateId: int("templateId").notNull(), // 關聯的模板 ID
+  // 時間維度
+  statDate: timestamp("statDate").notNull(), // 統計日期
+  statPeriod: mysqlEnum("statPeriod", ["daily", "weekly", "monthly"]).default("daily"),
+  // 使用統計
+  usageCount: int("usageCount").default(0), // 使用次數
+  selectionCount: int("selectionCount").default(0), // 被選中次數
+  selectionRate: decimal("selectionRate", { precision: 5, scale: 4 }).default("0.0000"), // 選中率
+  // 效果統計
+  publishCount: int("publishCount").default(0), // 發布次數
+  viralCount: int("viralCount").default(0), // 爆文次數
+  viralRate: decimal("viralRate", { precision: 5, scale: 4 }).default("0.0000"), // 爆文率
+  avgReach: int("avgReach").default(0), // 平均觸及
+  avgLikes: int("avgLikes").default(0), // 平均愛心
+  avgComments: int("avgComments").default(0), // 平均留言
+  // 計算權重
+  calculatedWeight: decimal("calculatedWeight", { precision: 5, scale: 4 }).default("1.0000"), // 計算出的權重
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TemplateStats = typeof templateStats.$inferSelect;
+export type InsertTemplateStats = typeof templateStats.$inferInsert;
+
+// AI 檢測記錄
+export const aiDetectorLogs = mysqlTable("ai_detector_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  candidateId: int("candidateId"), // 關聯的候選 ID
+  draftId: int("draftId"), // 關聯的草稿 ID
+  // 檢測內容
+  contentSnippet: text("contentSnippet"), // 檢測的內容片段
+  contentLength: int("contentLength"), // 內容長度
+  // 檢測結果
+  overallScore: decimal("overallScore", { precision: 5, scale: 4 }).notNull(), // 總體 AI 分數（0-1）
+  // 各項檢測分數
+  avoidListScore: decimal("avoidListScore", { precision: 5, scale: 4 }), // 禁止句式匹配分數
+  repetitionScore: decimal("repetitionScore", { precision: 5, scale: 4 }), // 重複模式分數
+  aiPhraseScore: decimal("aiPhraseScore", { precision: 5, scale: 4 }), // AI 短語分數
+  densityScore: decimal("densityScore", { precision: 5, scale: 4 }), // 句式密度分數
+  // 詳細標記
+  matchedPatterns: json("matchedPatterns").$type<{pattern: string; type: string; position: number}[]>(), // 匹配到的模式
+  suggestions: json("suggestions").$type<{issue: string; suggestion: string}[]>(), // 修改建議
+  // 處理結果
+  action: mysqlEnum("action", ["pass", "warn", "regenerate", "manual_edit"]).default("pass"), // 採取的動作
+  wasModified: boolean("wasModified").default(false), // 是否被修改
+  modifiedContent: text("modifiedContent"), // 修改後的內容
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AiDetectorLog = typeof aiDetectorLogs.$inferSelect;
+export type InsertAiDetectorLog = typeof aiDetectorLogs.$inferInsert;
+
+// 系統事件日誌（Observability）
+export const systemEventLogs = mysqlTable("system_event_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId"),
+  // 事件資訊
+  eventType: varchar("eventType", { length: 64 }).notNull(), // 事件類型
+  eventName: varchar("eventName", { length: 128 }).notNull(), // 事件名稱
+  // 事件詳情
+  metadata: json("metadata").$type<Record<string, unknown>>(), // 事件元數據
+  // 關聯 ID
+  draftId: int("draftId"),
+  candidateId: int("candidateId"),
+  templateId: int("templateId"),
+  // 效能追蹤
+  durationMs: int("durationMs"), // 執行時間（毫秒）
+  // 狀態
+  status: mysqlEnum("status", ["success", "error", "warning"]).default("success"),
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SystemEventLog = typeof systemEventLogs.$inferSelect;
+export type InsertSystemEventLog = typeof systemEventLogs.$inferInsert;
