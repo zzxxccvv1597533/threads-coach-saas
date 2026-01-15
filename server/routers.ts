@@ -14,6 +14,9 @@ import { executeContentHealthCheck, MAX_SCORES, DIMENSION_NAMES } from "./conten
 import { applyContentFilters, extractPreservedWords, extractEmotionWords, cleanAIOutput, filterProfanity } from "./contentFilters";
 import { buildDataDrivenSystemPrompt, buildDataDrivenUserPrompt, analyzeGeneratedContent, getDataDrivenSummary, collectDataDrivenContext } from "./data-driven-prompt-builder";
 import { selectRandomOpenerPattern, extractMaterialKeywords } from "../shared/opener-rules";
+import { generateMultipleOpeners, markOpenerSelected, type OpenerCandidate } from "./openerGenerator";
+import { selectAndRank, getTopN } from "./selector";
+import { quickDetect } from "./aiDetector";
 import { getContentTypeRule } from "../shared/content-type-rules";
 
 // Admin procedure
@@ -5229,6 +5232,72 @@ ${sampleTexts}
         });
       }
     }),
+  }),
+
+  // ==================== 開頭候選生成 ====================
+  opener: router({
+    // 生成多個開頭候選
+    generate: protectedProcedure
+      .input(z.object({
+        topic: z.string().min(1, "請輸入主題"),
+        contentType: z.string().min(1, "請選擇內容類型"),
+        hookStyle: z.string().optional(),
+        targetAudience: z.string().optional(),
+        userContext: z.string().optional(),
+        count: z.number().min(3).max(5).default(5),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { topic, contentType, hookStyle, targetAudience, userContext, count } = input;
+        
+        try {
+          const result = await generateMultipleOpeners({
+            userId: ctx.user.id,
+            topic,
+            contentType,
+            hookStyle,
+            targetAudience,
+            userContext,
+            count,
+          });
+          
+          // 使用 Selector 進行排序
+          const ranked = selectAndRank(result.candidates);
+          
+          return {
+            candidates: ranked.rankedCandidates,
+            topPick: ranked.topPick,
+            avgAiScore: result.avgAiScore,
+            filteredCount: ranked.filteredCount,
+            explorationCount: result.explorationCount,
+          };
+        } catch (error) {
+          console.error('[Opener Generate Error]', error);
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: '開頭生成失敗，請稍後再試',
+          });
+        }
+      }),
+    
+    // 標記候選被選中
+    select: protectedProcedure
+      .input(z.object({
+        candidateId: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await markOpenerSelected(input.candidateId);
+        return { success: true };
+      }),
+    
+    // 快速檢測 AI 痕跡
+    detectAi: protectedProcedure
+      .input(z.object({
+        content: z.string().min(1),
+      }))
+      .mutation(async ({ input }) => {
+        const result = await quickDetect(input.content);
+        return result;
+      }),
   }),
 });
 

@@ -1816,3 +1816,54 @@
 - [x] 建立候選內容追蹤 (markCandidateSelected, updateCandidatePerformance)
 - [x] 建立指標查詢函數 (getGenerationMetrics, getAiDetectionStats, getRecentEvents)
 - [x] 建立便捷工具 (createTimer, withObservability)
+
+
+## 第二階段優化：智能生成（2-6 週）
+
+### Step 1: Opener Generator
+- [ ] 建立 openerGenerator.ts 模組
+- [ ] 實作 generateMultipleOpeners() 函數（生成 3-5 個開頭候選）
+- [ ] 整合 Prompt Service 和 AI Detector
+- [ ] 為每個候選計算 AI 痕跡分數
+
+### Step 2: 簡單 Selector
+- [ ] 建立 selector.ts 模組
+- [ ] 實作規則式 rerank 邏輯
+- [ ] 根據 AI 分數、多樣性、模板權重排序候選
+
+### Step 3: ε-greedy Bandit
+- [ ] 實作 10% 探索新模板機制
+- [ ] 實作 90% 利用高權重模板機制
+- [ ] 整合到 Opener Generator
+
+### Step 4: 前端候選選擇 UI
+- [ ] 在發文工作室新增開頭多選介面
+- [ ] 顯示 3-5 個開頭候選供學員選擇
+- [ ] 記錄學員選擇到 openers_candidates 表格
+
+
+## 第二階段優化：智能生成（2-6 週）
+
+### Step 1: Opener Generator ✅
+- [x] 建立 openerGenerator.ts 模組
+- [x] 實作 generateMultipleOpeners() 函數
+- [x] 實作 buildOpenerPrompt() 函數
+- [x] 整合 AI Detector 進行候選檢測
+- [x] 實作 ε-greedy Bandit 策略（10% 探索率）
+
+### Step 2: 簡單 Selector ✅
+- [x] 建立 selector.ts 模組
+- [x] 實作 selectAndRank() 函數
+- [x] 實作品質檢查和過濾邏輯
+- [x] 實作多樣性保證邏輯
+
+### Step 3: ε-greedy Bandit ✅
+- [x] 實作 10% 探索率策略（已整合到 Opener Generator）
+- [x] 整合到 Opener Generator
+
+### Step 4: 前端候選選擇 UI
+- [x] 建立 OpenerSelector 組件
+- [x] 新增 tRPC 端點（opener.generate, opener.select, opener.detectAi）
+- [x] 顯示 AI 痕跡分數和建議
+- [x] 8 個單元測試全部通過
+- [ ] 整合到發文工作室流程（待完成）
