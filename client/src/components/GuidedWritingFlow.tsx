@@ -129,17 +129,20 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
   // 使用新的 Opener Generator API
   const generateOpeners = trpc.opener.generate.useMutation({
     onSuccess: (data) => {
+      console.log('[generateOpeners] API Response:', JSON.stringify(data, null, 2));
       // 轉換新的 API 回應格式到現有的 hookOptions 格式
+      // 注意：API 返回的欄位是 openerText 不是 content，scoreLevel 不是 aiLevel
       const transformedHooks = data.candidates.map((candidate: any) => ({
-        style: candidate.templateId || 'custom',
+        style: String(candidate.templateId) || 'custom',
         styleName: candidate.templateCategory || '自訂風格',
-        content: candidate.content,
-        reason: `AI 痕跡分數：${Math.round((1 - candidate.aiScore) * 100)}% 自然度`,
-        aiScore: candidate.aiScore,
-        aiLevel: candidate.aiLevel,
+        content: candidate.openerText || candidate.content || '', // 使用 openerText 欄位
+        reason: `AI 痕跡分數：${Math.round((1 - (candidate.aiScore || 0)) * 100)}% 自然度`,
+        aiScore: candidate.aiScore || 0,
+        aiLevel: candidate.scoreLevel || candidate.aiLevel || 'natural', // 使用 scoreLevel 欄位
         candidateId: candidate.id,
         templateCategory: candidate.templateCategory,
       }));
+      console.log('[generateOpeners] Transformed hooks:', transformedHooks);
       setHookOptions(transformedHooks);
       setCurrentStep(5);
       toast.success(`已生成 ${data.candidates.length} 個開頭選項！`);
@@ -217,9 +220,30 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
 
   // 處理選擇主題
   const handleSelectTopic = (topic: typeof selectedTopic) => {
+    console.log('[handleSelectTopic] topic:', topic);
     setSelectedTopic(topic);
     if (topic) {
-      setSelectedContentType(topic.contentType);
+      // 驗證 contentType 是否在 ALL_CONTENT_TYPES_V2 中
+      console.log('[handleSelectTopic] topic.contentType:', topic.contentType);
+      const validContentType = ALL_CONTENT_TYPES_V2.find(t => t.id === topic.contentType);
+      console.log('[handleSelectTopic] validContentType:', validContentType);
+      if (validContentType) {
+        console.log('[handleSelectTopic] Setting selectedContentType to:', topic.contentType);
+        setSelectedContentType(topic.contentType);
+      } else {
+        // 如果 contentType 無效，嘗試根據名稱匹配
+        const matchedType = ALL_CONTENT_TYPES_V2.find(t => 
+          t.name === topic.contentType || 
+          t.name.includes(topic.contentType) ||
+          topic.contentType.includes(t.name)
+        );
+        if (matchedType) {
+          setSelectedContentType(matchedType.id);
+        } else {
+          // 預設為 story
+          setSelectedContentType('story');
+        }
+      }
     }
     setCurrentStep(2);
   };
@@ -568,7 +592,15 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
               <Button 
                 className="flex-1"
                 disabled={!selectedContentType}
-                onClick={() => setCurrentStep(3)}
+                onClick={() => {
+                  console.log('[Step 2] 下一步按鈕被點擊');
+                  console.log('[Step 2] selectedContentType:', selectedContentType);
+                  console.log('[Step 2] typeof selectedContentType:', typeof selectedContentType);
+                  console.log('[Step 2] selectedContentType.length:', selectedContentType?.length);
+                  console.log('[Step 2] 即將設定 currentStep 為 3');
+                  setCurrentStep(3);
+                  console.log('[Step 2] setCurrentStep(3) 已調用');
+                }}
               >
                 下一步
                 <ChevronRight className="w-4 h-4 ml-1" />
