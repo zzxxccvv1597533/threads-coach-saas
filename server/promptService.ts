@@ -17,12 +17,17 @@ import { eq, and } from "drizzle-orm";
 
 export const DEFAULT_AVOID_PATTERNS: Omit<PromptAvoidList, 'id' | 'createdAt' | 'updatedAt' | 'matchCount'>[] = [
   // 開頭句式
-  { pattern: "你是不是也", patternType: "opener", description: "過於常見的 AI 開頭句式，容易讓讀者感到制式", replacement: "直接描述具體情境或感受", severity: "warn", isActive: true, isUserDefined: false, userId: null },
-  { pattern: "你有沒有發現", patternType: "opener", description: "過於常見的 AI 開頭句式", replacement: "用具體觀察或數據開頭", severity: "warn", isActive: true, isUserDefined: false, userId: null },
+  { pattern: "你是不是也", patternType: "opener", description: "過於常見的 AI 開頭句式，容易讓讀者感到制式", replacement: "直接描述具體情境或感受", severity: "block", isActive: true, isUserDefined: false, userId: null },
+  { pattern: "你有沒有發現", patternType: "opener", description: "過於常見的 AI 開頭句式", replacement: "用具體觀察或數據開頭", severity: "block", isActive: true, isUserDefined: false, userId: null },
   { pattern: "很多人以為.*但其實", patternType: "opener", description: "過於制式的反差開頭", replacement: "直接點出反差，不用「很多人以為」", severity: "warn", isActive: true, isUserDefined: false, userId: null },
   { pattern: "你知道嗎", patternType: "opener", description: "過於常見的 AI 開頭句式", replacement: "直接陳述事實或觀點", severity: "suggest", isActive: true, isUserDefined: false, userId: null },
   { pattern: "今天想跟大家分享", patternType: "opener", description: "過於平淡的開頭", replacement: "直接進入主題，不需要鋪墊", severity: "suggest", isActive: true, isUserDefined: false, userId: null },
   { pattern: "最近我發現", patternType: "opener", description: "過於常見的 AI 開頭句式", replacement: "直接描述發現的內容", severity: "suggest", isActive: true, isUserDefined: false, userId: null },
+  
+  // 刻意口語詞
+  { pattern: "^真的[!！]", patternType: "opener", description: "過於刻意的口語開頭，容易顯得不自然", replacement: "直接進入主題，不需要「真的」開場", severity: "block", isActive: true, isUserDefined: false, userId: null },
+  { pattern: "^真的，", patternType: "opener", description: "過於刻意的口語開頭", replacement: "直接進入主題", severity: "warn", isActive: true, isUserDefined: false, userId: null },
+  { pattern: "你有沒有想過", patternType: "opener", description: "過於常見的 AI 開頭句式", replacement: "直接提出觀點或問題", severity: "block", isActive: true, isUserDefined: false, userId: null },
   
   // 過渡句式
   { pattern: "其實", patternType: "transition", description: "過度使用會顯得猶豫不決", replacement: "直接陳述觀點", severity: "suggest", isActive: true, isUserDefined: false, userId: null },
@@ -46,8 +51,14 @@ export const DEFAULT_AVOID_PATTERNS: Omit<PromptAvoidList, 'id' | 'createdAt' | 
   { pattern: "值得一提的是", patternType: "ai_phrase", description: "過於正式的過渡詞", replacement: "直接說出重點", severity: "suggest", isActive: true, isUserDefined: false, userId: null },
   { pattern: "不可否認", patternType: "ai_phrase", description: "過於正式的表達", replacement: "直接承認或表達", severity: "suggest", isActive: true, isUserDefined: false, userId: null },
   
+  // 感傷語調
+  { pattern: "其實我也", patternType: "transition", description: "容易顯得哀傷、猶豫", replacement: "直接表達", severity: "suggest", isActive: true, isUserDefined: false, userId: null },
+  { pattern: "可是我", patternType: "transition", description: "過多轉折會顯得哀傷", replacement: "直接表達", severity: "suggest", isActive: true, isUserDefined: false, userId: null },
+  { pattern: "却總是", patternType: "transition", description: "容易顯得感傷", replacement: "用更有力量的表達", severity: "suggest", isActive: true, isUserDefined: false, userId: null },
+  { pattern: "却還是", patternType: "transition", description: "容易顯得感傷", replacement: "用更有力量的表達", severity: "suggest", isActive: true, isUserDefined: false, userId: null },
+  
   // 填充詞
-  { pattern: "事實上", patternType: "filler", description: "過度使用會顯得囉嗦", replacement: "直接陳述事實", severity: "suggest", isActive: true, isUserDefined: false, userId: null },
+  { pattern: "事實上", patternType: "filler", description: "過度使用會顯得囉唆", replacement: "直接陳述事實", severity: "suggest", isActive: true, isUserDefined: false, userId: null },
   { pattern: "實際上", patternType: "filler", description: "過度使用會顯得囉嗦", replacement: "直接陳述", severity: "suggest", isActive: true, isUserDefined: false, userId: null },
   { pattern: "基本上", patternType: "filler", description: "過度使用會顯得不確定", replacement: "直接陳述", severity: "suggest", isActive: true, isUserDefined: false, userId: null },
   { pattern: "簡單來說", patternType: "filler", description: "過度使用會顯得囉嗦", replacement: "直接簡化表達", severity: "suggest", isActive: true, isUserDefined: false, userId: null },
