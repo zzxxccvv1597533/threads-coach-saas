@@ -282,6 +282,18 @@ export default function WritingStudio() {
     getStoredState("editMode", "preserve") as 'light' | 'preserve' | 'rewrite'
   );
   
+  // 快速風格標籤（進階模式）
+  const [selectedHookStyleTag, setSelectedHookStyleTag] = useState<string | null>(null);
+  
+  // 風格標籤定義
+  const HOOK_STYLE_TAGS = [
+    { id: 'mirror', emoji: '🪞', label: '鏡像心理', description: '讓讀者覺得「這不就是在說我嗎！」' },
+    { id: 'scene', emoji: '🎬', label: '情境化帶入', description: '用具體場景讓讀者身歷其境' },
+    { id: 'dialogue', emoji: '💬', label: '對話型', description: '模擬真實對話，創造親近感' },
+    { id: 'contrast', emoji: '⚡', label: '反差型', description: '用意外的轉折吸引注意' },
+    { id: 'casual', emoji: '💭', label: '閒聊型', description: '像朋友聊天一樣自然' },
+  ];
+  
   // 診斷結果
   const [diagnosis, setDiagnosis] = useState<{
     strengths: Array<{ label: string; description: string }>;
@@ -447,7 +459,11 @@ export default function WritingStudio() {
       toast.error("請先輸入你的素材");
       return;
     }
-    analyzeAngles.mutate({ material });
+    // 傳遞風格標籤（如果有選擇的話）
+    analyzeAngles.mutate({ 
+      material,
+      hookStyle: selectedHookStyleTag || undefined
+    });
   };
 
   const handleGenerateDraft = () => {
@@ -814,6 +830,46 @@ export default function WritingStudio() {
                       <span>🚀 <strong>爆款改寫</strong>：完整套用爆款公式，加入 Hook、CTA 等元素（推薦用於知識型內容）</span>
                     )}
                   </div>
+                </div>
+
+                {/* 快速風格標籤（可選） */}
+                <div className="space-y-3 p-4 bg-muted/30 rounded-lg border border-border/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-foreground">開頭風格</span>
+                      <span className="text-xs text-muted-foreground">(可選)</span>
+                    </div>
+                    {selectedHookStyleTag && (
+                      <button
+                        onClick={() => setSelectedHookStyleTag(null)}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        清除選擇
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {HOOK_STYLE_TAGS.map((tag) => (
+                      <button
+                        key={tag.id}
+                        onClick={() => setSelectedHookStyleTag(selectedHookStyleTag === tag.id ? null : tag.id)}
+                        className={`px-3 py-2 text-sm rounded-lg transition-all border flex items-center gap-1.5 ${
+                          selectedHookStyleTag === tag.id
+                            ? 'bg-primary/10 text-primary border-primary/30'
+                            : 'bg-background text-muted-foreground border-border hover:bg-muted/50 hover:text-foreground'
+                        }`}
+                        title={tag.description}
+                      >
+                        <span>{tag.emoji}</span>
+                        <span>{tag.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {selectedHookStyleTag && (
+                    <div className="text-xs text-primary/80 p-2 bg-primary/5 rounded-md">
+                      💡 AI 將優先使用「{HOOK_STYLE_TAGS.find(t => t.id === selectedHookStyleTag)?.label}」風格來生成開頭
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-3">

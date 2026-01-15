@@ -1,7 +1,7 @@
 /**
  * GuidedWritingFlow - 完整引導式發文流程
  * 
- * 流程：選題 → 選類型 → 填寫專屬欄位 → 選 Hook 風格 → 生成 Hook → 選定 Hook → 生成全文 → 對話修改 → 人味潤飾
+ * 流程：選題 → 選類型 → 填寫專屬欄位 → 選擇開頭 → 生成全文 → 對話修改 → 人味潤飾
  */
 
 import { useState, useRef, useEffect } from "react";
@@ -29,7 +29,7 @@ import {
   ArrowRight,
   Info,
 } from "lucide-react";
-import { ALL_CONTENT_TYPES_V2, HOOK_STYLES_V2 } from "@shared/content-types-v2";
+import { ALL_CONTENT_TYPES_V2 } from "@shared/content-types-v2";
 
 interface GuidedWritingFlowProps {
   ipProfile: {
@@ -50,16 +50,15 @@ interface ChatMessage {
   content: string;
 }
 
-// 流程步驟定義
+// 流程步驟定義（已優化：刪除獨立的 Hook 風格選擇步驟，直接生成多種風格供選擇）
 const FLOW_STEPS = [
   { id: 1, name: "選題", description: "AI 根據你的人設推薦主題" },
   { id: 2, name: "選類型", description: "選擇貼文呈現方式" },
   { id: 3, name: "填資料", description: "填寫關鍵資訊" },
-  { id: 4, name: "選開頭", description: "選擇 Hook 風格" },
-  { id: 5, name: "Hook 選項", description: "選擇最吸引人的開頭" },
-  { id: 6, name: "生成全文", description: "AI 生成完整貼文" },
-  { id: 7, name: "對話修改", description: "與 AI 對話調整" },
-  { id: 8, name: "人味潤飾", description: "加入個人風格" },
+  { id: 4, name: "選開頭", description: "選擇最吸引人的開頭" },
+  { id: 5, name: "生成全文", description: "AI 生成完整貼文" },
+  { id: 6, name: "對話修改", description: "與 AI 對話調整" },
+  { id: 7, name: "人味潤飾", description: "加入個人風格" },
 ];
 
 export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, onComplete, onNavigateToIp }: GuidedWritingFlowProps) {
@@ -77,10 +76,9 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
   // Step 3: 填寫專屬欄位
   const [typeInputs, setTypeInputs] = useState<Record<string, string | string[]>>({});
   
-  // Step 4: 選 Hook 風格
-  const [selectedHookStyle, setSelectedHookStyle] = useState("");
+  // Step 4: Hook 選項 - 整合新的 Opener Generator（已移除獨立的風格選擇步驟）
   
-  // Step 5: Hook 選項 - 整合新的 Opener Generator
+  // Hook 選項狀態
   const [hookOptions, setHookOptions] = useState<Array<{ 
     style: string; 
     styleName: string; 
@@ -93,17 +91,17 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
   }>>([]);
   const [selectedHook, setSelectedHook] = useState("");
   
-  // Step 6: 生成全文
+  // Step 5: 生成全文
   const [draftContent, setDraftContent] = useState("");
   const [draftId, setDraftId] = useState<number | null>(null);
   
-  // Step 7: 對話修改
+  // Step 6: 對話修改
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isChatting, setIsChatting] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   
-  // Step 8: 人味潤飾
+  // Step 7: 人味潤飾
   const [catchphrases, setCatchphrases] = useState("");
   const [speakingStyle, setSpeakingStyle] = useState("");
   const [finalContent, setFinalContent] = useState("");
@@ -144,7 +142,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       }));
       console.log('[generateOpeners] Transformed hooks:', transformedHooks);
       setHookOptions(transformedHooks);
-      setCurrentStep(5);
+      setCurrentStep(4);
       toast.success(`已生成 ${data.candidates.length} 個開頭選項！`);
     },
     onError: (error) => {
@@ -170,7 +168,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         candidateId: undefined,
         templateCategory: undefined,
       })) : []);
-      setCurrentStep(5);
+      setCurrentStep(4);
       toast.success("Hook 選項已生成！");
     },
     onError: () => {
@@ -186,7 +184,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       if (data.diagnosis) {
         setDiagnosis(data.diagnosis);
       }
-      setCurrentStep(7);
+      setCurrentStep(6);
       toast.success("草稿已生成！");
     },
     onError: (error) => {
@@ -259,7 +257,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
     generateOpeners.mutate({
       topic: selectedTopic.title,
       contentType: selectedContentType,
-      hookStyle: selectedHookStyle || undefined,
+      // hookStyle 已移除，讓 AI 自動生成多種風格
       userContext: Object.entries(typeInputs)
         .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : (v as string || '')}`)
         .join('\n'),
@@ -656,78 +654,13 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
               </Button>
               <Button 
                 className="flex-1"
-                onClick={() => setCurrentStep(4)}
-              >
-                下一步
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Step 4: 選擇 Hook 風格 */}
-      {currentStep === 4 && (
-        <Card className="elegant-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
-                4
-              </span>
-              選擇開頭風格
-            </CardTitle>
-            <CardDescription>
-              選擇你想要的開頭呈現方式，AI 會根據這個風格生成多個 Hook 選項
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <RadioGroup
-              value={selectedHookStyle}
-              onValueChange={setSelectedHookStyle}
-              className="grid gap-3"
-            >
-              {HOOK_STYLES_V2.map((style) => (
-                <div
-                  key={style.id}
-                  className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                    selectedHookStyle === style.id
-                      ? "border-primary bg-primary/5"
-                      : "hover:border-primary/50"
-                  }`}
-                  onClick={() => setSelectedHookStyle(style.id)}
-                >
-                  <div className="flex items-start gap-3">
-                    <RadioGroupItem value={style.id} id={style.id} className="mt-1" />
-                    <div className="flex-1">
-                      <Label htmlFor={style.id} className="font-medium cursor-pointer">
-                        {style.name}
-                      </Label>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {style.description}
-                      </p>
-                      <p className="text-xs text-primary/70 mt-1 italic">
-                        「{style.example}」
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </RadioGroup>
-
-            <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(3)}>
-                <ChevronLeft className="w-4 h-4 mr-1" />
-                上一步
-              </Button>
-              <Button 
-                className="flex-1"
-                disabled={!selectedHookStyle || generateOpeners.isPending}
+                disabled={generateOpeners.isPending}
                 onClick={handleGenerateHooks}
               >
                 {generateOpeners.isPending ? (
                   <>
                     <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    AI 正在生成多個開頭選項...
+                    AI 正在生成開頭選項...
                   </>
                 ) : (
                   <>
@@ -741,15 +674,15 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
         </Card>
       )}
 
-      {/* Step 5: Hook 選項 */}
-      {currentStep === 5 && (
+      {/* Step 4: Hook 選項（已優化：直接生成多種風格供選擇） */}
+      {currentStep === 4 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
-                5
+                4
               </span>
-              選擇 Hook
+              選擇開頭
             </CardTitle>
             <CardDescription>
               AI 生成了 {hookOptions.length} 個開頭選項，選擇最吸引你的那個
@@ -785,28 +718,43 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
             {hookOptions.map((hook, index) => {
               // 計算自然度分數（100 - AI分數）
               const naturalScore = hook.aiScore !== undefined ? Math.round((1 - hook.aiScore) * 100) : null;
-              const getScoreColor = (score: number | null) => {
-                if (score === null) return 'bg-gray-500';
-                if (score >= 80) return 'bg-green-500';
-                if (score >= 60) return 'bg-blue-500';
-                if (score >= 40) return 'bg-yellow-500';
-                return 'bg-red-500';
+              
+              // 類別中文映射
+              const categoryLabels: Record<string, { emoji: string; label: string }> = {
+                'mirror': { emoji: '🪞', label: '鏡像心理' },
+                'contrast': { emoji: '⚡', label: '反差型' },
+                'scene': { emoji: '🎬', label: '情境化帶入' },
+                'question': { emoji: '❓', label: '提問型' },
+                'data': { emoji: '📊', label: '數據型' },
+                'story': { emoji: '📖', label: '故事型' },
+                'emotion': { emoji: '💫', label: '情緒型' },
+                'dialogue': { emoji: '💬', label: '對話型' },
+                'casual': { emoji: '💭', label: '閒聊型' },
               };
-              const getScoreText = (score: number | null) => {
-                if (score === null) return '未檢測';
-                if (score >= 80) return '非常自然';
-                if (score >= 60) return '較自然';
-                if (score >= 40) return '有 AI 痕跡';
-                return 'AI 感明顯';
+              
+              const getCategoryDisplay = (category: string) => {
+                return categoryLabels[category] || { emoji: '✨', label: category || '自訂風格' };
               };
+              
+              const getScoreStyle = (score: number | null) => {
+                if (score === null) return { bg: 'bg-gray-100', text: 'text-gray-600', label: '未檢測' };
+                if (score >= 80) return { bg: 'bg-emerald-100', text: 'text-emerald-700', label: '非常自然' };
+                if (score >= 60) return { bg: 'bg-blue-100', text: 'text-blue-700', label: '較自然' };
+                if (score >= 40) return { bg: 'bg-amber-100', text: 'text-amber-700', label: '有 AI 痕跡' };
+                return { bg: 'bg-red-100', text: 'text-red-700', label: 'AI 感明顯' };
+              };
+              
+              const categoryDisplay = getCategoryDisplay(hook.templateCategory || hook.styleName || '');
+              const scoreStyle = getScoreStyle(naturalScore);
+              const isSelected = selectedHook === hook.content;
 
               return (
                 <div
                   key={index}
-                  className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                    selectedHook === hook.content
-                      ? "border-primary bg-primary/5"
-                      : "hover:border-primary/50"
+                  className={`relative border-2 rounded-xl p-5 cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.01] ${
+                    isSelected
+                      ? "border-primary bg-primary/5 shadow-lg ring-2 ring-primary/20"
+                      : "border-transparent bg-card hover:border-muted-foreground/20"
                   }`}
                   onClick={() => {
                     setSelectedHook(hook.content);
@@ -816,50 +764,56 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
                     }
                   }}
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">
-                          {hook.styleName || hook.templateCategory || '自訂風格'}
-                        </Badge>
-                        {naturalScore !== null && (
-                          <Badge 
-                            variant="outline" 
-                            className={`text-xs ${getScoreColor(naturalScore)} text-white border-0`}
-                          >
-                            {naturalScore}% {getScoreText(naturalScore)}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="font-medium text-lg">
-                        「{hook.content}」
-                      </div>
-                      {hook.aiLevel && (
-                        <div className="text-sm text-muted-foreground">
-                          {hook.aiLevel === 'very_natural' && '✅ 這個開頭非常自然，推薦使用！'}
-                          {hook.aiLevel === 'natural' && '✅ 這個開頭較自然'}
-                          {hook.aiLevel === 'has_ai_traces' && '⚠️ 有一些 AI 痕跡，建議微調'}
-                          {hook.aiLevel === 'obvious_ai' && '⚠️ AI 感較重，建議選擇其他選項'}
-                        </div>
-                      )}
+                  {/* 頂部：風格標籤和自然度 */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-sm font-medium px-3 py-1 bg-background">
+                        <span className="mr-1.5">{categoryDisplay.emoji}</span>
+                        {categoryDisplay.label}
+                      </Badge>
                     </div>
-                    <Button 
-                      size="sm" 
-                      variant={selectedHook === hook.content ? "default" : "outline"}
-                    >
-                      {selectedHook === hook.content ? (
-                        <><Check className="w-4 h-4 mr-1" /> 已選</>
-                      ) : (
-                        <>選擇</>
-                      )}
-                    </Button>
+                    {naturalScore !== null && (
+                      <Badge 
+                        variant="secondary" 
+                        className={`text-xs font-medium px-3 py-1 ${scoreStyle.bg} ${scoreStyle.text}`}
+                      >
+                        {naturalScore}% {scoreStyle.label}
+                      </Badge>
+                    )}
                   </div>
+                  
+                  {/* 開頭文字 - 更好的排版 */}
+                  <div className={`relative rounded-lg p-4 bg-muted/30 ${isSelected ? 'bg-primary/5' : ''}`}>
+                    <p className="text-base leading-relaxed whitespace-pre-wrap text-foreground">
+                      {hook.content}
+                    </p>
+                    
+                    {/* 選中標記 */}
+                    {isSelected && (
+                      <div className="absolute top-3 right-3">
+                        <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center shadow-md">
+                          <Check className="h-4 w-4 text-white" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* AI 痕跡提示 */}
+                  {hook.aiLevel && naturalScore !== null && naturalScore < 60 && (
+                    <div className="mt-3 flex items-start gap-2 text-xs text-amber-600 bg-amber-50 rounded-md px-3 py-2">
+                      <span>⚠️</span>
+                      <span>
+                        {hook.aiLevel === 'has_ai_traces' && '有一些 AI 痕跡，建議微調後使用'}
+                        {hook.aiLevel === 'obvious_ai' && 'AI 感較重，建議選擇其他選項或進行修改'}
+                      </span>
+                    </div>
+                  )}
                 </div>
               );
             })}
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(4)}>
+              <Button variant="outline" onClick={() => setCurrentStep(3)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 上一步
               </Button>
@@ -885,18 +839,18 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
         </Card>
       )}
 
-      {/* Step 6 & 7: 生成結果與對話修改 */}
-      {(currentStep === 6 || currentStep === 7) && draftContent && (
+      {/* Step 5 & 6: 生成結果與對話修改 */}
+      {(currentStep === 5 || currentStep === 6) && draftContent && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
                 {currentStep}
               </span>
-              {currentStep === 6 ? "生成結果" : "對話修改"}
+              {currentStep === 5 ? "生成結果" : "對話修改"}
             </CardTitle>
             <CardDescription>
-              {currentStep === 6 ? "這是 AI 生成的草稿，你可以進行對話修改" : "告訴 AI 你想怎麼調整"}
+              {currentStep === 5 ? "這是 AI 生成的草稿，你可以進行對話修改" : "告訴 AI 你想怎麼調整"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -1016,13 +970,13 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(5)}>
+              <Button variant="outline" onClick={() => setCurrentStep(4)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
-                重新選 Hook
+                重新選開頭
               </Button>
               <Button 
                 className="flex-1"
-                onClick={() => setCurrentStep(8)}
+                onClick={() => setCurrentStep(7)}
               >
                 下一步：人味潤飾
                 <ChevronRight className="w-4 h-4 ml-1" />
@@ -1032,13 +986,13 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
         </Card>
       )}
 
-      {/* Step 8: 人味潤飾 */}
-      {currentStep === 8 && (
+      {/* Step 7: 人味潤飾 */}
+      {currentStep === 7 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
-                8
+                7
               </span>
               人味潤飾
             </CardTitle>
@@ -1078,7 +1032,7 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(7)}>
+              <Button variant="outline" onClick={() => setCurrentStep(6)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 繼續修改
               </Button>

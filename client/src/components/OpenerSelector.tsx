@@ -39,24 +39,31 @@ interface OpenerSelectorProps {
 
 // AI 分數等級對應的樣式
 const scoreStyles: Record<string, { color: string; bg: string; label: string }> = {
-  "非常自然": { color: "text-green-600", bg: "bg-green-50", label: "非常自然" },
-  "較自然": { color: "text-blue-600", bg: "bg-blue-50", label: "較自然" },
-  "有 AI 痕跡": { color: "text-yellow-600", bg: "bg-yellow-50", label: "有 AI 痕跡" },
-  "AI 感明顯": { color: "text-red-600", bg: "bg-red-50", label: "AI 感明顯" },
-  "error": { color: "text-gray-600", bg: "bg-gray-50", label: "生成失敗" },
+  "非常自然": { color: "text-emerald-700", bg: "bg-emerald-100", label: "非常自然" },
+  "較自然": { color: "text-blue-700", bg: "bg-blue-100", label: "較自然" },
+  "有 AI 痕跡": { color: "text-amber-700", bg: "bg-amber-100", label: "有 AI 痕跡" },
+  "AI 感明顯": { color: "text-red-700", bg: "bg-red-100", label: "AI 感明顯" },
+  "error": { color: "text-gray-600", bg: "bg-gray-100", label: "生成失敗" },
 };
 
-// 模板類別對應的 emoji
-const categoryEmoji: Record<string, string> = {
-  "mirror": "🪞",
-  "contrast": "🔄",
-  "scene": "🎬",
-  "question": "❓",
-  "data": "📊",
-  "story": "📖",
-  "emotion": "💫",
-  "other": "✨",
+// 模板類別對應的 emoji 和中文名稱
+const categoryInfo: Record<string, { emoji: string; label: string; description: string }> = {
+  "mirror": { emoji: "🪞", label: "鏡像心理", description: "說出受眾心聲" },
+  "contrast": { emoji: "⚡", label: "反差型", description: "打破預期認知" },
+  "scene": { emoji: "🎬", label: "情境化帶入", description: "具體場景描繪" },
+  "question": { emoji: "❓", label: "提問型", description: "引發讀者思考" },
+  "data": { emoji: "📊", label: "數據型", description: "用數字說話" },
+  "story": { emoji: "📖", label: "故事型", description: "敘事開場" },
+  "emotion": { emoji: "💫", label: "情緒型", description: "情感共鳴" },
+  "dialogue": { emoji: "💬", label: "對話型", description: "對話開場" },
+  "casual": { emoji: "💭", label: "閒聊型", description: "輕鬆自然" },
+  "other": { emoji: "✨", label: "其他", description: "其他風格" },
 };
+
+// 獲取類別的中文顯示信息
+function getCategoryDisplay(category: string) {
+  return categoryInfo[category] || categoryInfo["other"];
+}
 
 export function OpenerSelector({
   topic,
@@ -105,12 +112,19 @@ export function OpenerSelector({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* 標題區 */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-yellow-500" />
-          <h3 className="text-lg font-semibold">選擇開頭風格</h3>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-amber-100 to-yellow-100 rounded-xl">
+            <Sparkles className="h-5 w-5 text-amber-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold">選擇開頭風格</h3>
+            <p className="text-sm text-muted-foreground">
+              AI 為您生成了多個不同風格的開頭
+            </p>
+          </div>
         </div>
         {generateMutation.data && (
           <Button
@@ -118,32 +132,32 @@ export function OpenerSelector({
             size="sm"
             onClick={handleRegenerate}
             disabled={generateMutation.isPending}
+            className="gap-2"
           >
-            <RefreshCw className={cn("h-4 w-4 mr-1", generateMutation.isPending && "animate-spin")} />
+            <RefreshCw className={cn("h-4 w-4", generateMutation.isPending && "animate-spin")} />
             重新生成
           </Button>
         )}
       </div>
 
-      {/* 說明文字 */}
-      <p className="text-sm text-muted-foreground">
-        系統為您生成了多個不同風格的開頭，請選擇最符合您風格的版本
-      </p>
-
       {/* 載入中 */}
       {generateMutation.isPending && (
-        <div className="flex flex-col items-center justify-center py-12 space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex flex-col items-center justify-center py-16 space-y-4">
+          <div className="relative">
+            <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" />
+            <Loader2 className="h-10 w-10 animate-spin text-primary relative" />
+          </div>
           <p className="text-sm text-muted-foreground">正在生成開頭候選...</p>
         </div>
       )}
 
       {/* 錯誤狀態 */}
       {generateMutation.isError && (
-        <div className="flex flex-col items-center justify-center py-8 space-y-4">
-          <AlertTriangle className="h-8 w-8 text-red-500" />
-          <p className="text-sm text-red-600">生成失敗，請重試</p>
-          <Button onClick={handleRegenerate} variant="outline">
+        <div className="flex flex-col items-center justify-center py-12 space-y-4 bg-red-50 rounded-xl">
+          <AlertTriangle className="h-10 w-10 text-red-500" />
+          <p className="text-sm text-red-600 font-medium">生成失敗，請重試</p>
+          <Button onClick={handleRegenerate} variant="outline" className="gap-2">
+            <RefreshCw className="h-4 w-4" />
             重新生成
           </Button>
         </div>
@@ -151,106 +165,121 @@ export function OpenerSelector({
 
       {/* 候選列表 */}
       {generateMutation.data && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {/* 統計資訊 */}
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span>共 {generateMutation.data.candidates.length} 個候選</span>
-            <span>•</span>
-            <span>平均 AI 分數：{(generateMutation.data.avgAiScore * 100).toFixed(0)}%</span>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground bg-muted/50 rounded-lg px-4 py-2">
+            <span className="font-medium">共 {generateMutation.data.candidates.length} 個候選</span>
+            <span className="text-muted-foreground/50">•</span>
+            <span>平均自然度：{((1 - generateMutation.data.avgAiScore) * 100).toFixed(0)}%</span>
             {generateMutation.data.explorationCount > 0 && (
               <>
-                <span>•</span>
-                <span className="flex items-center gap-1">
-                  <Zap className="h-3 w-3 text-yellow-500" />
+                <span className="text-muted-foreground/50">•</span>
+                <span className="flex items-center gap-1 text-amber-600">
+                  <Zap className="h-3 w-3" />
                   {generateMutation.data.explorationCount} 個探索模式
                 </span>
               </>
             )}
           </div>
 
-          {/* 候選卡片 */}
-          {generateMutation.data.candidates.map((candidate, index) => {
-            const isSelected = selectedId === (candidate.id || candidate.templateId);
-            const scoreStyle = scoreStyles[candidate.scoreLevel] || scoreStyles["error"];
-            const emoji = categoryEmoji[candidate.templateCategory] || "✨";
+          {/* 候選卡片 - 改善布局 */}
+          <div className="grid gap-4">
+            {generateMutation.data.candidates.map((candidate, index) => {
+              const isSelected = selectedId === (candidate.id || candidate.templateId);
+              const scoreStyle = scoreStyles[candidate.scoreLevel] || scoreStyles["error"];
+              const categoryDisplay = getCategoryDisplay(candidate.templateCategory);
 
-            return (
-              <Card
-                key={candidate.id || index}
-                className={cn(
-                  "cursor-pointer transition-all duration-200 hover:shadow-md",
-                  isSelected && "ring-2 ring-primary shadow-md",
-                  candidate.isExploration && "border-dashed border-yellow-400"
-                )}
-                onClick={() => handleSelect(candidate)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    {/* 排名 */}
-                    <div className={cn(
-                      "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
-                      index === 0 ? "bg-yellow-100 text-yellow-700" :
-                      index === 1 ? "bg-gray-100 text-gray-700" :
-                      index === 2 ? "bg-orange-100 text-orange-700" :
-                      "bg-gray-50 text-gray-500"
-                    )}>
-                      {candidate.rank}
-                    </div>
-
-                    {/* 內容 */}
-                    <div className="flex-1 min-w-0">
-                      {/* 標籤列 */}
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <Badge variant="outline" className="text-xs">
-                          {emoji} {candidate.templateName}
-                        </Badge>
+              return (
+                <Card
+                  key={candidate.id || index}
+                  className={cn(
+                    "cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.01]",
+                    "border-2",
+                    isSelected 
+                      ? "border-primary shadow-lg ring-2 ring-primary/20" 
+                      : "border-transparent hover:border-muted-foreground/20",
+                    candidate.isExploration && "bg-gradient-to-r from-amber-50/50 to-transparent"
+                  )}
+                  onClick={() => handleSelect(candidate)}
+                >
+                  <CardContent className="p-5">
+                    {/* 頂部：風格標籤和自然度 */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        {/* 風格類別標籤 - 使用中文 */}
                         <Badge 
-                          variant="secondary" 
-                          className={cn("text-xs", scoreStyle.color, scoreStyle.bg)}
+                          variant="outline" 
+                          className="text-sm font-medium px-3 py-1 bg-background"
                         >
-                          {scoreStyle.label} ({(candidate.aiScore * 100).toFixed(0)}%)
+                          <span className="mr-1.5">{categoryDisplay.emoji}</span>
+                          {categoryDisplay.label}
                         </Badge>
+                        
+                        {/* 模板名稱 */}
+                        <span className="text-xs text-muted-foreground">
+                          {candidate.templateName}
+                        </span>
+                        
                         {candidate.isExploration && (
-                          <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-400">
+                          <Badge 
+                            variant="outline" 
+                            className="text-xs text-amber-600 border-amber-300 bg-amber-50"
+                          >
                             <Zap className="h-3 w-3 mr-1" />
-                            探索模式
+                            探索
                           </Badge>
                         )}
                       </div>
+                      
+                      {/* 自然度評級 */}
+                      <Badge 
+                        variant="secondary" 
+                        className={cn("text-xs font-medium px-3 py-1", scoreStyle.color, scoreStyle.bg)}
+                      >
+                        {((1 - candidate.aiScore) * 100).toFixed(0)}% {scoreStyle.label}
+                      </Badge>
+                    </div>
 
-                      {/* 開頭文字 */}
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                    {/* 開頭文字 - 更好的排版 */}
+                    <div className={cn(
+                      "relative rounded-lg p-4 bg-muted/30",
+                      isSelected && "bg-primary/5"
+                    )}>
+                      <p className="text-base leading-relaxed whitespace-pre-wrap text-foreground">
                         {candidate.openerText}
                       </p>
-
-                      {/* AI 痕跡提示 */}
-                      {candidate.aiFlags.length > 0 && candidate.aiScore > 0.4 && (
-                        <div className="mt-2 text-xs text-yellow-600 flex items-center gap-1">
-                          <AlertTriangle className="h-3 w-3" />
-                          <span>偵測到：{candidate.aiFlags.slice(0, 2).join("、")}</span>
+                      
+                      {/* 選中標記 */}
+                      {isSelected && (
+                        <div className="absolute top-3 right-3">
+                          <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center shadow-md">
+                            <Check className="h-4 w-4 text-white" />
+                          </div>
                         </div>
                       )}
                     </div>
 
-                    {/* 選中標記 */}
-                    {isSelected && (
-                      <div className="flex-shrink-0">
-                        <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                          <Check className="h-4 w-4 text-white" />
-                        </div>
+                    {/* AI 痕跡提示 - 更友好的呈現 */}
+                    {candidate.aiFlags.length > 0 && candidate.aiScore > 0.4 && (
+                      <div className="mt-3 flex items-start gap-2 text-xs text-amber-600 bg-amber-50 rounded-md px-3 py-2">
+                        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                        <span>
+                          <span className="font-medium">優化建議：</span>
+                          {candidate.aiFlags.slice(0, 2).join("、")}
+                        </span>
                       </div>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </div>
       )}
 
       {/* 底部按鈕 */}
       {onCancel && (
-        <div className="flex justify-end gap-2 pt-4 border-t">
+        <div className="flex justify-end gap-3 pt-4 border-t">
           <Button variant="outline" onClick={onCancel}>
             取消
           </Button>
