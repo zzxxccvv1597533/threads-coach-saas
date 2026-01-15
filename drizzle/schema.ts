@@ -212,11 +212,13 @@ export const draftPosts = mysqlTable("draft_posts", {
   body: text("body"),
   cta: text("cta"),
   status: mysqlEnum("status", ["draft", "published", "archived"]).default("draft"),
+  // AI 痕跡檢測結果
+  aiScore: decimal("aiScore", { precision: 5, scale: 4 }), // AI 痕跡分數（0-1，越低越好）
+  aiFlags: json("aiFlags").$type<string[]>(), // AI 痕跡標記
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
-
-export type DraftPost = typeof draftPosts.$inferSelect;
+export type DraftPost = typeof draftPosts.$inferSelect;;
 export type InsertDraftPost = typeof draftPosts.$inferInsert;
 
 export const draftHooks = mysqlTable("draft_hooks", {
@@ -910,3 +912,29 @@ export const systemEventLogs = mysqlTable("system_event_logs", {
 
 export type SystemEventLog = typeof systemEventLogs.$inferSelect;
 export type InsertSystemEventLog = typeof systemEventLogs.$inferInsert;
+
+
+// ============================================
+// 用戶模板偏好（學習式 Selector）
+// ============================================
+export const userTemplatePreferences = mysqlTable("user_template_preferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  templateCategory: varchar("templateCategory", { length: 64 }).notNull(), // 模板類別（mirror, scene, dialogue 等）
+  // 偏好分數
+  preferenceScore: decimal("preferenceScore", { precision: 5, scale: 4 }).default("0.5"), // 偏好分數（0-1）
+  // 統計數據
+  totalShown: int("totalShown").default(0), // 總共展示次數
+  totalSelected: int("totalSelected").default(0), // 總共被選中次數
+  totalPublished: int("totalPublished").default(0), // 總共發布次數
+  totalViral: int("totalViral").default(0), // 爆文次數
+  // 效果統計
+  avgReach: int("avgReach").default(0), // 平均觸及
+  avgEngagement: int("avgEngagement").default(0), // 平均互動
+  // 時間戳
+  lastSelectedAt: timestamp("lastSelectedAt"), // 最後選中時間
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type UserTemplatePreference = typeof userTemplatePreferences.$inferSelect;
+export type InsertUserTemplatePreference = typeof userTemplatePreferences.$inferInsert;

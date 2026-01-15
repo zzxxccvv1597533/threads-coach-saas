@@ -12,7 +12,7 @@ import { eq } from "drizzle-orm";
 import { KNOWLEDGE_BASE, SYSTEM_PROMPTS, CONTENT_TYPES_WITH_VIRAL_ELEMENTS, FORBIDDEN_PHRASES, THREADS_STYLE_GUIDE, FOUR_LENS_FRAMEWORK } from "../shared/knowledge-base";
 import { executeContentHealthCheck, MAX_SCORES, DIMENSION_NAMES } from "./content-health-check";
 import { applyContentFilters, extractPreservedWords, extractEmotionWords, cleanAIOutput, filterProfanity } from "./contentFilters";
-import { buildDataDrivenSystemPrompt, buildDataDrivenUserPrompt, analyzeGeneratedContent, getDataDrivenSummary, collectDataDrivenContext } from "./data-driven-prompt-builder";
+import { buildDataDrivenSystemPrompt, buildDataDrivenUserPrompt, analyzeGeneratedContent, getDataDrivenSummary, collectDataDrivenContext, calculateStyleMatch } from "./data-driven-prompt-builder";
 import { selectRandomOpenerPattern, extractMaterialKeywords } from "../shared/opener-rules";
 import { generateMultipleOpeners, markOpenerSelected, type OpenerCandidate } from "./openerGenerator";
 import { selectAndRank, getTopN } from "./selector";
@@ -1240,6 +1240,147 @@ ${input.content}` }
 
   // ==================== AI 功能 ====================
   ai: router({
+    // 智能內容建議 - 發文工作室首頁個性化建議
+    getSmartSuggestions: protectedProcedure
+      .query(async ({ ctx }) => {
+        const profile = await db.getIpProfileByUserId(ctx.user.id);
+        const growthMetrics = await db.getUserGrowthMetrics(ctx.user.id);
+        const userStyle = await db.getUserWritingStyle(ctx.user.id);
+        const recentDrafts = await db.getDraftsByUserId(ctx.user.id);
+        const recentPosts = await db.getPostsByUserId(ctx.user.id);
+        
+        // 分析最近發文類型分佈
+        const recentContentTypes: Record<string, number> = {};
+        const recentDraftsSlice = recentDrafts.slice(0, 20);
+        for (const draft of recentDraftsSlice) {
+          const type = draft.contentType || 'unknown';
+          recentContentTypes[type] = (recentContentTypes[type] || 0) + 1;
+        }
+        
+        // 分析戰報表現（基於草稿的內容類型）
+        const performanceByType: Record<string, { total: number; avgEngagement: number }> = {};
+        for (const draft of recentDraftsSlice) {
+          const type = draft.contentType || 'unknown';
+          if (!performanceByType[type]) {
+            performanceByType[type] = { total: 0, avgEngagement: 0 };
+          }
+          performanceByType[type].total += 1;
+          // 簡化計算：已發布的草稿有更高權重
+          performanceByType[type].avgEngagement += draft.status === 'published' ? 2 : 1;
+        }
+        
+        // 計算平均互動
+        for (const type of Object.keys(performanceByType)) {
+          if (performanceByType[type].total > 0) {
+            performanceByType[type].avgEngagement /= performanceByType[type].total;
+          }
+        }
+        
+        // 找出表現最好的內容類型
+        const bestPerformingTypes = Object.entries(performanceByType)
+          .sort((a, b) => b[1].avgEngagement - a[1].avgEngagement)
+          .slice(0, 3)
+          .map(([type]) => type);
+        
+        // 找出最少發佈的內容類型（多樣性建議）
+        const allContentTypes = ['story', 'knowledge', 'opinion', 'dialogue', 'contrast', 'casual', 'question', 'poll'];
+        const underusedTypes = allContentTypes.filter(type => !recentContentTypes[type] || recentContentTypes[type] < 2);
+        
+        // 產生建議
+        const suggestions: Array<{
+          type: 'content_type' | 'topic' | 'timing' | 'style';
+          title: string;
+          description: string;
+          action?: string;
+          priority: 'high' | 'medium' | 'low';
+        }> = [];
+        
+        // 建議 1: 基於表現最好的類型
+        if (bestPerformingTypes.length > 0) {
+          const contentTypeNames: Record<string, string> = {
+            story: '故事型', knowledge: '知識型', opinion: '觀點型',
+            dialogue: '對話型', contrast: '反差型', casual: '閒聊型',
+            question: '提問型', poll: '投票型'
+          };
+          suggestions.push({
+            type: 'content_type',
+            title: `你的「${contentTypeNames[bestPerformingTypes[0]] || bestPerformingTypes[0]}」表現最好`,
+            description: `根據戰報分析，這個類型的互動率最高，建議繼續發布`,
+            action: bestPerformingTypes[0],
+            priority: 'high'
+          });
+        }
+        
+        // 建議 2: 多樣性建議
+        if (underusedTypes.length > 0) {
+          const contentTypeNames: Record<string, string> = {
+            story: '故事型', knowledge: '知識型', opinion: '觀點型',
+            dialogue: '對話型', contrast: '反差型', casual: '閒聊型',
+            question: '提問型', poll: '投票型'
+          };
+          suggestions.push({
+            type: 'content_type',
+            title: `試試「${contentTypeNames[underusedTypes[0]] || underusedTypes[0]}」吧`,
+            description: `你最近較少發布這類內容，多樣化可以吸引不同受眾`,
+            action: underusedTypes[0],
+            priority: 'medium'
+          });
+        }
+        
+        // 建議 3: 基於經營階段
+        const stage = growthMetrics?.currentStage || 'startup';
+        const stageAdvice: Record<string, { title: string; description: string }> = {
+          startup: {
+            title: '起步階段：多分享個人故事',
+            description: '建立人設和信任感，先不要推銷'
+          },
+          growth: {
+            title: '成長階段：強化專業內容',
+            description: '分享更多專業知識，建立權威感'
+          },
+          monetize: {
+            title: '變現階段：可以開始導流',
+            description: '適度加入導流內容，但保持價值輸出'
+          },
+          scale: {
+            title: '規模化階段：建立內容矩陣',
+            description: '系統化內容產出，建立內容資產'
+          }
+        };
+        if (stageAdvice[stage]) {
+          suggestions.push({
+            type: 'topic',
+            title: stageAdvice[stage].title,
+            description: stageAdvice[stage].description,
+            priority: 'medium'
+          });
+        }
+        
+        // 建議 4: 風格建議
+        if (userStyle?.hookStylePreference) {
+          const hookStyleNames: Record<string, string> = {
+            mirror: '鏡像心理', scene: '情境化帶入',
+            dialogue: '對話型', contrast: '反差型', casual: '閒聊型'
+          };
+          suggestions.push({
+            type: 'style',
+            title: `你常用「${hookStyleNames[userStyle.hookStylePreference] || userStyle.hookStylePreference}」開頭`,
+            description: '這是你的特色，但也可以嘗試其他風格增加變化',
+            priority: 'low'
+          });
+        }
+        
+        return {
+          suggestions: suggestions.slice(0, 4),
+          stats: {
+            totalDrafts: recentDrafts.length,
+            totalPosts: recentPosts.length,
+            bestPerformingTypes,
+            currentStage: stage
+          }
+        };
+      }),
+
     // 腦力激盪（沒靈感時）- 強化版
     brainstorm: protectedProcedure
       .input(z.object({
@@ -2663,6 +2804,29 @@ ${selectedOpenerPattern?.examples?.slice(0, 3).map((e: string, i: number) => `${
         // ✅ 數據驅動分析結果
         const dataDrivenAnalysis = analyzeGeneratedContent(generatedContent, input.contentType);
         
+        // ✅ 風格匹配度計算
+        const styleMatchResult = calculateStyleMatch(
+          generatedContent,
+          userStyle ? {
+            toneStyle: userStyle.toneStyle,
+            commonPhrases: userStyle.commonPhrases as string[] | null,
+            catchphrases: userStyle.catchphrases as string[] | null,
+            hookStylePreference: userStyle.hookStylePreference,
+            metaphorStyle: userStyle.metaphorStyle,
+            emotionRhythm: userStyle.emotionRhythm,
+          } : null,
+          profile ? {
+            profession: profile.occupation,
+            pillars: {
+              authority: profile.personaExpertise || undefined,
+              resonance: profile.personaEmotion || undefined,
+              uniqueness: profile.personaViewpoint || undefined,
+            },
+            targetAudience: profile.contentMatrixAudiences ? (profile.contentMatrixAudiences as any).core : null,
+            beliefs: profile.viewpointStatement,
+          } : null
+        );
+        
         return {
           content: generatedContent,
           draftId: draft?.id,
@@ -2676,6 +2840,8 @@ ${selectedOpenerPattern?.examples?.slice(0, 3).map((e: string, i: number) => `${
             materialKeywords: materialKeywords,
             analysis: dataDrivenAnalysis,
           },
+          // 風格匹配度
+          styleMatch: styleMatchResult,
         };
       }),
 
@@ -5417,6 +5583,92 @@ ${sampleTexts}
       .mutation(async ({ input }) => {
         const result = await quickDetect(input.content);
         return result;
+      }),
+  }),
+
+  // 學習式 Selector API
+  selector: router({
+    // 獲取用戶模板偏好
+    getPreferences: protectedProcedure.query(async ({ ctx }) => {
+      const preferences = await db.getUserTemplatePreferences(ctx.user.id);
+      return preferences.map(p => ({
+        templateCategory: p.templateCategory,
+        preferenceScore: parseFloat(p.preferenceScore || '0.5'),
+        totalShown: p.totalShown || 0,
+        totalSelected: p.totalSelected || 0,
+        totalPublished: p.totalPublished || 0,
+        totalViral: p.totalViral || 0,
+      }));
+    }),
+
+    // 獲取學習進度摘要
+    getLearningProgress: protectedProcedure.query(async ({ ctx }) => {
+      const preferences = await db.getUserTemplatePreferences(ctx.user.id);
+      
+      const totalSelections = preferences.reduce((sum, p) => sum + (p.totalSelected || 0), 0);
+      
+      // 排序獲取前 3 個偏好
+      const topPreferences = [...preferences]
+        .sort((a, b) => parseFloat(b.preferenceScore || '0.5') - parseFloat(a.preferenceScore || '0.5'))
+        .slice(0, 3)
+        .map(p => ({
+          category: p.templateCategory,
+          score: parseFloat(p.preferenceScore || '0.5'),
+          label: {
+            mirror: '鏡像心理',
+            scene: '情境化帶入',
+            dialogue: '對話型',
+            contrast: '反差型',
+            casual: '閒聊型',
+            question: '提問型',
+            story: '故事型',
+            quote: '引用型',
+          }[p.templateCategory] || p.templateCategory,
+        }));
+      
+      // 計算學習進度（10 次選擇 = 50%，30 次選擇 = 90%，50+ 次 = 100%）
+      const learningProgress = Math.min(100, Math.round((totalSelections / 50) * 100));
+      
+      return {
+        totalSelections,
+        topPreferences,
+        learningProgress,
+        hasEnoughData: totalSelections >= 5,
+      };
+    }),
+
+    // 記錄用戶選擇（當用戶選擇某個開頭時調用）
+    recordSelection: protectedProcedure
+      .input(z.object({
+        templateCategory: z.string(),
+        wasSelected: z.boolean(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { templateCategory, wasSelected } = input;
+        
+        // 獲取當前偏好
+        const preferences = await db.getUserTemplatePreferences(ctx.user.id);
+        const currentPref = preferences.find(p => p.templateCategory === templateCategory);
+        const currentScore = parseFloat(currentPref?.preferenceScore || '0.5');
+        
+        // 計算新的偏好分數（使用 EMA）
+        const alpha = 0.2; // 學習率
+        const targetScore = wasSelected ? 1 : 0;
+        const newScore = currentScore + alpha * (targetScore - currentScore);
+        const clampedScore = Math.max(0.1, Math.min(0.9, newScore));
+        
+        // 更新偏好
+        if (wasSelected) {
+          await db.incrementTemplatePreferenceStats(ctx.user.id, templateCategory, 'totalSelected');
+        }
+        await db.incrementTemplatePreferenceStats(ctx.user.id, templateCategory, 'totalShown');
+        
+        // 更新偏好分數
+        await db.upsertUserTemplatePreference(ctx.user.id, templateCategory, {
+          preferenceScore: clampedScore.toFixed(4),
+        });
+        
+        return { success: true, newScore: clampedScore };
       }),
   }),
 });

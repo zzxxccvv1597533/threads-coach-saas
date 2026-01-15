@@ -302,3 +302,104 @@ export function ensureCategoryDiversity(
     .sort((a, b) => b.finalScore - a.finalScore)
     .map((c, i) => ({ ...c, rank: i + 1 }));
 }
+
+
+// ============================================
+// 學習式 Selector
+// ============================================
+
+export interface UserPreference {
+  templateCategory: string;
+  preferenceScore: number;
+  totalShown: number;
+  totalSelected: number;
+}
+
+/**
+ * 根據用戶偏好調整候選排序
+ */
+export function applyUserPreferences(
+  candidates: RankedCandidate[],
+  userPreferences: UserPreference[]
+): RankedCandidate[] {
+  if (userPreferences.length === 0) {
+    return candidates;
+  }
+  
+  // 建立偏好映射
+  const preferenceMap = new Map<string, number>();
+  for (const pref of userPreferences) {
+    preferenceMap.set(pref.templateCategory, pref.preferenceScore);
+  }
+  
+  // 調整分數
+  const adjustedCandidates = candidates.map(candidate => {
+    const category = candidate.templateCategory;
+    const preferenceBonus = preferenceMap.get(category) || 0.5;
+    
+    // 偏好加成：偏好分數 * 0.2（最多加 0.2 分）
+    const adjustedScore = candidate.finalScore + (preferenceBonus - 0.5) * 0.4;
+    
+    return {
+      ...candidate,
+      finalScore: adjustedScore,
+      scoreBreakdown: {
+        ...candidate.scoreBreakdown,
+        preferenceBonus: (preferenceBonus - 0.5) * 0.4,
+      },
+    };
+  });
+  
+  // 重新排序
+  return adjustedCandidates
+    .sort((a, b) => b.finalScore - a.finalScore)
+    .map((c, i) => ({ ...c, rank: i + 1 }));
+}
+
+/**
+ * 計算新的偏好分數
+ * 使用 Exponential Moving Average (EMA) 來平滑更新
+ */
+export function calculateNewPreferenceScore(
+  currentScore: number,
+  wasSelected: boolean,
+  alpha: number = 0.2 // 學習率
+): number {
+  const targetScore = wasSelected ? 1 : 0;
+  const newScore = currentScore + alpha * (targetScore - currentScore);
+  
+  // 限制在 0.1 到 0.9 之間，避免極端值
+  return Math.max(0.1, Math.min(0.9, newScore));
+}
+
+/**
+ * 獲取用戶的學習進度摘要
+ */
+export function getLearningProgressSummary(
+  preferences: UserPreference[]
+): {
+  totalSelections: number;
+  topPreferences: Array<{ category: string; score: number }>;
+  learningProgress: number; // 0-100
+} {
+  const totalSelections = preferences.reduce((sum, p) => sum + p.totalSelected, 0);
+  
+  // 排序獲取前 3 個偏好
+  const topPreferences = [...preferences]
+    .sort((a, b) => b.preferenceScore - a.preferenceScore)
+    .slice(0, 3)
+    .map(p => ({
+      category: p.templateCategory,
+      score: p.preferenceScore,
+    }));
+  
+  // 計算學習進度（基於總選擇次數）
+  // 10 次選擇 = 50%，30 次選擇 = 90%，50+ 次 = 100%
+  const learningProgress = Math.min(100, Math.round((totalSelections / 50) * 100));
+  
+  return {
+    totalSelections,
+    topPreferences,
+    learningProgress,
+  };
+}

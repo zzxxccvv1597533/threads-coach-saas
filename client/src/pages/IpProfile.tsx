@@ -33,6 +33,7 @@ import {
   Wand2,
   MessageSquare,
   Link2,
+  Brain,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -487,6 +488,12 @@ export default function IpProfile() {
             )}
           </CardContent>
         </Card>
+
+        {/* 個人風格報告 */}
+        <PersonalStyleReport />
+
+        {/* 學習式 Selector 進度 */}
+        <LearningProgressCard />
 
         <div className="space-y-6">
           <div className="bg-muted p-1 rounded-lg grid grid-cols-6 gap-1">
@@ -2412,3 +2419,357 @@ const productTypes = [
     icon: <Package className="w-4 h-4 text-emerald-500" />,
   },
 ];
+
+
+// 個人風格報告組件
+function PersonalStyleReport() {
+  const { data: profile } = trpc.ipProfile.get.useQuery();
+  const { data: writingStyle } = trpc.writingStyle.get.useQuery();
+  const { data: audiences } = trpc.audience.list.useQuery();
+  const { data: userProducts } = trpc.userProduct.list.useQuery();
+  const { data: growthMetrics } = trpc.growthMetrics.get.useQuery();
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  // 計算風格完整度
+  const styleCompleteness = (() => {
+    let score = 0;
+    if (profile?.occupation) score += 15;
+    if (profile?.voiceTone) score += 15;
+    if (profile?.viewpointStatement) score += 15;
+    if (profile?.personaExpertise) score += 10;
+    if (profile?.personaEmotion) score += 10;
+    if (profile?.personaViewpoint) score += 10;
+    if ((profile?.identityTags as string[])?.length > 0) score += 10;
+    if (writingStyle?.toneStyle) score += 15;
+    return Math.min(100, score);
+  })();
+  
+  // 風格標籤
+  const styleLabels = (() => {
+    const labels: string[] = [];
+    if (profile?.voiceTone) {
+      const toneMap: Record<string, string> = {
+        warm: '溫暖親切', professional: '專業權威', casual: '輕鬆隨性',
+        humorous: '幽默風趣', inspiring: '激勵人心', storytelling: '故事型'
+      };
+      labels.push(toneMap[profile.voiceTone] || profile.voiceTone);
+    }
+    if (writingStyle?.toneStyle) {
+      labels.push(writingStyle.toneStyle);
+    }
+    if (writingStyle?.hookStylePreference) {
+      const hookMap: Record<string, string> = {
+        mirror: '鏡像心理', scene: '情境化帶入',
+        dialogue: '對話型', contrast: '反差型', casual: '閒聊型'
+      };
+      labels.push(hookMap[writingStyle.hookStylePreference] || writingStyle.hookStylePreference);
+    }
+    return labels.slice(0, 4);
+  })();
+  
+  // 受眾洞察
+  const audienceInsights = (() => {
+    if (!audiences || audiences.length === 0) return null;
+    const primary = audiences.sort((a, b) => (a.priority || 0) - (b.priority || 0))[0];
+    return {
+      name: primary.segmentName || '主要受眾',
+      painPoints: primary.painPoint ? [primary.painPoint] : [],
+      desires: primary.desiredOutcome ? [primary.desiredOutcome] : []
+    };
+  })();
+  
+  // 產品矩陣
+  const productMatrix = (() => {
+    if (!userProducts || userProducts.length === 0) return null;
+    const core = userProducts.find(p => p.productType === 'core');
+    const lead = userProducts.find(p => p.productType === 'lead');
+    return { core, lead, total: userProducts.length };
+  })();
+  
+  // 經營階段
+  const stageInfo = (() => {
+    const stage = growthMetrics?.currentStage || 'startup';
+    const stageMap: Record<string, { name: string; color: string; advice: string }> = {
+      startup: { name: '起步階段', color: 'text-blue-600', advice: '專注建立人設和信任感' },
+      growth: { name: '成長階段', color: 'text-emerald-600', advice: '增加互動，擴大影響力' },
+      monetization: { name: '變現階段', color: 'text-amber-600', advice: '可以開始導流和銷售' },
+      scaling: { name: '規模化階段', color: 'text-purple-600', advice: '建立內容矩陣和團隊' }
+    };
+    return stageMap[stage] || stageMap.startup;
+  })();
+  
+  return (
+    <Card className="elegant-card overflow-hidden">
+      <CardHeader 
+        className="cursor-pointer hover:bg-muted/50 transition-colors"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">個人風格報告</CardTitle>
+              <CardDescription>
+                基於你的 IP 地基自動生成的風格分析
+              </CardDescription>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-sm font-medium">風格完整度</div>
+              <div className="text-2xl font-bold text-primary">{styleCompleteness}%</div>
+            </div>
+            <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+          </div>
+        </div>
+      </CardHeader>
+      
+      {isExpanded && (
+        <CardContent className="border-t pt-6 space-y-6">
+          {/* 風格標籤 */}
+          <div>
+            <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <Target className="w-4 h-4 text-primary" />
+              你的風格標籤
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {styleLabels.length > 0 ? (
+                styleLabels.map((label, i) => (
+                  <Badge key={i} variant="secondary" className="px-3 py-1">
+                    {label}
+                  </Badge>
+                ))
+              ) : (
+                <span className="text-sm text-muted-foreground">完善 IP 地基後自動生成</span>
+              )}
+            </div>
+          </div>
+          
+          {/* 核心定位 */}
+          {profile?.occupation && (
+            <div>
+              <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary" />
+                核心定位
+              </h4>
+              <div className="bg-muted/50 rounded-lg p-4">
+                <p className="text-sm">
+                  <span className="font-medium">{profile.occupation}</span>
+                  {profile.viewpointStatement && (
+                    <span className="text-muted-foreground"> · {profile.viewpointStatement}</span>
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
+          
+          {/* 受眾洞察 */}
+          {audienceInsights && (
+            <div>
+              <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <Heart className="w-4 h-4 text-primary" />
+                主要受眾洞察
+              </h4>
+              <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                <p className="text-sm font-medium">{audienceInsights.name}</p>
+                {audienceInsights.painPoints.length > 0 && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">痛點：</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {audienceInsights.painPoints.map((point, i) => (
+                        <span key={i} className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
+                          {point}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {audienceInsights.desires.length > 0 && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">渴望：</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {audienceInsights.desires.map((desire, i) => (
+                        <span key={i} className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">
+                          {desire}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* 產品矩陣 */}
+          {productMatrix && (
+            <div>
+              <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <ShoppingBag className="w-4 h-4 text-primary" />
+                產品矩陣
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                {productMatrix.core && (
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                    <div className="text-xs text-primary font-medium mb-1">核心產品</div>
+                    <p className="text-sm font-medium">{productMatrix.core.name}</p>
+                    {productMatrix.core.priceRange && (
+                      <p className="text-xs text-muted-foreground">{productMatrix.core.priceRange}</p>
+                    )}
+                  </div>
+                )}
+                {productMatrix.lead && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <div className="text-xs text-amber-600 font-medium mb-1">引流品</div>
+                    <p className="text-sm font-medium">{productMatrix.lead.name}</p>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                共 {productMatrix.total} 個產品/服務
+              </p>
+            </div>
+          )}
+          
+          {/* 經營階段 */}
+          <div>
+            <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <Lightbulb className="w-4 h-4 text-primary" />
+              當前經營階段
+            </h4>
+            <div className="bg-muted/50 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <span className={`font-medium ${stageInfo.color}`}>{stageInfo.name}</span>
+                <span className="text-sm text-muted-foreground">{stageInfo.advice}</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
+// 需要導入 ChevronDown
+import { ChevronDown } from "lucide-react";
+
+
+// 學習式 Selector 進度卡片
+function LearningProgressCard() {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const { data: learningProgress, isLoading } = trpc.selector.getLearningProgress.useQuery();
+
+  if (isLoading) {
+    return (
+      <Card className="border-border/50">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Brain className="w-5 h-5 text-primary" />
+              AI 學習進度
+            </CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="animate-pulse space-y-2">
+            <div className="h-4 bg-muted rounded w-3/4"></div>
+            <div className="h-2 bg-muted rounded w-full"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!learningProgress) return null;
+
+  return (
+    <Card className="border-border/50">
+      <CardHeader 
+        className="pb-2 cursor-pointer hover:bg-muted/30 transition-colors"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Brain className="w-5 h-5 text-primary" />
+            AI 學習進度
+          </CardTitle>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">
+              {learningProgress.learningProgress}% 完成
+            </span>
+            <ChevronDown 
+              className={`w-5 h-5 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
+            />
+          </div>
+        </div>
+      </CardHeader>
+      
+      {/* 進度條 */}
+      <CardContent className="pt-0 pb-4">
+        <div className="w-full bg-muted rounded-full h-2">
+          <div 
+            className="bg-primary h-2 rounded-full transition-all duration-500"
+            style={{ width: `${learningProgress.learningProgress}%` }}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          已記錄 {learningProgress.totalSelections} 次選擇
+          {!learningProgress.hasEnoughData && " • 再選擇 " + (5 - learningProgress.totalSelections) + " 次即可開始個性化推薦"}
+        </p>
+      </CardContent>
+
+      {isExpanded && (
+        <CardContent className="pt-0 border-t">
+          <div className="pt-4 space-y-4">
+            {/* 偏好風格排行 */}
+            <div>
+              <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <Target className="w-4 h-4 text-primary" />
+                您偏好的開頭風格
+              </h4>
+              
+              {learningProgress.topPreferences.length > 0 ? (
+                <div className="space-y-2">
+                  {learningProgress.topPreferences.map((pref, index) => (
+                    <div key={pref.category} className="flex items-center justify-between bg-muted/50 rounded-lg p-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">
+                          {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
+                        </span>
+                        <span className="font-medium">{pref.label}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-24 bg-muted rounded-full h-2">
+                          <div 
+                            className="bg-primary h-2 rounded-full"
+                            style={{ width: `${pref.score * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-sm text-muted-foreground w-12 text-right">
+                          {Math.round(pref.score * 100)}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-4 text-center">
+                  尚無足夠數據。繼續使用發文工作室，AI 會學習您的偏好！
+                </p>
+              )}
+            </div>
+
+            {/* 說明 */}
+            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4">
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                <strong>💡 學習式推薦</strong>：每次您在發文工作室選擇開頭時，AI 都會記錄您的偏好。
+                隨著使用次數增加，系統會越來越了解您的風格，推薦更符合您口味的開頭選項。
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  );
+}

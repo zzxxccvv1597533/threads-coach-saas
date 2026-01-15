@@ -727,6 +727,9 @@ export default function WritingStudio() {
             </button>
           </div>
 
+          {/* 智能內容建議 */}
+          <SmartSuggestionsCard />
+
           {/* Brainstorm Mode */}
           {/* Brainstorm Mode - 完整引導流程 */}
           {mode === "brainstorm" && (
@@ -2037,6 +2040,74 @@ function GrowthStageHint({ stage }: { stage: string }) {
             </span>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+
+// 智能內容建議組件
+function SmartSuggestionsCard() {
+  const { data: suggestions, isLoading } = trpc.ai.getSmartSuggestions.useQuery();
+  
+  if (isLoading) {
+    return (
+      <div className="rounded-lg border border-border/50 bg-gradient-to-r from-primary/5 to-primary/10 p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+          <span className="text-sm font-medium">正在分析你的內容數據...</span>
+        </div>
+        <div className="space-y-2">
+          <div className="h-4 bg-muted rounded animate-pulse w-3/4" />
+          <div className="h-4 bg-muted rounded animate-pulse w-1/2" />
+        </div>
+      </div>
+    );
+  }
+  
+  if (!suggestions || suggestions.suggestions.length === 0) {
+    return null;
+  }
+  
+  const priorityColors = {
+    high: 'bg-red-100 text-red-700 border-red-200',
+    medium: 'bg-amber-100 text-amber-700 border-amber-200',
+    low: 'bg-blue-100 text-blue-700 border-blue-200'
+  };
+  
+  const priorityLabels = {
+    high: '推薦',
+    medium: '建議',
+    low: '參考'
+  };
+  
+  return (
+    <div className="rounded-lg border border-border/50 bg-gradient-to-r from-primary/5 to-primary/10 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-primary" />
+          <span className="text-sm font-medium">智能內容建議</span>
+        </div>
+        <span className="text-xs text-muted-foreground">
+          基於 {suggestions.stats.totalDrafts} 篇草稿分析
+        </span>
+      </div>
+      
+      <div className="space-y-2">
+        {suggestions.suggestions.map((suggestion, index) => (
+          <div 
+            key={index}
+            className="flex items-start gap-3 p-2 rounded-md bg-background/50 hover:bg-background transition-colors"
+          >
+            <span className={`text-xs px-1.5 py-0.5 rounded border ${priorityColors[suggestion.priority]}`}>
+              {priorityLabels[suggestion.priority]}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">{suggestion.title}</p>
+              <p className="text-xs text-muted-foreground">{suggestion.description}</p>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

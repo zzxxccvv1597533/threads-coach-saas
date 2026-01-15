@@ -17,6 +17,8 @@ import {
   Archive,
   Plus,
   FolderInput,
+  Sparkles,
+  AlertTriangle,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -261,11 +263,37 @@ export default function Drafts() {
                       className="flex-1 min-w-0 cursor-pointer"
                       onClick={() => setLocation(`/drafts/${draft.id}`)}
                     >
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         {getStatusBadge(draft.status || 'draft')}
                         <Badge variant="outline" className="text-xs">
                           {getContentTypeName(draft.contentType || '')}
                         </Badge>
+                        {/* AI 痕跡分數顯示 */}
+                        {draft.aiScore !== null && draft.aiScore !== undefined && (
+                          <Badge 
+                            variant="outline" 
+                            className={`text-xs gap-1 ${
+                              Number(draft.aiScore) <= 0.3 
+                                ? 'border-emerald-500/50 text-emerald-600 bg-emerald-50' 
+                                : Number(draft.aiScore) <= 0.6 
+                                  ? 'border-amber-500/50 text-amber-600 bg-amber-50' 
+                                  : 'border-red-500/50 text-red-600 bg-red-50'
+                            }`}
+                          >
+                            {Number(draft.aiScore) <= 0.3 ? (
+                              <Sparkles className="w-3 h-3" />
+                            ) : Number(draft.aiScore) <= 0.6 ? (
+                              <AlertTriangle className="w-3 h-3" />
+                            ) : (
+                              <AlertTriangle className="w-3 h-3" />
+                            )}
+                            {Number(draft.aiScore) <= 0.3 
+                              ? '非常自然' 
+                              : Number(draft.aiScore) <= 0.6 
+                                ? '略有 AI 感' 
+                                : 'AI 感較重'}
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-sm line-clamp-2 mb-2">
                         {(draft.body || draft.title || '（無內容）').replace(/\*\*/g, '')}

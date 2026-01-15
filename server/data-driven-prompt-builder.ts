@@ -589,3 +589,211 @@ export function getDataDrivenSummary(context: DataDrivenPromptContext): string {
 • Few-Shot 範例：${fewShotExamples.length} 個
 `;
 }
+
+
+/**
+ * 計算生成內容與用戶風格的匹配度
+ * @param content 生成的內容
+ * @param userStyle 用戶的寫作風格設定
+ * @param ipProfile 用戶的 IP 地基資料
+ * @returns 風格匹配度分析結果
+ */
+export function calculateStyleMatch(
+  content: string,
+  userStyle: {
+    toneStyle?: string | null;
+    commonPhrases?: string[] | null;
+    catchphrases?: string[] | null;
+    hookStylePreference?: string | null;
+    metaphorStyle?: string | null;
+    emotionRhythm?: string | null;
+  } | null,
+  ipProfile: {
+    profession?: string | null;
+    pillars?: { authority?: string; resonance?: string; uniqueness?: string } | null;
+    targetAudience?: string | null;
+    beliefs?: string | null;
+  } | null
+): {
+  score: number;
+  breakdown: {
+    toneMatch: number;
+    phraseUsage: number;
+    audienceAlignment: number;
+    pillarConsistency: number;
+  };
+  details: string[];
+  suggestions: string[];
+} {
+  const details: string[] = [];
+  const suggestions: string[] = [];
+  let toneMatch = 0;
+  let phraseUsage = 0;
+  let audienceAlignment = 0;
+  let pillarConsistency = 0;
+
+  // 1. 語氣風格匹配（30 分）
+  if (userStyle?.toneStyle) {
+    const toneKeywords = extractToneKeywords(userStyle.toneStyle);
+    const matchedTone = toneKeywords.filter(kw => content.includes(kw)).length;
+    toneMatch = Math.min(30, (matchedTone / Math.max(toneKeywords.length, 1)) * 30);
+    if (toneMatch >= 20) {
+      details.push('語氣風格高度匹配');
+    } else if (toneMatch >= 10) {
+      details.push('語氣風格部分匹配');
+    } else {
+      suggestions.push('可以加入更多個人語氣特色');
+    }
+  } else {
+    toneMatch = 15; // 沒有設定時給予基礎分
+    suggestions.push('建議在 IP 地基設定個人語氣風格');
+  }
+
+  // 2. 慣用詞彙使用（25 分）
+  const allPhrases = [
+    ...(userStyle?.commonPhrases || []),
+    ...(userStyle?.catchphrases || [])
+  ].filter(Boolean);
+  
+  if (allPhrases.length > 0) {
+    const usedPhrases = allPhrases.filter(phrase => content.includes(phrase));
+    phraseUsage = Math.min(25, (usedPhrases.length / Math.min(allPhrases.length, 5)) * 25);
+    if (usedPhrases.length > 0) {
+      details.push(`使用了 ${usedPhrases.length} 個個人慣用詞彙`);
+    } else {
+      suggestions.push('可以適度加入個人口頭禪或慣用語');
+    }
+  } else {
+    phraseUsage = 12; // 沒有設定時給予基礎分
+  }
+
+  // 3. 受眾對齊（25 分）
+  if (ipProfile?.targetAudience) {
+    const audienceKeywords = extractAudienceKeywords(ipProfile.targetAudience);
+    const matchedAudience = audienceKeywords.filter(kw => content.toLowerCase().includes(kw.toLowerCase())).length;
+    audienceAlignment = Math.min(25, (matchedAudience / Math.max(audienceKeywords.length, 1)) * 25);
+    if (audienceAlignment >= 15) {
+      details.push('內容與目標受眾高度相關');
+    } else if (audienceAlignment >= 8) {
+      details.push('內容與目標受眾部分相關');
+    } else {
+      suggestions.push('可以更明確地針對目標受眾的痛點');
+    }
+  } else {
+    audienceAlignment = 12;
+    suggestions.push('建議在 IP 地基設定目標受眾');
+  }
+
+  // 4. 人設三支柱一致性（20 分）
+  if (ipProfile?.pillars) {
+    const pillars = ipProfile.pillars;
+    let pillarMatches = 0;
+    
+    if (pillars.authority && content.includes(pillars.authority.substring(0, 10))) {
+      pillarMatches++;
+    }
+    if (pillars.resonance && containsEmotionalResonance(content, pillars.resonance)) {
+      pillarMatches++;
+    }
+    if (pillars.uniqueness && containsUniquePerspective(content, pillars.uniqueness)) {
+      pillarMatches++;
+    }
+    
+    pillarConsistency = Math.min(20, (pillarMatches / 3) * 20);
+    if (pillarMatches >= 2) {
+      details.push('內容符合人設三支柱');
+    } else if (pillarMatches >= 1) {
+      details.push('內容部分符合人設定位');
+    } else {
+      suggestions.push('可以更強調個人專業權威或獨特觀點');
+    }
+  } else {
+    pillarConsistency = 10;
+  }
+
+  const totalScore = Math.round(toneMatch + phraseUsage + audienceAlignment + pillarConsistency);
+
+  return {
+    score: totalScore,
+    breakdown: {
+      toneMatch: Math.round(toneMatch),
+      phraseUsage: Math.round(phraseUsage),
+      audienceAlignment: Math.round(audienceAlignment),
+      pillarConsistency: Math.round(pillarConsistency)
+    },
+    details,
+    suggestions
+  };
+}
+
+// 輔助函數：從語氣描述中提取關鍵詞
+function extractToneKeywords(toneStyle: string): string[] {
+  const keywords: string[] = [];
+  
+  // 常見語氣特徵詞
+  const tonePatterns = [
+    { pattern: /溫暖|溫馨|暖心/, keywords: ['你', '我們', '一起', '陪伴'] },
+    { pattern: /專業|權威|理性/, keywords: ['其實', '根據', '研究', '數據'] },
+    { pattern: /幽默|風趣|輕鬆/, keywords: ['哈哈', '笑', '有趣', '好玩'] },
+    { pattern: /直接|犀利|真誠/, keywords: ['說實話', '老實說', '真的', '直接'] },
+    { pattern: /感性|細膩|溫柔/, keywords: ['感覺', '心裡', '想著', '記得'] },
+  ];
+  
+  for (const { pattern, keywords: kws } of tonePatterns) {
+    if (pattern.test(toneStyle)) {
+      keywords.push(...kws);
+    }
+  }
+  
+  // 如果沒有匹配到任何模式，從原文提取
+  if (keywords.length === 0) {
+    const words = toneStyle.split(/[，、。\s]+/).filter(w => w.length >= 2);
+    keywords.push(...words.slice(0, 5));
+  }
+  
+  return keywords;
+}
+
+// 輔助函數：從受眾描述中提取關鍵詞
+function extractAudienceKeywords(targetAudience: string): string[] {
+  const keywords: string[] = [];
+  
+  // 常見受眾特徵詞
+  const audiencePatterns = [
+    { pattern: /創業|老闆|企業主/, keywords: ['創業', '生意', '客戶', '營收', '品牌'] },
+    { pattern: /上班族|職場|工作/, keywords: ['工作', '職場', '主管', '同事', '加班'] },
+    { pattern: /媽媽|爸爸|家長/, keywords: ['孩子', '家庭', '教育', '成長', '陪伴'] },
+    { pattern: /學生|年輕人/, keywords: ['學習', '成長', '未來', '夢想', '迷茫'] },
+    { pattern: /自由工作者|接案/, keywords: ['接案', '客戶', '作品', '收入', '自由'] },
+  ];
+  
+  for (const { pattern, keywords: kws } of audiencePatterns) {
+    if (pattern.test(targetAudience)) {
+      keywords.push(...kws);
+    }
+  }
+  
+  // 從原文提取關鍵詞
+  const words = targetAudience.split(/[，、。\s]+/).filter(w => w.length >= 2);
+  keywords.push(...words.slice(0, 5));
+  
+  return Array.from(new Set(keywords));
+}
+
+// 輔助函數：檢查是否包含情感共鳴元素
+function containsEmotionalResonance(content: string, resonance: string): boolean {
+  const emotionWords = ['感覺', '心裡', '想著', '害怕', '擔心', '開心', '難過', '焦慮', '期待', '感動'];
+  const hasEmotion = emotionWords.some(word => content.includes(word));
+  const resonanceKeywords = resonance.split(/[，、。\s]+/).filter(w => w.length >= 2).slice(0, 3);
+  const hasResonanceKeyword = resonanceKeywords.some(kw => content.includes(kw));
+  return hasEmotion || hasResonanceKeyword;
+}
+
+// 輔助函數：檢查是否包含獨特觀點
+function containsUniquePerspective(content: string, uniqueness: string): boolean {
+  const perspectiveWords = ['我認為', '我覺得', '其實', '說實話', '真正的', '關鍵是', '重點是'];
+  const hasPerspective = perspectiveWords.some(word => content.includes(word));
+  const uniquenessKeywords = uniqueness.split(/[，、。\s]+/).filter(w => w.length >= 2).slice(0, 3);
+  const hasUniquenessKeyword = uniquenessKeywords.some(kw => content.includes(kw));
+  return hasPerspective || hasUniquenessKeyword;
+}

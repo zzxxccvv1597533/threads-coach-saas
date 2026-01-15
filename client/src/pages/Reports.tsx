@@ -636,6 +636,9 @@ export default function Reports() {
           </CardContent>
         </Card>
 
+        {/* 模板效果排行 */}
+        <TemplateEffectivenessRanking posts={posts || []} />
+
         {/* Post List */}
         <Card className="elegant-card">
           <CardHeader>
@@ -1030,5 +1033,190 @@ export default function Reports() {
         </Dialog>
       </div>
     </DashboardLayout>
+  );
+}
+
+
+// 模板效果排行組件
+interface TemplateEffectivenessRankingProps {
+  posts: Array<{
+    id: number;
+    draftPost?: {
+      body: string | null;
+    } | null;
+    metrics?: Array<{
+      reach: number | null;
+      likes: number | null;
+      comments: number | null;
+      reposts: number | null;
+      saves: number | null;
+      isViral: boolean | null;
+    }>;
+  }>;
+}
+
+function TemplateEffectivenessRanking({ posts }: TemplateEffectivenessRankingProps) {
+  // 開頭類型中文映射
+  const hookTypeLabels: Record<string, string> = {
+    mirror: '鏡像心理',
+    scene: '情境化帶入',
+    dialogue: '對話型',
+    contrast: '反差型',
+    casual: '閒聊型',
+    question: '提問型',
+    story: '故事型',
+    quote: '引用型',
+    list: '整理型',
+    opinion: '觀點型',
+    unknown: '其他'
+  };
+  
+  // 分析貼文開頭類型
+  const analyzeHookType = (content: string): string => {
+    if (!content) return 'unknown';
+    const firstLine = content.split('\n')[0].toLowerCase();
+    
+    // 簡單的開頭類型判斷
+    if (firstLine.includes('？') || firstLine.includes('?') || firstLine.startsWith('你')) {
+      return 'question';
+    }
+    if (firstLine.includes('「') || firstLine.includes('"') || firstLine.includes('說')) {
+      return 'dialogue';
+    }
+    if (firstLine.includes('其實') || firstLine.includes('真的') || firstLine.includes('老實說')) {
+      return 'casual';
+    }
+    if (firstLine.includes('每次') || firstLine.includes('看到') || firstLine.includes('想起')) {
+      return 'mirror';
+    }
+    if (firstLine.includes('那天') || firstLine.includes('記得') || firstLine.includes('有一次')) {
+      return 'story';
+    }
+    if (firstLine.includes('但') || firstLine.includes('卻') || firstLine.includes('不是')) {
+      return 'contrast';
+    }
+    if (firstLine.includes('想像') || firstLine.includes('如果') || firstLine.includes('當你')) {
+      return 'scene';
+    }
+    
+    return 'unknown';
+  };
+  
+  // 計算各類型的效果統計
+  const typeStats = (() => {
+    const stats: Record<string, { count: number; totalReach: number; totalEngagement: number; viralCount: number }> = {};
+    
+    posts.forEach(post => {
+      const content = post.draftPost?.body;
+      if (!content) return;
+      const hookType = analyzeHookType(content);
+      const metrics = (post as any).metrics?.[0];
+      
+      if (!stats[hookType]) {
+        stats[hookType] = { count: 0, totalReach: 0, totalEngagement: 0, viralCount: 0 };
+      }
+      
+      stats[hookType].count++;
+      if (metrics) {
+        stats[hookType].totalReach += metrics.reach || 0;
+        stats[hookType].totalEngagement += (metrics.likes || 0) + (metrics.comments || 0) + (metrics.reposts || 0);
+        if (metrics.isViral) stats[hookType].viralCount++;
+      }
+    });
+    
+    // 轉換為排行榜格式
+    return Object.entries(stats)
+      .map(([type, data]) => ({
+        type,
+        label: hookTypeLabels[type] || type,
+        count: data.count,
+        avgReach: data.count > 0 ? Math.round(data.totalReach / data.count) : 0,
+        avgEngagement: data.count > 0 ? Math.round(data.totalEngagement / data.count) : 0,
+        viralCount: data.viralCount,
+        viralRate: data.count > 0 ? Math.round((data.viralCount / data.count) * 100) : 0
+      }))
+      .sort((a, b) => b.avgReach - a.avgReach);
+  })();
+  
+  if (posts.length < 3) {
+    return null;
+  }
+  
+  return (
+    <Card className="elegant-card">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-primary" />
+          開頭類型效果排行
+        </CardTitle>
+        <CardDescription>
+          分析不同開頭風格的表現，幫助你找到最適合的寫作方式
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {typeStats.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <p>需要更多貼文數據才能分析</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {typeStats.slice(0, 5).map((stat, index) => (
+              <div 
+                key={stat.type}
+                className="flex items-center gap-4 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+              >
+                {/* 排名 */}
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                  index === 0 ? 'bg-amber-100 text-amber-700' :
+                  index === 1 ? 'bg-gray-100 text-gray-700' :
+                  index === 2 ? 'bg-orange-100 text-orange-700' :
+                  'bg-muted text-muted-foreground'
+                }`}>
+                  {index + 1}
+                </div>
+                
+                {/* 類型名稱 */}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium">{stat.label}</p>
+                  <p className="text-xs text-muted-foreground">{stat.count} 篇貼文</p>
+                </div>
+                
+                {/* 數據 */}
+                <div className="flex items-center gap-6 text-sm">
+                  <div className="text-center">
+                    <p className="font-bold text-blue-600">{stat.avgReach.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">平均觸及</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="font-bold text-emerald-600">{stat.avgEngagement}</p>
+                    <p className="text-xs text-muted-foreground">平均互動</p>
+                  </div>
+                  {stat.viralCount > 0 && (
+                    <div className="text-center">
+                      <p className="font-bold text-orange-600">{stat.viralRate}%</p>
+                      <p className="text-xs text-muted-foreground">爆文率</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {typeStats.length > 0 && (
+          <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/10">
+            <p className="text-sm">
+              <span className="font-medium text-primary">💡 建議：</span>
+              <span className="text-muted-foreground ml-1">
+                {typeStats[0]?.label} 風格的開頭在你的貼文中表現最好，
+                平均觸及 {typeStats[0]?.avgReach.toLocaleString()} 人。
+                建議多嘗試這種風格！
+              </span>
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

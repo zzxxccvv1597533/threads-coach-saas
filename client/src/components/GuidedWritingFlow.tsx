@@ -28,6 +28,7 @@ import {
   Copy,
   ArrowRight,
   Info,
+  Target,
 } from "lucide-react";
 import { ALL_CONTENT_TYPES_V2 } from "@shared/content-types-v2";
 
@@ -112,6 +113,19 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
     improvements: Array<{ label: string; description: string; action?: string }>;
     score: number;
   } | null>(null);
+  
+  // 風格匹配度
+  const [styleMatch, setStyleMatch] = useState<{
+    score: number;
+    breakdown: {
+      toneMatch: number;
+      phraseUsage: number;
+      audienceAlignment: number;
+      pillarConsistency: number;
+    };
+    details: string[];
+    suggestions: string[];
+  } | null>(null);
 
   // API mutations
   const brainstorm = trpc.ai.brainstorm.useMutation({
@@ -158,6 +172,13 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
     },
   });
 
+  // 學習式 Selector - 記錄用戶選擇
+  const recordSelection = trpc.selector.recordSelection.useMutation({
+    onSuccess: () => {
+      console.log('Selection recorded for learning');
+    },
+  });
+
   // 保留舊的 generateHooks 作為 fallback
   const generateHooks = trpc.ai.generateHooks.useMutation({
     onSuccess: (data) => {
@@ -183,6 +204,10 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       // 設定診斷結果
       if (data.diagnosis) {
         setDiagnosis(data.diagnosis);
+      }
+      // 設定風格匹配度
+      if (data.styleMatch) {
+        setStyleMatch(data.styleMatch);
       }
       setCurrentStep(6);
       toast.success("草稿已生成！");
@@ -762,6 +787,22 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
                     if (hook.candidateId) {
                       selectOpener.mutate({ candidateId: hook.candidateId });
                     }
+                    // 學習式 Selector - 記錄用戶選擇
+                    if (hook.templateCategory) {
+                      recordSelection.mutate({ 
+                        templateCategory: hook.templateCategory, 
+                        wasSelected: true 
+                      });
+                      // 同時記錄其他未被選中的選項
+                      hookOptions.forEach(otherHook => {
+                        if (otherHook.templateCategory && otherHook.templateCategory !== hook.templateCategory) {
+                          recordSelection.mutate({ 
+                            templateCategory: otherHook.templateCategory, 
+                            wasSelected: false 
+                          });
+                        }
+                      });
+                    }
                   }}
                 >
                   {/* 頂部：風格標籤和自然度 */}
@@ -904,6 +945,70 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
                     <div className="text-xs text-muted-foreground mt-2">
                       💡 點擊標籤可快速填入修改指令
                     </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* 風格匹配度卡片 */}
+            {styleMatch && (
+              <div className="bg-gradient-to-r from-blue-500/5 to-blue-500/10 rounded-lg p-4 border border-blue-500/20">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Target className="w-4 h-4 text-blue-500" />
+                    <span className="font-medium">風格匹配度</span>
+                  </div>
+                  <Badge 
+                    variant="outline" 
+                    className={`${
+                      styleMatch.score >= 70 
+                        ? 'bg-green-500/10 text-green-700 dark:text-green-400' 
+                        : styleMatch.score >= 50 
+                          ? 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400'
+                          : 'bg-red-500/10 text-red-700 dark:text-red-400'
+                    }`}
+                  >
+                    {styleMatch.score >= 70 ? '高度匹配' : styleMatch.score >= 50 ? '部分匹配' : '建議優化'} {styleMatch.score}分
+                  </Badge>
+                </div>
+                
+                {/* 分項分數 */}
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <div className="text-xs">
+                    <span className="text-muted-foreground">語氣風格：</span>
+                    <span className="font-medium">{styleMatch.breakdown.toneMatch}/30</span>
+                  </div>
+                  <div className="text-xs">
+                    <span className="text-muted-foreground">慣用詞彙：</span>
+                    <span className="font-medium">{styleMatch.breakdown.phraseUsage}/25</span>
+                  </div>
+                  <div className="text-xs">
+                    <span className="text-muted-foreground">受眾對齊：</span>
+                    <span className="font-medium">{styleMatch.breakdown.audienceAlignment}/25</span>
+                  </div>
+                  <div className="text-xs">
+                    <span className="text-muted-foreground">人設一致：</span>
+                    <span className="font-medium">{styleMatch.breakdown.pillarConsistency}/20</span>
+                  </div>
+                </div>
+                
+                {/* 詳細說明 */}
+                {styleMatch.details.length > 0 && (
+                  <div className="mb-2">
+                    <div className="flex flex-wrap gap-1">
+                      {styleMatch.details.map((detail, i) => (
+                        <Badge key={i} variant="secondary" className="bg-blue-500/10 text-blue-700 dark:text-blue-400 text-xs">
+                          {detail}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* 建議 */}
+                {styleMatch.suggestions.length > 0 && (
+                  <div className="text-xs text-muted-foreground">
+                    💡 {styleMatch.suggestions[0]}
                   </div>
                 )}
               </div>

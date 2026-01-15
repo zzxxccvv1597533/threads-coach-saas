@@ -33,6 +33,7 @@ import {
   openerTemplates, InsertOpenerTemplate, OpenerTemplate,
   promptAvoidList, InsertPromptAvoidList, PromptAvoidList,
   templateStats, InsertTemplateStats, TemplateStats,
+  userTemplatePreferences, InsertUserTemplatePreference, UserTemplatePreference,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -3243,4 +3244,117 @@ export async function getTemplateStats(): Promise<{
     activeAvoidPhrases: avoidPhrases.filter(p => p.isActive).length,
     topTemplates,
   };
+}
+
+
+// ============================================
+// 用戶模板偏好（學習式 Selector）
+// ============================================
+
+export async function getUserTemplatePreferences(userId: number) {
+  const database = await getDb();
+  if (!database) throw new Error('Database not initialized');
+  return database
+    .select()
+    .from(userTemplatePreferences)
+    .where(eq(userTemplatePreferences.userId, userId));
+}
+
+export async function upsertUserTemplatePreference(
+  userId: number,
+  templateCategory: string,
+  updates: {
+    preferenceScore?: string;
+    totalShown?: number;
+    totalSelected?: number;
+    totalPublished?: number;
+    totalViral?: number;
+    avgReach?: number;
+    avgEngagement?: number;
+    lastSelectedAt?: Date;
+  }
+) {
+  const database = await getDb();
+  if (!database) throw new Error('Database not initialized');
+  // 先檢查是否存在
+  const existing = await database
+    .select()
+    .from(userTemplatePreferences)
+    .where(
+      and(
+        eq(userTemplatePreferences.userId, userId),
+        eq(userTemplatePreferences.templateCategory, templateCategory)
+      )
+    );
+  
+  if (existing.length > 0) {
+    // 更新
+    return database
+      .update(userTemplatePreferences)
+      .set(updates)
+      .where(
+        and(
+          eq(userTemplatePreferences.userId, userId),
+          eq(userTemplatePreferences.templateCategory, templateCategory)
+        )
+      );
+  } else {
+    // 插入
+    return database.insert(userTemplatePreferences).values({
+      userId,
+      templateCategory,
+      ...updates,
+    });
+  }
+}
+
+export async function incrementTemplatePreferenceStats(
+  userId: number,
+  templateCategory: string,
+  field: 'totalShown' | 'totalSelected' | 'totalPublished' | 'totalViral'
+) {
+  const database = await getDb();
+  if (!database) throw new Error('Database not initialized');
+  // 先獲取當前值
+  const existing = await database
+    .select()
+    .from(userTemplatePreferences)
+    .where(
+      and(
+        eq(userTemplatePreferences.userId, userId),
+        eq(userTemplatePreferences.templateCategory, templateCategory)
+      )
+    );
+  
+  if (existing.length > 0) {
+    const currentValue = existing[0][field] || 0;
+    const updates: Record<string, number | Date> = { [field]: currentValue + 1 };
+    
+    if (field === 'totalSelected') {
+      updates.lastSelectedAt = new Date();
+    }
+    
+    return database
+      .update(userTemplatePreferences)
+      .set(updates)
+      .where(
+        and(
+          eq(userTemplatePreferences.userId, userId),
+          eq(userTemplatePreferences.templateCategory, templateCategory)
+        )
+      );
+  } else {
+    // 創建新記錄
+    const values: Record<string, unknown> = {
+      userId,
+      templateCategory,
+      [field]: 1,
+    };
+    
+    if (field === 'totalSelected') {
+      values.lastSelectedAt = new Date();
+    }
+    
+    return database.insert(userTemplatePreferences).values(values as any);
+  }
 }
