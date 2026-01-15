@@ -4828,6 +4828,102 @@ ${postsData.map((p, i) => `${i + 1}. 觸及:${p.reach} 愛心:${p.likes} 留言:
       .query(async ({ input }) => {
         return db.getUnintegratedViralLearnings(input?.limit || 50);
       }),
+    
+    // ==================== 模板管理 API ====================
+    
+    // 取得所有開頭模板
+    getOpenerTemplates: adminProcedure.query(async () => {
+      return db.getAllOpenerTemplates();
+    }),
+    
+    // 新增開頭模板
+    createOpenerTemplate: adminProcedure
+      .input(z.object({
+        name: z.string(),
+        category: z.string(),
+        description: z.string().optional(),
+        promptTemplate: z.string(),
+        exampleOutput: z.string().optional(),
+        weight: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return db.createOpenerTemplate(input);
+      }),
+    
+    // 更新開頭模板
+    updateOpenerTemplate: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        category: z.string().optional(),
+        description: z.string().optional(),
+        promptTemplate: z.string().optional(),
+        exampleOutput: z.string().optional(),
+        weight: z.number().optional(),
+        isActive: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        return db.updateOpenerTemplate(id, data);
+      }),
+    
+    // 切換模板啟用狀態
+    toggleOpenerTemplate: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        return db.toggleOpenerTemplateActive(input.id);
+      }),
+    
+    // 取得所有禁止句式
+    getAvoidList: adminProcedure.query(async () => {
+      return db.getAllAvoidList();
+    }),
+    
+    // 新增禁止句式
+    createAvoidPhrase: adminProcedure
+      .input(z.object({
+        phrase: z.string(),
+        category: z.string(),
+        reason: z.string().optional(),
+        severity: z.enum(['low', 'medium', 'high']).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return db.createAvoidPhrase(input);
+      }),
+    
+    // 更新禁止句式
+    updateAvoidPhrase: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        phrase: z.string().optional(),
+        category: z.string().optional(),
+        reason: z.string().optional(),
+        severity: z.enum(['low', 'medium', 'high']).optional(),
+        isActive: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        return db.updateAvoidPhrase(id, data);
+      }),
+    
+    // 切換禁止句式啟用狀態
+    toggleAvoidPhrase: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        return db.toggleAvoidPhraseActive(input.id);
+      }),
+    
+    // 刪除禁止句式
+    deleteAvoidPhrase: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        return db.deleteAvoidPhrase(input.id);
+      }),
+    
+    // 取得模板統計數據
+    getTemplateStats: adminProcedure.query(async () => {
+      return db.getTemplateStats();
+    }),
   }),
 
   // ==================== 用戶產品矩陣 ====================

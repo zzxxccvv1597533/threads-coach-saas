@@ -21,6 +21,7 @@ import Register from "./pages/Register";
 import Maintenance from "./pages/Maintenance";
 import CoachStudents from "./pages/CoachStudents";
 import CoachReports from "./pages/CoachReports";
+import AdminTemplates from "./pages/AdminTemplates";
 
 function Router() {
   return (
@@ -43,6 +44,7 @@ function Router() {
       <Route path={"/coach/students"} component={CoachStudents} />
       <Route path={"/coach/students/:id"} component={CoachStudents} />
       <Route path={"/coach/reports"} component={CoachReports} />
+      <Route path={"/admin/templates"} component={AdminTemplates} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

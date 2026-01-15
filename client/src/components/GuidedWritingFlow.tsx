@@ -80,8 +80,17 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
   // Step 4: 選 Hook 風格
   const [selectedHookStyle, setSelectedHookStyle] = useState("");
   
-  // Step 5: Hook 選項
-  const [hookOptions, setHookOptions] = useState<Array<{ style: string; styleName: string; content: string; reason: string }>>([]);
+  // Step 5: Hook 選項 - 整合新的 Opener Generator
+  const [hookOptions, setHookOptions] = useState<Array<{ 
+    style: string; 
+    styleName: string; 
+    content: string; 
+    reason: string;
+    aiScore?: number;
+    aiLevel?: string;
+    candidateId?: number;
+    templateCategory?: string;
+  }>>([]);
   const [selectedHook, setSelectedHook] = useState("");
   
   // Step 6: 生成全文
@@ -117,9 +126,47 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
     },
   });
 
+  // 使用新的 Opener Generator API
+  const generateOpeners = trpc.opener.generate.useMutation({
+    onSuccess: (data) => {
+      // 轉換新的 API 回應格式到現有的 hookOptions 格式
+      const transformedHooks = data.candidates.map((candidate: any) => ({
+        style: candidate.templateId || 'custom',
+        styleName: candidate.templateCategory || '自訂風格',
+        content: candidate.content,
+        reason: `AI 痕跡分數：${Math.round((1 - candidate.aiScore) * 100)}% 自然度`,
+        aiScore: candidate.aiScore,
+        aiLevel: candidate.aiLevel,
+        candidateId: candidate.id,
+        templateCategory: candidate.templateCategory,
+      }));
+      setHookOptions(transformedHooks);
+      setCurrentStep(5);
+      toast.success(`已生成 ${data.candidates.length} 個開頭選項！`);
+    },
+    onError: (error) => {
+      console.error('[generateOpeners] Error:', error);
+      toast.error("生成 Hook 失敗，請稍後再試");
+    },
+  });
+
+  // 標記選中的 Hook
+  const selectOpener = trpc.opener.select.useMutation({
+    onSuccess: () => {
+      console.log('Opener selection recorded');
+    },
+  });
+
+  // 保留舊的 generateHooks 作為 fallback
   const generateHooks = trpc.ai.generateHooks.useMutation({
     onSuccess: (data) => {
-      setHookOptions(Array.isArray(data.hooks) ? data.hooks : []);
+      setHookOptions(Array.isArray(data.hooks) ? data.hooks.map(h => ({
+        ...h,
+        aiScore: undefined,
+        aiLevel: undefined,
+        candidateId: undefined,
+        templateCategory: undefined,
+      })) : []);
       setCurrentStep(5);
       toast.success("Hook 選項已生成！");
     },
@@ -177,20 +224,22 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
     setCurrentStep(2);
   };
 
-  // 處理生成 Hook
+  // 處理生成 Hook - 使用新的 Opener Generator
   const handleGenerateHooks = () => {
-    if (!selectedTopic || !selectedContentType || !selectedHookStyle) {
+    if (!selectedTopic || !selectedContentType) {
       toast.error("請先完成前面的步驟");
       return;
     }
 
-    generateHooks.mutate({
+    // 使用新的 Opener Generator API
+    generateOpeners.mutate({
       topic: selectedTopic.title,
       contentType: selectedContentType,
-      hookStyle: selectedHookStyle,
-      inputs: Object.fromEntries(
-        Object.entries(typeInputs).map(([k, v]) => [k, Array.isArray(v) ? v.join('\n') : (v as string || '')])
-      ),
+      hookStyle: selectedHookStyle || undefined,
+      userContext: Object.entries(typeInputs)
+        .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : (v as string || '')}`)
+        .join('\n'),
+      count: 5, // 生成 5 個候選
     });
   };
 
@@ -640,18 +689,18 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
               </Button>
               <Button 
                 className="flex-1"
-                disabled={!selectedHookStyle || generateHooks.isPending}
+                disabled={!selectedHookStyle || generateOpeners.isPending}
                 onClick={handleGenerateHooks}
               >
-                {generateHooks.isPending ? (
+                {generateOpeners.isPending ? (
                   <>
                     <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    生成 Hook 中...
+                    AI 正在生成多個開頭選項...
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4 mr-2" />
-                    生成 Hook 選項
+                    生成開頭選項
                   </>
                 )}
               </Button>
@@ -675,41 +724,107 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {hookOptions.map((hook, index) => (
-              <div
-                key={index}
-                className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                  selectedHook === hook.content
-                    ? "border-primary bg-primary/5"
-                    : "hover:border-primary/50"
-                }`}
-                onClick={() => setSelectedHook(hook.content)}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-2">
-                    <Badge variant="secondary" className="text-xs">
-                      {hook.styleName}
-                    </Badge>
-                    <div className="font-medium text-lg">
-                      「{hook.content}」
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {hook.reason}
-                    </div>
-                  </div>
-                  <Button 
-                    size="sm" 
-                    variant={selectedHook === hook.content ? "default" : "outline"}
-                  >
-                    {selectedHook === hook.content ? (
-                      <><Check className="w-4 h-4 mr-1" /> 已選</>
-                    ) : (
-                      <>選擇</>
-                    )}
-                  </Button>
-                </div>
+            {/* AI 痕跡分數說明 */}
+            <div className="bg-muted/30 rounded-lg p-3 text-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <Info className="w-4 h-4 text-muted-foreground" />
+                <span className="font-medium">自然度分數說明</span>
               </div>
-            ))}
+              <div className="flex gap-4 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                  80%+ 非常自然
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                  60-80% 較自然
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                  40-60% 有 AI 痕跡
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                  &lt;40% AI 感明顯
+                </span>
+              </div>
+            </div>
+
+            {hookOptions.map((hook, index) => {
+              // 計算自然度分數（100 - AI分數）
+              const naturalScore = hook.aiScore !== undefined ? Math.round((1 - hook.aiScore) * 100) : null;
+              const getScoreColor = (score: number | null) => {
+                if (score === null) return 'bg-gray-500';
+                if (score >= 80) return 'bg-green-500';
+                if (score >= 60) return 'bg-blue-500';
+                if (score >= 40) return 'bg-yellow-500';
+                return 'bg-red-500';
+              };
+              const getScoreText = (score: number | null) => {
+                if (score === null) return '未檢測';
+                if (score >= 80) return '非常自然';
+                if (score >= 60) return '較自然';
+                if (score >= 40) return '有 AI 痕跡';
+                return 'AI 感明顯';
+              };
+
+              return (
+                <div
+                  key={index}
+                  className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                    selectedHook === hook.content
+                      ? "border-primary bg-primary/5"
+                      : "hover:border-primary/50"
+                  }`}
+                  onClick={() => {
+                    setSelectedHook(hook.content);
+                    // 記錄選擇
+                    if (hook.candidateId) {
+                      selectOpener.mutate({ candidateId: hook.candidateId });
+                    }
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">
+                          {hook.styleName || hook.templateCategory || '自訂風格'}
+                        </Badge>
+                        {naturalScore !== null && (
+                          <Badge 
+                            variant="outline" 
+                            className={`text-xs ${getScoreColor(naturalScore)} text-white border-0`}
+                          >
+                            {naturalScore}% {getScoreText(naturalScore)}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="font-medium text-lg">
+                        「{hook.content}」
+                      </div>
+                      {hook.aiLevel && (
+                        <div className="text-sm text-muted-foreground">
+                          {hook.aiLevel === 'very_natural' && '✅ 這個開頭非常自然，推薦使用！'}
+                          {hook.aiLevel === 'natural' && '✅ 這個開頭較自然'}
+                          {hook.aiLevel === 'has_ai_traces' && '⚠️ 有一些 AI 痕跡，建議微調'}
+                          {hook.aiLevel === 'obvious_ai' && '⚠️ AI 感較重，建議選擇其他選項'}
+                        </div>
+                      )}
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant={selectedHook === hook.content ? "default" : "outline"}
+                    >
+                      {selectedHook === hook.content ? (
+                        <><Check className="w-4 h-4 mr-1" /> 已選</>
+                      ) : (
+                        <>選擇</>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
 
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => setCurrentStep(4)}>

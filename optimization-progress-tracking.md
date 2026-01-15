@@ -53,14 +53,38 @@
 
 ---
 
-## 第二階段：智能生成（2-6 週）
+## 第二階段：智能生成（2-6 週）— ✅ 90% 完成
 
 | 項目 | 說明 | 工時 | 狀態 |
 |-----|------|-----|------|
-| **Opener Generator** | 生成 N 個候選開頭 | 1 週 | ⏳ 待開始 |
-| **簡單 Selector** | 規則式 rerank | 3-4 天 | ⏳ 待開始 |
-| **ε-greedy Bandit** | 10% 探索新模板 | 2-3 天 | ⏳ 待開始 |
-| **前端候選選擇 UI** | 讓學員選擇開頭 | 1 週 | ⏳ 待開始 |
+| **Opener Generator** | 生成 N 個候選開頭 | 1 週 | ✅ 完成 |
+| **簡單 Selector** | 規則式 rerank | 3-4 天 | ✅ 完成 |
+| **ε-greedy Bandit** | 10% 探索新模板 | 2-3 天 | ✅ 完成 |
+| **前端候選選擇 UI** | 讓學員選擇開頭 | 1 週 | ✅ 完成（待整合） |
+
+### 完成的具體內容：
+
+#### Opener Generator
+- [x] generateMultipleOpeners() - 生成 3-5 個開頭候選
+- [x] buildOpenerPrompt() - 組裝開頭生成 prompt
+- [x] selectTemplatesForGeneration() - 結合利用和探索選擇模板
+- [x] 整合 AI Detector 進行候選檢測
+
+#### 簡單 Selector
+- [x] selectAndRank() - 對候選進行排序和篩選
+- [x] passesQualityCheck() - 品質檢查
+- [x] groupByCategory() - 按類別分組
+- [x] ensureCategoryDiversity() - 多樣性保證
+
+#### ε-greedy Bandit
+- [x] 10% 探索率策略（已整合到 Opener Generator）
+- [x] 90% 使用高權重模板（利用）
+
+#### 前端候選選擇 UI
+- [x] OpenerSelector 組件
+- [x] tRPC 端點（opener.generate, opener.select, opener.detectAi）
+- [x] AI 痕跡分數顯示
+- [ ] 整合到發文工作室流程（待完成）
 
 ---
 
@@ -100,9 +124,9 @@
 ## 整體進度
 
 - **第一階段**：✅ 100% 完成（5/5 項目）
-- **第二階段**：⏳ 0% 完成（0/4 項目）
+- **第二階段**：✅ 90% 完成（4/4 項目，待整合）
 - **第三階段**：⏳ 0% 完成（0/3 項目）
 - **管理後台**：⏳ 0% 完成（0/5 項目）
 - **前台學員**：⏳ 0% 完成（0/4 項目）
 
-**總體進度**：約 24%（5/21 項目）
+**總體進度**：約 43%（9/21 項目）

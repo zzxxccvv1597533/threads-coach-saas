@@ -30,6 +30,9 @@ import {
   viralExamples,
   topicTemplates,
   contentClusters,
+  openerTemplates, InsertOpenerTemplate, OpenerTemplate,
+  promptAvoidList, InsertPromptAvoidList, PromptAvoidList,
+  templateStats, InsertTemplateStats, TemplateStats,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2881,5 +2884,363 @@ export async function getViralDataStats(): Promise<{
     topicTemplatesCount: Number(templatesResult?.count) || 0,
     clustersCount: Number(clustersResult?.count) || 0,
     keywordsCount: Number(keywordsResult?.count) || 0,
+  };
+}
+
+
+// ==================== 模板管理 ====================
+
+// 取得所有開頭模板
+export async function getAllOpenerTemplates(): Promise<OpenerTemplate[]> {
+  const database = await getDb();
+  if (!database) return [];
+  
+  const result = await database
+    .select()
+    .from(openerTemplates)
+    .orderBy(desc(openerTemplates.weight));
+  
+  return result;
+}
+
+// 新增開頭模板
+export async function createOpenerTemplate(data: {
+  name: string;
+  category: string;
+  description?: string;
+  promptTemplate: string;
+  exampleOutput?: string;
+  weight?: number;
+}): Promise<OpenerTemplate | null> {
+  const database = await getDb();
+  if (!database) return null;
+  
+  // 映射 category 到 schema 允許的值
+  const categoryMap: Record<string, "mirror" | "contrast" | "scene" | "question" | "data" | "story" | "emotion"> = {
+    '鏡像策略': 'mirror',
+    '反差策略': 'contrast',
+    '場景策略': 'scene',
+    '提問策略': 'question',
+    '數據策略': 'data',
+    '故事策略': 'story',
+    '情緒策略': 'emotion',
+    'mirror': 'mirror',
+    'contrast': 'contrast',
+    'scene': 'scene',
+    'question': 'question',
+    'data': 'data',
+    'story': 'story',
+    'emotion': 'emotion',
+  };
+  const mappedCategory = categoryMap[data.category] || 'mirror';
+  
+  await database.insert(openerTemplates).values({
+    name: data.name,
+    category: mappedCategory,
+    template: data.promptTemplate, // schema 使用 template 不是 promptTemplate
+    description: data.description || null,
+    example: data.exampleOutput || null, // schema 使用 example 不是 exampleOutput
+    weight: String(data.weight ?? 1.0), // decimal 需要 string
+    isActive: true,
+    usageCount: 0,
+    successCount: 0,
+  });
+  
+  // 取得剛插入的記錄
+  const [inserted] = await database
+    .select()
+    .from(openerTemplates)
+    .where(eq(openerTemplates.name, data.name))
+    .orderBy(desc(openerTemplates.id))
+    .limit(1);
+  
+  return inserted || null;
+}
+
+// 更新開頭模板
+export async function updateOpenerTemplate(
+  id: number,
+  data: Partial<{
+    name: string;
+    category: string;
+    description: string;
+    promptTemplate: string;
+    exampleOutput: string;
+    weight: number;
+    isActive: boolean;
+  }>
+): Promise<OpenerTemplate | null> {
+  const database = await getDb();
+  if (!database) return null;
+  
+  // 映射欄位名稱
+  const categoryMap: Record<string, "mirror" | "contrast" | "scene" | "question" | "data" | "story" | "emotion"> = {
+    '鏡像策略': 'mirror',
+    '反差策略': 'contrast',
+    '場景策略': 'scene',
+    '提問策略': 'question',
+    '數據策略': 'data',
+    '故事策略': 'story',
+    '情緒策略': 'emotion',
+    'mirror': 'mirror',
+    'contrast': 'contrast',
+    'scene': 'scene',
+    'question': 'question',
+    'data': 'data',
+    'story': 'story',
+    'emotion': 'emotion',
+  };
+  
+  const updateData: Record<string, unknown> = {};
+  if (data.name) updateData.name = data.name;
+  if (data.category) updateData.category = categoryMap[data.category] || data.category;
+  if (data.description) updateData.description = data.description;
+  if (data.promptTemplate) updateData.template = data.promptTemplate;
+  if (data.exampleOutput) updateData.example = data.exampleOutput;
+  if (data.weight !== undefined) updateData.weight = String(data.weight);
+  if (data.isActive !== undefined) updateData.isActive = data.isActive;
+  
+  await database
+    .update(openerTemplates)
+    .set(updateData)
+    .where(eq(openerTemplates.id, id));
+  
+  const [updated] = await database
+    .select()
+    .from(openerTemplates)
+    .where(eq(openerTemplates.id, id));
+  
+  return updated || null;
+}
+
+// 切換模板啟用狀態
+export async function toggleOpenerTemplateActive(id: number): Promise<OpenerTemplate | null> {
+  const database = await getDb();
+  if (!database) return null;
+  
+  // 先取得當前狀態
+  const [current] = await database
+    .select()
+    .from(openerTemplates)
+    .where(eq(openerTemplates.id, id));
+  
+  if (!current) return null;
+  
+  // 切換狀態
+  await database
+    .update(openerTemplates)
+    .set({ isActive: !current.isActive, updatedAt: new Date() })
+    .where(eq(openerTemplates.id, id));
+  
+  const [updated] = await database
+    .select()
+    .from(openerTemplates)
+    .where(eq(openerTemplates.id, id));
+  
+  return updated || null;
+}
+
+// 取得所有禁止句式
+export async function getAllAvoidList(): Promise<PromptAvoidList[]> {
+  const database = await getDb();
+  if (!database) return [];
+  
+  const result = await database
+    .select()
+    .from(promptAvoidList)
+    .orderBy(desc(promptAvoidList.severity), promptAvoidList.patternType);
+  
+  return result;
+}
+
+// 新增禁止句式
+export async function createAvoidPhrase(data: {
+  phrase: string;
+  category: string;
+  reason?: string;
+  severity?: 'low' | 'medium' | 'high';
+}): Promise<PromptAvoidList | null> {
+  const database = await getDb();
+  if (!database) return null;
+  
+  // 映射 category 到 patternType
+  const patternTypeMap: Record<string, "opener" | "transition" | "ending" | "ai_phrase" | "filler"> = {
+    '開頭句式': 'opener',
+    '過渡句式': 'transition',
+    '結尾句式': 'ending',
+    'AI特徵詞': 'ai_phrase',
+    '填充詞': 'filler',
+    'opener': 'opener',
+    'transition': 'transition',
+    'ending': 'ending',
+    'ai_phrase': 'ai_phrase',
+    'filler': 'filler',
+  };
+  const mappedPatternType = patternTypeMap[data.category] || 'opener';
+  
+  // 映射 severity
+  const severityMap: Record<string, "block" | "warn" | "suggest"> = {
+    'high': 'block',
+    'medium': 'warn',
+    'low': 'suggest',
+    'block': 'block',
+    'warn': 'warn',
+    'suggest': 'suggest',
+  };
+  const mappedSeverity = severityMap[data.severity || 'medium'] || 'warn';
+  
+  await database.insert(promptAvoidList).values({
+    pattern: data.phrase, // schema 使用 pattern 不是 phrase
+    patternType: mappedPatternType,
+    description: data.reason || null, // schema 使用 description 不是 reason
+    severity: mappedSeverity,
+    isActive: true,
+    matchCount: 0,
+  });
+  
+  const [inserted] = await database
+    .select()
+    .from(promptAvoidList)
+    .where(eq(promptAvoidList.pattern, data.phrase))
+    .orderBy(desc(promptAvoidList.id))
+    .limit(1);
+  
+  return inserted || null;
+}
+
+// 更新禁止句式
+export async function updateAvoidPhrase(
+  id: number,
+  data: Partial<{
+    phrase: string;
+    category: string;
+    reason: string;
+    severity: 'low' | 'medium' | 'high';
+    isActive: boolean;
+  }>
+): Promise<PromptAvoidList | null> {
+  const database = await getDb();
+  if (!database) return null;
+  
+  // 映射欄位名稱
+  const patternTypeMap: Record<string, "opener" | "transition" | "ending" | "ai_phrase" | "filler"> = {
+    '開頭句式': 'opener',
+    '過渡句式': 'transition',
+    '結尾句式': 'ending',
+    'AI特徵詞': 'ai_phrase',
+    '填充詞': 'filler',
+    'opener': 'opener',
+    'transition': 'transition',
+    'ending': 'ending',
+    'ai_phrase': 'ai_phrase',
+    'filler': 'filler',
+  };
+  
+  const severityMap: Record<string, "block" | "warn" | "suggest"> = {
+    'high': 'block',
+    'medium': 'warn',
+    'low': 'suggest',
+    'block': 'block',
+    'warn': 'warn',
+    'suggest': 'suggest',
+  };
+  
+  const updateData: Record<string, unknown> = {};
+  if (data.phrase) updateData.pattern = data.phrase;
+  if (data.category) updateData.patternType = patternTypeMap[data.category] || data.category;
+  if (data.reason) updateData.description = data.reason;
+  if (data.severity) updateData.severity = severityMap[data.severity] || data.severity;
+  if (data.isActive !== undefined) updateData.isActive = data.isActive;
+  
+  await database
+    .update(promptAvoidList)
+    .set(updateData)
+    .where(eq(promptAvoidList.id, id));
+  
+  const [updated] = await database
+    .select()
+    .from(promptAvoidList)
+    .where(eq(promptAvoidList.id, id));
+  
+  return updated || null;
+}
+
+// 切換禁止句式啟用狀態
+export async function toggleAvoidPhraseActive(id: number): Promise<PromptAvoidList | null> {
+  const database = await getDb();
+  if (!database) return null;
+  
+  const [current] = await database
+    .select()
+    .from(promptAvoidList)
+    .where(eq(promptAvoidList.id, id));
+  
+  if (!current) return null;
+  
+  await database
+    .update(promptAvoidList)
+    .set({ isActive: !current.isActive, updatedAt: new Date() })
+    .where(eq(promptAvoidList.id, id));
+  
+  const [updated] = await database
+    .select()
+    .from(promptAvoidList)
+    .where(eq(promptAvoidList.id, id));
+  
+  return updated || null;
+}
+
+// 刪除禁止句式
+export async function deleteAvoidPhrase(id: number): Promise<boolean> {
+  const database = await getDb();
+  if (!database) return false;
+  
+  await database
+    .delete(promptAvoidList)
+    .where(eq(promptAvoidList.id, id));
+  
+  return true;
+}
+
+// 取得模板統計數據
+export async function getTemplateStats(): Promise<{
+  totalTemplates: number;
+  activeTemplates: number;
+  totalAvoidPhrases: number;
+  activeAvoidPhrases: number;
+  topTemplates: Array<{ name: string; usageCount: number; successRate: number }>;
+}> {
+  const database = await getDb();
+  if (!database) {
+    return {
+      totalTemplates: 0,
+      activeTemplates: 0,
+      totalAvoidPhrases: 0,
+      activeAvoidPhrases: 0,
+      topTemplates: [],
+    };
+  }
+  
+  const templates = await database.select().from(openerTemplates);
+  const avoidPhrases = await database.select().from(promptAvoidList);
+  
+  const topTemplates = templates
+    .filter(t => t.usageCount && t.usageCount > 0)
+    .sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0))
+    .slice(0, 5)
+    .map(t => ({
+      name: t.name,
+      usageCount: t.usageCount || 0,
+      successRate: t.usageCount && t.usageCount > 0 
+        ? ((t.successCount || 0) / t.usageCount) * 100 
+        : 0,
+    }));
+  
+  return {
+    totalTemplates: templates.length,
+    activeTemplates: templates.filter(t => t.isActive).length,
+    totalAvoidPhrases: avoidPhrases.length,
+    activeAvoidPhrases: avoidPhrases.filter(p => p.isActive).length,
+    topTemplates,
   };
 }

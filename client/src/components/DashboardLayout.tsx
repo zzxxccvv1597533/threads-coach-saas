@@ -36,6 +36,7 @@ import {
   Crown,
   GraduationCap,
   Users,
+  Sparkles,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -54,6 +55,7 @@ const menuItems = [
 
 const adminMenuItems = [
   { icon: Crown, label: "管理後台", path: "/admin" },
+  { icon: Sparkles, label: "模板管理", path: "/admin/templates" },
 ];
 
 const coachMenuItems = [

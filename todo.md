@@ -1867,3 +1867,43 @@
 - [x] 顯示 AI 痕跡分數和建議
 - [x] 8 個單元測試全部通過
 - [ ] 整合到發文工作室流程（待完成）
+
+
+## 前台功能整合
+
+- [ ] 將 OpenerSelector 組件整合到發文工作室
+- [ ] 在生成貼文流程中加入「開頭多選」步驟
+- [ ] 顯示 AI 痕跡分數和建議
+
+
+## 前台功能整合與管理後台
+
+- [ ] 整合 OpenerSelector 到發文工作室（讓學員選擇 3-5 個開頭）
+- [ ] 建立管理後台「模板管理」頁面（新增/編輯/停用開頭模板和禁止句式）
+- [ ] 實作學習式 Selector（基於學員選擇和貼文成效自動調整模板權重）
+
+
+## AI 內容生成優化 - 前端整合完成 (2025-01-15)
+
+### 前端整合
+- [x] 整合 OpenerSelector 到發文工作室 GuidedWritingFlow
+- [x] 使用新的 opener.generate API 取代舊的 generateHooks
+- [x] 在 Step 5 顯示 AI 痕跡分數和自然度評級
+- [x] 記錄學員選擇到資料庫
+
+### 管理後台模板管理
+- [x] 建立 AdminTemplates 頁面
+- [x] 開頭模板管理（新增/編輯/停用）
+- [x] 禁止句式管理（新增/編輯/刪除/停用）
+- [x] 在側邊欄新增「模板管理」入口
+- [x] 路由設定 /admin/templates
+
+### 資料庫函數修復
+- [x] 修復 db.ts 中的模板管理函數欄位映射
+- [x] 修復 createOpenerTemplate 使用正確的 schema 欄位
+- [x] 修復 createAvoidPhrase 使用正確的 schema 欄位
+- [x] 修復 updateOpenerTemplate 和 updateAvoidPhrase
+
+### 測試狀態
+- [x] 340 個單元測試全部通過
+- [x] TypeScript 編譯無錯誤
