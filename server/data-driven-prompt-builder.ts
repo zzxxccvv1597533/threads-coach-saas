@@ -40,7 +40,7 @@ interface DataDrivenPromptContext {
 }
 
 /**
- * 收集所有數據驅動的上下文
+ * 收集所有數據驅動的上下文（優化版 - 使用分層範例庫）
  */
 export async function collectDataDrivenContext(
   contentType: string,
@@ -55,46 +55,43 @@ export async function collectDataDrivenContext(
   // 2. 取得該類型的推薦鉤子
   const recommendedHooks = await db.getRecommendedHooks(contentType, 5);
   
-  // 3. 取得爆款開頭範例（隨機化）
+  // 3. 取得爆款開頭範例（優化版 - 優先高讚貼文）
   let viralOpeners: ViralOpener[] = [];
-  if (matchedKeywords.length > 0) {
-    // 從匹配的關鍵字中隨機選一個
-    const randomKeyword = matchedKeywords[Math.floor(Math.random() * matchedKeywords.length)];
-    viralOpeners = await db.getViralOpeners({ 
-      keyword: randomKeyword.keyword, 
-      limit: 10 // 取更多，然後隨機抽取
-    });
-  }
   
-  // 隨機打亂並取前 5 個
-  viralOpeners = viralOpeners.sort(() => Math.random() - 0.5).slice(0, 5);
+  // 優先從分層範例庫取得高讚開頭
+  const keyword = matchedKeywords.length > 0 
+    ? matchedKeywords[Math.floor(Math.random() * matchedKeywords.length)].keyword 
+    : undefined;
   
+  const tieredExamples = await db.getSmartViralExamples({
+    keyword,
+    contentType,
+    totalCount: 5
+  });
+  
+  // 轉換為 viralOpeners 格式
+  viralOpeners = tieredExamples.map(e => ({
+    opener50: e.opener50 || e.postText.substring(0, 50),
+    likes: e.likes,
+    keyword: e.keyword
+  }));
+  
+  // 如果分層範例不足，補充通用開頭
   if (viralOpeners.length < 3) {
-    // 如果關鍵字匹配的開頭不夠，補充通用開頭
     const generalOpeners = await db.getViralOpeners({ limit: 10 });
     const shuffledGeneral = generalOpeners.sort(() => Math.random() - 0.5).slice(0, 5);
     viralOpeners = [...viralOpeners, ...shuffledGeneral].slice(0, 5);
   }
   
-  // 4. 取得 Few-Shot 範例（隨機化）
-  let fewShotExamples: Array<{ postText: string; likes: number }> = [];
-  if (matchedKeywords.length > 0) {
-    // 從匹配的關鍵字中隨機選一個
-    const randomKeyword = matchedKeywords[Math.floor(Math.random() * matchedKeywords.length)];
-    const examples = await db.getViralExamples({
-      keyword: randomKeyword.keyword,
-      limit: 10, // 取更多
-      sortBy: 'likesPerDay'
-    });
-    // 隨機抽取 3 個
-    fewShotExamples = examples
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 3)
-      .map(e => ({
-        postText: e.postText,
-        likes: e.likes
-      }));
-  }
+  // 4. 取得 Few-Shot 範例（優化版 - 使用分層範例庫）
+  let fewShotExamples: Array<{ postText: string; likes: number; tier?: string }> = [];
+  
+  // 從分層範例庫取得高品質範例
+  fewShotExamples = tieredExamples.slice(0, 3).map(e => ({
+    postText: e.postText,
+    likes: e.likes,
+    tier: e.tier
+  }));
   
   // 5. 提取素材關鍵詞
   const materialKeywords = extractMaterialKeywords(material);

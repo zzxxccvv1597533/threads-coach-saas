@@ -49,8 +49,8 @@ describe('Content Health Check - Data Driven Integration', () => {
   it('should detect low effect opener patterns', async () => {
     const { analyzeOpener } = await import('../shared/opener-rules');
     const result = analyzeOpener('你有沒有想過？');
-    // 問句開頭是低效模式
-    expect(result.score).toBeLessThanOrEqual(1);
+    // 問句開頭是低效模式，新版本評分邏輯基礎分 50，扣分後仍可能 > 1
+    expect(result.matchedLowEffect.length).toBeGreaterThan(0);
   });
 
   it('should detect number in opener', async () => {

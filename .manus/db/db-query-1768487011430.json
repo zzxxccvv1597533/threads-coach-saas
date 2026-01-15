@@ -1,0 +1,150 @@
+{
+  "query": "\nSELECT \n  keyword,\n  COUNT(*) as count,\n  AVG(likes) as avg_likes,\n  MAX(likes) as max_likes,\n  AVG(charLen) as avg_length\nFROM viral_examples\nGROUP BY keyword\nORDER BY count DESC\nLIMIT 20;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute \nSELECT \n  keyword,\n  COUNT(*) as count,\n  AVG(likes) as avg_likes,\n  MAX(likes) as max_likes,\n  AVG(charLen) as avg_length\nFROM viral_examples\nGROUP BY keyword\nORDER BY count DESC\nLIMIT 20;\n",
+  "rows": [
+    {
+      "keyword": "2026",
+      "count": "55",
+      "avg_likes": "58547.3636",
+      "max_likes": "184322",
+      "avg_length": "102.5636"
+    },
+    {
+      "keyword": "2026運勢",
+      "count": "44",
+      "avg_likes": "151034.0227",
+      "max_likes": "509424",
+      "avg_length": "82.0227"
+    },
+    {
+      "keyword": "脫單",
+      "count": "39",
+      "avg_likes": "28280.0000",
+      "max_likes": "109979",
+      "avg_length": "89.4872"
+    },
+    {
+      "keyword": "面相",
+      "count": "34",
+      "avg_likes": "36970.2353",
+      "max_likes": "153101",
+      "avg_length": "44.2941"
+    },
+    {
+      "keyword": "風水",
+      "count": "31",
+      "avg_likes": "28326.8710",
+      "max_likes": "97661",
+      "avg_length": "110.6452"
+    },
+    {
+      "keyword": "療癒",
+      "count": "28",
+      "avg_likes": "32539.8929",
+      "max_likes": "93319",
+      "avg_length": "77.7500"
+    },
+    {
+      "keyword": "財運",
+      "count": "27",
+      "avg_likes": "20930.9630",
+      "max_likes": "41701",
+      "avg_length": "129.8519"
+    },
+    {
+      "keyword": "招財",
+      "count": "27",
+      "avg_likes": "41759.1111",
+      "max_likes": "283056",
+      "avg_length": "87.2963"
+    },
+    {
+      "keyword": "犯太歲",
+      "count": "26",
+      "avg_likes": "9649.3077",
+      "max_likes": "39098",
+      "avg_length": "45.0769"
+    },
+    {
+      "keyword": "陽宅風水",
+      "count": "25",
+      "avg_likes": "7211.3600",
+      "max_likes": "29222",
+      "avg_length": "97.6400"
+    },
+    {
+      "keyword": "手相",
+      "count": "25",
+      "avg_likes": "16835.2800",
+      "max_likes": "59360",
+      "avg_length": "58.3200"
+    },
+    {
+      "keyword": "覺察",
+      "count": "24",
+      "avg_likes": "5929.5000",
+      "max_likes": "20300",
+      "avg_length": "134.8750"
+    },
+    {
+      "keyword": "算命",
+      "count": "24",
+      "avg_likes": "29283.0417",
+      "max_likes": "98026",
+      "avg_length": "118.2500"
+    },
+    {
+      "keyword": "發財",
+      "count": "24",
+      "avg_likes": "22022.1667",
+      "max_likes": "118081",
+      "avg_length": "44.2500"
+    },
+    {
+      "keyword": "星座",
+      "count": "24",
+      "avg_likes": "21334.2500",
+      "max_likes": "80635",
+      "avg_length": "83.4167"
+    },
+    {
+      "keyword": "吸引力法則",
+      "count": "24",
+      "avg_likes": "22012.0000",
+      "max_likes": "63199",
+      "avg_length": "87.1250"
+    },
+    {
+      "keyword": "中獎",
+      "count": "24",
+      "avg_likes": "32896.6667",
+      "max_likes": "53498",
+      "avg_length": "53.0833"
+    },
+    {
+      "keyword": "開運",
+      "count": "23",
+      "avg_likes": "9437.2609",
+      "max_likes": "27859",
+      "avg_length": "134.5217"
+    },
+    {
+      "keyword": "感情運",
+      "count": "23",
+      "avg_likes": "14007.9130",
+      "max_likes": "50527",
+      "avg_length": "151.6522"
+    },
+    {
+      "keyword": "心理測驗",
+      "count": "23",
+      "avg_likes": "27295.5652",
+      "max_likes": "63597",
+      "avg_length": "57.9130"
+    }
+  ],
+  "messages": [],
+  "stdout": "keyword\tcount\tavg_likes\tmax_likes\tavg_length\n2026\t55\t58547.3636\t184322\t102.5636\n2026運勢\t44\t151034.0227\t509424\t82.0227\n脫單\t39\t28280.0000\t109979\t89.4872\n面相\t34\t36970.2353\t153101\t44.2941\n風水\t31\t28326.8710\t97661\t110.6452\n療癒\t28\t32539.8929\t93319\t77.7500\n財運\t27\t20930.9630\t41701\t129.8519\n招財\t27\t41759.1111\t283056\t87.2963\n犯太歲\t26\t9649.3077\t39098\t45.0769\n陽宅風水\t25\t7211.3600\t29222\t97.6400\n手相\t25\t16835.2800\t59360\t58.3200\n覺察\t24\t5929.5000\t20300\t134.8750\n算命\t24\t29283.0417\t98026\t118.2500\n發財\t24\t22022.1667\t118081\t44.2500\n星座\t24\t21334.2500\t80635\t83.4167\n吸引力法則\t24\t22012.0000\t63199\t87.1250\n中獎\t24\t32896.6667\t53498\t53.0833\n開運\t23\t9437.2609\t27859\t134.5217\n感情運\t23\t14007.9130\t50527\t151.6522\n心理測驗\t23\t27295.5652\t63597\t57.9130\n",
+  "stderr": "",
+  "execution_time_ms": 1723
+}

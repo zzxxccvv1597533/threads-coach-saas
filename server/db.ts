@@ -3358,3 +3358,335 @@ export async function incrementTemplatePreferenceStats(
     return database.insert(userTemplatePreferences).values(values as any);
   }
 }
+
+
+// ==================== 分層範例庫（第二階段優化） ====================
+
+/**
+ * 取得分層爆款範例（優先高讚貼文）
+ * 層級定義：
+ * - S 級：≥50,000 讚（學習爆款公式）
+ * - A 級：10,000-50,000 讚（主要參考）
+ * - B 級：3,000-10,000 讚（風格多樣性）
+ * - C 級：1,000-3,000 讚（備用）
+ */
+export async function getTieredViralExamples(options: {
+  keyword?: string;
+  contentType?: string;
+  tier?: 'S' | 'A' | 'B' | 'C' | 'all';
+  limit?: number;
+  excludeIds?: number[];
+}): Promise<Array<{
+  id: number;
+  keyword: string;
+  postText: string;
+  likes: number;
+  tier: 'S' | 'A' | 'B' | 'C';
+  opener50: string | null;
+  charLen: number | null;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [];
+  
+  // 關鍵字篩選
+  if (options.keyword) {
+    conditions.push(eq(viralExamples.keyword, options.keyword));
+  }
+  
+  // 排除已使用的範例
+  if (options.excludeIds && options.excludeIds.length > 0) {
+    conditions.push(sql`${viralExamples.id} NOT IN (${options.excludeIds.join(',')})`);
+  }
+  
+  // 層級篩選
+  if (options.tier && options.tier !== 'all') {
+    switch (options.tier) {
+      case 'S':
+        conditions.push(sql`${viralExamples.likes} >= 50000`);
+        break;
+      case 'A':
+        conditions.push(sql`${viralExamples.likes} >= 10000 AND ${viralExamples.likes} < 50000`);
+        break;
+      case 'B':
+        conditions.push(sql`${viralExamples.likes} >= 3000 AND ${viralExamples.likes} < 10000`);
+        break;
+      case 'C':
+        conditions.push(sql`${viralExamples.likes} >= 1000 AND ${viralExamples.likes} < 3000`);
+        break;
+    }
+  } else {
+    // 預設只取 1000 讚以上的
+    conditions.push(sql`${viralExamples.likes} >= 1000`);
+  }
+  
+  const query = db.select({
+    id: viralExamples.id,
+    keyword: viralExamples.keyword,
+    postText: viralExamples.postText,
+    likes: viralExamples.likes,
+    opener50: viralExamples.opener50,
+    charLen: viralExamples.charLen,
+  }).from(viralExamples);
+  
+  if (conditions.length > 0) {
+    query.where(and(...conditions));
+  }
+  
+  query.orderBy(desc(viralExamples.likes));
+  query.limit(options.limit || 10);
+  
+  const results = await query;
+  
+  // 計算層級
+  return results.map(r => {
+    const likes = r.likes || 0;
+    let tier: 'S' | 'A' | 'B' | 'C' = 'C';
+    if (likes >= 50000) tier = 'S';
+    else if (likes >= 10000) tier = 'A';
+    else if (likes >= 3000) tier = 'B';
+    
+    return {
+      ...r,
+      likes,
+      tier,
+    };
+  });
+}
+
+/**
+ * 智能選取範例（優先高層級，確保多樣性）
+ * 策略：
+ * 1. 優先從 S 級抽取 1 個
+ * 2. 從 A 級抽取 2 個
+ * 3. 從 B 級抽取 1 個（增加多樣性）
+ */
+export async function getSmartViralExamples(options: {
+  keyword?: string;
+  contentType?: string;
+  totalCount?: number;
+}): Promise<Array<{
+  id: number;
+  keyword: string;
+  postText: string;
+  likes: number;
+  tier: 'S' | 'A' | 'B' | 'C';
+  opener50: string | null;
+}>> {
+  const totalCount = options.totalCount || 4;
+  const usedIds: number[] = [];
+  const results: Array<{
+    id: number;
+    keyword: string;
+    postText: string;
+    likes: number;
+    tier: 'S' | 'A' | 'B' | 'C';
+    opener50: string | null;
+  }> = [];
+  
+  // 分配策略
+  const tierDistribution = [
+    { tier: 'S' as const, count: Math.max(1, Math.floor(totalCount * 0.25)) },
+    { tier: 'A' as const, count: Math.max(1, Math.floor(totalCount * 0.5)) },
+    { tier: 'B' as const, count: Math.max(1, totalCount - Math.floor(totalCount * 0.75)) },
+  ];
+  
+  for (const { tier, count } of tierDistribution) {
+    const tierExamples = await getTieredViralExamples({
+      keyword: options.keyword,
+      tier,
+      limit: count * 3, // 取多一些用於隨機
+      excludeIds: usedIds,
+    });
+    
+    // 隨機選取
+    const shuffled = tierExamples.sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, count);
+    
+    for (const example of selected) {
+      usedIds.push(example.id);
+      results.push({
+        id: example.id,
+        keyword: example.keyword,
+        postText: example.postText,
+        likes: example.likes,
+        tier: example.tier,
+        opener50: example.opener50,
+      });
+    }
+  }
+  
+  // 如果數量不足，從所有層級補充
+  if (results.length < totalCount) {
+    const remaining = await getTieredViralExamples({
+      keyword: options.keyword,
+      tier: 'all',
+      limit: (totalCount - results.length) * 2,
+      excludeIds: usedIds,
+    });
+    
+    const shuffled = remaining.sort(() => Math.random() - 0.5);
+    const needed = totalCount - results.length;
+    
+    for (let i = 0; i < Math.min(needed, shuffled.length); i++) {
+      results.push({
+        id: shuffled[i].id,
+        keyword: shuffled[i].keyword,
+        postText: shuffled[i].postText,
+        likes: shuffled[i].likes,
+        tier: shuffled[i].tier,
+        opener50: shuffled[i].opener50,
+      });
+    }
+  }
+  
+  return results;
+}
+
+/**
+ * 取得開頭鉤子（按類型分層）
+ */
+export async function getTieredOpenerHooks(options: {
+  hookType?: string;
+  minLikes?: number;
+  limit?: number;
+}): Promise<Array<{
+  id: number;
+  hookPattern: string;
+  hookType: string | null;
+  avgLikes: number;
+  viralRate: number;
+  examples: Array<{ content: string; likes: number; keyword: string }> | null;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [eq(contentHooks.isActive, true)];
+  
+  if (options.hookType) {
+    conditions.push(eq(contentHooks.hookType, options.hookType));
+  }
+  
+  if (options.minLikes) {
+    conditions.push(sql`${contentHooks.avgLikes} >= ${options.minLikes}`);
+  }
+  
+  const results = await db.select({
+    id: contentHooks.id,
+    hookPattern: contentHooks.hookPattern,
+    hookType: contentHooks.hookType,
+    avgLikes: contentHooks.avgLikes,
+    viralRate: contentHooks.viralRate,
+    examples: contentHooks.examples,
+  })
+    .from(contentHooks)
+    .where(and(...conditions))
+    .orderBy(desc(contentHooks.avgLikes))
+    .limit(options.limit || 10);
+  
+  return results.map(r => ({
+    ...r,
+    avgLikes: r.avgLikes || 0,
+    viralRate: r.viralRate || 0,
+  }));
+}
+
+/**
+ * 批量插入爆款範例（用於資料庫更新）
+ */
+export async function batchInsertViralExamples(examples: Array<{
+  keyword: string;
+  postText: string;
+  likes: number;
+  opener50?: string;
+  charLen?: number;
+  isTop200?: boolean;
+  isTop20?: boolean;
+}>): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  
+  let insertedCount = 0;
+  
+  // 分批插入，每批 100 個
+  const batchSize = 100;
+  for (let i = 0; i < examples.length; i += batchSize) {
+    const batch = examples.slice(i, i + batchSize);
+    
+    try {
+      await db.insert(viralExamples).values(
+        batch.map(e => ({
+          keyword: e.keyword,
+          postText: e.postText,
+          likes: e.likes,
+          opener50: e.opener50 || e.postText.substring(0, 50),
+          charLen: e.charLen || e.postText.length,
+          isTop200: e.isTop200 || false,
+          isTop20: e.isTop20 || false,
+          source: 'batch_import',
+        }))
+      );
+      insertedCount += batch.length;
+    } catch (error) {
+      console.error('[DB] Batch insert error:', error);
+    }
+  }
+  
+  return insertedCount;
+}
+
+/**
+ * 批量插入開頭鉤子（用於資料庫更新）
+ */
+export async function batchInsertOpenerHooks(hooks: Array<{
+  hookPattern: string;
+  hookType: string;
+  avgLikes: number;
+  viralRate?: number;
+  sampleCount?: number;
+  examples?: Array<{ content: string; likes: number; keyword: string }>;
+}>): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  
+  let insertedCount = 0;
+  
+  for (const hook of hooks) {
+    try {
+      // 檢查是否已存在
+      const existing = await db.select()
+        .from(contentHooks)
+        .where(eq(contentHooks.hookPattern, hook.hookPattern))
+        .limit(1);
+      
+      if (existing.length === 0) {
+        await db.insert(contentHooks).values({
+          hookPattern: hook.hookPattern,
+          hookType: hook.hookType,
+          avgLikes: hook.avgLikes,
+          viralRate: hook.viralRate || 0,
+          sampleCount: hook.sampleCount || 0,
+          examples: hook.examples || [],
+          isActive: true,
+          source: 'batch_import',
+        });
+        insertedCount++;
+      } else {
+        // 更新現有記錄
+        await db.update(contentHooks)
+          .set({
+            avgLikes: hook.avgLikes,
+            viralRate: hook.viralRate || 0,
+            sampleCount: hook.sampleCount || 0,
+            examples: hook.examples || [],
+          })
+          .where(eq(contentHooks.id, existing[0].id));
+      }
+    } catch (error) {
+      console.error('[DB] Insert hook error:', error);
+    }
+  }
+  
+  return insertedCount;
+}

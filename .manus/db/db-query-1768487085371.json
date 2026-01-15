@@ -1,0 +1,9 @@
+{
+  "query": "\nSELECT \n  id,\n  pattern,\n  patternType,\n  description,\n  replacement,\n  severity,\n  matchCount,\n  isActive\nFROM prompt_avoid_list\nORDER BY severity, matchCount DESC\nLIMIT 30;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute \nSELECT \n  id,\n  pattern,\n  patternType,\n  description,\n  replacement,\n  severity,\n  matchCount,\n  isActive\nFROM prompt_avoid_list\nORDER BY severity, matchCount DESC\nLIMIT 30;\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1570
+}

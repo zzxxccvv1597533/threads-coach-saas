@@ -1,0 +1,22 @@
+{
+  "query": "\nSELECT \n  SUM(CASE WHEN hasNumber = 1 THEN 1 ELSE 0 END) as has_number_count,\n  SUM(CASE WHEN questionMark = 1 THEN 1 ELSE 0 END) as question_mark_count,\n  SUM(CASE WHEN exclaimMark = 1 THEN 1 ELSE 0 END) as exclaim_mark_count,\n  SUM(CASE WHEN youFlag = 1 THEN 1 ELSE 0 END) as you_flag_count,\n  SUM(CASE WHEN iFlag = 1 THEN 1 ELSE 0 END) as i_flag_count,\n  SUM(CASE WHEN ctaFlag = 1 THEN 1 ELSE 0 END) as cta_flag_count,\n  SUM(CASE WHEN timePressureFlag = 1 THEN 1 ELSE 0 END) as time_pressure_count,\n  SUM(CASE WHEN resultFlag = 1 THEN 1 ELSE 0 END) as result_flag_count,\n  SUM(CASE WHEN turnFlag = 1 THEN 1 ELSE 0 END) as turn_flag_count,\n  COUNT(*) as total\nFROM viral_examples;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute \nSELECT \n  SUM(CASE WHEN hasNumber = 1 THEN 1 ELSE 0 END) as has_number_count,\n  SUM(CASE WHEN questionMark = 1 THEN 1 ELSE 0 END) as question_mark_count,\n  SUM(CASE WHEN exclaimMark = 1 THEN 1 ELSE 0 END) as exclaim_mark_count,\n  SUM(CASE WHEN youFlag = 1 THEN 1 ELSE 0 END) as you_flag_count,\n  SUM(CASE WHEN iFlag = 1 THEN 1 ELSE 0 END) as i_flag_count,\n  SUM(CASE WHEN ctaFlag = 1 THEN 1 ELSE 0 END) as cta_flag_count,\n  SUM(CASE WHEN timePressureFlag = 1 THEN 1 ELSE 0 END) as time_pressure_count,\n  SUM(CASE WHEN resultFlag = 1 THEN 1 ELSE 0 END) as result_flag_count,\n  SUM(CASE WHEN turnFlag = 1 THEN 1 ELSE 0 END) as turn_flag_count,\n  COUNT(*) as total\nFROM viral_examples;\n",
+  "rows": [
+    {
+      "has_number_count": "407",
+      "question_mark_count": "261",
+      "exclaim_mark_count": "229",
+      "you_flag_count": "447",
+      "i_flag_count": "588",
+      "cta_flag_count": "106",
+      "time_pressure_count": "167",
+      "result_flag_count": "197",
+      "turn_flag_count": "319",
+      "total": "1240"
+    }
+  ],
+  "messages": [],
+  "stdout": "has_number_count\tquestion_mark_count\texclaim_mark_count\tyou_flag_count\ti_flag_count\tcta_flag_count\ttime_pressure_count\tresult_flag_count\tturn_flag_count\ttotal\n407\t261\t229\t447\t588\t106\t167\t197\t319\t1240\n",
+  "stderr": "",
+  "execution_time_ms": 1691
+}

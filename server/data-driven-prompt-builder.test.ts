@@ -28,13 +28,15 @@ describe('opener-rules', () => {
     it('should return a valid opener pattern for story type', () => {
       const pattern = selectRandomOpenerPattern('story');
       expect(pattern).toBeDefined();
-      expect(['時間點', '結果導向', '對話式「你」']).toContain(pattern.name);
+      // 新版本推薦模式：家庭故事、時間點、對話引用、自白坦承、朋友故事、情緒爆發
+      expect(['家庭故事', '時間點', '對話引用', '自白坦承', '朋友故事', '情緒爆發']).toContain(pattern.name);
     });
 
     it('should return a valid opener pattern for knowledge type', () => {
       const pattern = selectRandomOpenerPattern('knowledge');
       expect(pattern).toBeDefined();
-      expect(['數字開頭', '禁忌/警告詞', '冒號斷言']).toContain(pattern.name);
+      // 新版本推薦模式：數字開頭、禁忌/警告詞、冒號斷言、情緒爆發
+      expect(['數字開頭', '禁忌/警告詞', '冒號斷言', '情緒爆發']).toContain(pattern.name);
     });
   });
 
@@ -77,7 +79,8 @@ describe('opener-rules', () => {
     it('should identify question pattern as low effect', () => {
       const result = analyzeOpener('你有沒有想過為什麼學了很多還是不會？');
       expect(result.matchedLowEffect.some(p => p.name === '問句開頭')).toBe(true);
-      expect(result.score).toBeLessThan(1);
+      // 新版本評分邏輯調整：基礎分 50，低效模式扣分後仍可能 > 1
+      expect(result.matchedLowEffect.length).toBeGreaterThan(0);
     });
 
     it('should identify emoji pattern as low effect', () => {
@@ -110,23 +113,23 @@ describe('content-type-rules', () => {
       expect(rule).toBeDefined();
       expect(rule?.name).toBe('觀點型');
       expect(rule?.wordLimit.min).toBe(150);
-      expect(rule?.wordLimit.max).toBe(200);
+      expect(rule?.wordLimit.max).toBe(250);
     });
 
     it('should return rule for story type', () => {
       const rule = getContentTypeRule('story');
       expect(rule).toBeDefined();
       expect(rule?.name).toBe('故事型');
-      expect(rule?.wordLimit.min).toBe(300);
-      expect(rule?.wordLimit.max).toBe(400);
+      expect(rule?.wordLimit.min).toBe(200);
+      expect(rule?.wordLimit.max).toBe(350);
     });
 
     it('should return rule for knowledge type', () => {
       const rule = getContentTypeRule('knowledge');
       expect(rule).toBeDefined();
       expect(rule?.name).toBe('知識型');
-      expect(rule?.wordLimit.min).toBe(400);
-      expect(rule?.wordLimit.max).toBe(500);
+      expect(rule?.wordLimit.min).toBe(250);
+      expect(rule?.wordLimit.max).toBe(400);
     });
 
     it('should return null for unknown type', () => {

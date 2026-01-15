@@ -1,0 +1,19 @@
+{
+  "query": "\nSELECT \n  'viral_examples' as table_name,\n  COUNT(*) as total_count,\n  COUNT(DISTINCT keyword) as unique_keywords,\n  AVG(likes) as avg_likes,\n  MAX(likes) as max_likes,\n  SUM(CASE WHEN isTop200 = 1 THEN 1 ELSE 0 END) as top200_count,\n  SUM(CASE WHEN isTop20 = 1 THEN 1 ELSE 0 END) as top20_count\nFROM viral_examples;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute \nSELECT \n  'viral_examples' as table_name,\n  COUNT(*) as total_count,\n  COUNT(DISTINCT keyword) as unique_keywords,\n  AVG(likes) as avg_likes,\n  MAX(likes) as max_likes,\n  SUM(CASE WHEN isTop200 = 1 THEN 1 ELSE 0 END) as top200_count,\n  SUM(CASE WHEN isTop20 = 1 THEN 1 ELSE 0 END) as top20_count\nFROM viral_examples;\n",
+  "rows": [
+    {
+      "table_name": "viral_examples",
+      "total_count": "1240",
+      "unique_keywords": "52",
+      "avg_likes": "21190.5081",
+      "max_likes": "509424",
+      "top200_count": "200",
+      "top20_count": "1040"
+    }
+  ],
+  "messages": [],
+  "stdout": "table_name\ttotal_count\tunique_keywords\tavg_likes\tmax_likes\ttop200_count\ttop20_count\nviral_examples\t1240\t52\t21190.5081\t509424\t200\t1040\n",
+  "stderr": "",
+  "execution_time_ms": 1622
+}

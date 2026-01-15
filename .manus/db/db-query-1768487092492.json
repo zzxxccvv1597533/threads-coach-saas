@@ -1,0 +1,62 @@
+{
+  "query": "\nSELECT \n  id,\n  keyword,\n  postText,\n  likes,\n  likesPerDay,\n  funnelStage,\n  opener50,\n  charLen,\n  hasNumber,\n  questionMark,\n  youFlag,\n  iFlag,\n  ctaFlag,\n  resultFlag,\n  turnFlag\nFROM viral_examples\nWHERE likes >= 3000\nORDER BY likes DESC\nLIMIT 10;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute \nSELECT \n  id,\n  keyword,\n  postText,\n  likes,\n  likesPerDay,\n  funnelStage,\n  opener50,\n  charLen,\n  hasNumber,\n  questionMark,\n  youFlag,\n  iFlag,\n  ctaFlag,\n  resultFlag,\n  turnFlag\nFROM viral_examples\nWHERE likes >= 3000\nORDER BY likes DESC\nLIMIT 10;\n",
+  "rows": [
+    {
+      "id": "1622",
+      "keyword": "2026運勢",
+      "postText": "當妳不小心傳到班群",
+      "likes": "208526",
+      "likesPerDay": "577.63",
+      "funnelStage": "TOFU",
+      "opener50": "NULL",
+      "charLen": "9",
+      "hasNumber": "0",
+      "questionMark": "0",
+      "youFlag": "1",
+      "iFlag": "0",
+      "ctaFlag": "0",
+      "resultFlag": "0",
+      "turnFlag": "0"
+    },
+    {
+      "id": "1623",
+      "keyword": "2026運勢",
+      "postText": "幹在捷運上玩測距儀發車會跑走喔三小",
+      "likes": "208023",
+      "likesPerDay": "306.82",
+      "funnelStage": "TOFU",
+      "opener50": "NULL",
+      "charLen": "17",
+      "hasNumber": "0",
+      "questionMark": "0",
+      "youFlag": "0",
+      "iFlag": "0",
+      "ctaFlag": "0",
+      "resultFlag": "0",
+      "turnFlag": "0"
+    }
+  ],
+  "messages": [
+    "1619\t2026運勢\t實在太帥了 都暈了我",
+    "為了發這篇加入Threads🫠\t509424\t5094.24\tTOFU\tNULL\t26\t0\t0\t0\t1\t1\t0\t0",
+    "1447\t2026運勢\t實在太帥了 都暈了我",
+    "為了發這篇加入Threads🫠\t509424\t5094.24\tTOFU\t實在太帥了 都暈了我 為了發這篇加入Threads🫠\t26\t0\t0\t0\t1\t1\t0\t0",
+    "1411\t招財\t公園裡發現一個音樂盒 ",
+    "一個招財貓 😂\t283056\t12306.78\tTOFU\t公園裡發現一個音樂盒 一個招財貓 😂\t19\t0\t0\t0\t0\t0\t1\t0",
+    "2079\t招財\t公園裡發現一個音樂盒 ",
+    "一個招財貓 😂\t283056\t12306.78\tTOFU\tNULL\t19\t0\t0\t0\t0\t0\t1\t0",
+    "2239\t水晶\t當主管問你有沒有衛生紙",
+    "然後你的手剛好很巧",
+    "（主管：⋯⋯⋯⋯⋯⋯）\t255147\t948.50\tTOFU\tNULL\t33\t0\t0\t1\t0\t0\t0\t0",
+    "1620\t2026運勢\t我朋友超猛 爸爸開水泥車來載她",
+    "我快笑死 全場焦點\t230047\t295.69\tTOFU\tNULL\t25\t0\t0\t0\t1\t0\t0\t0",
+    "1621\t2026運勢\t在淡水拍到情侶，超級可愛",
+    "希望你們可以看到\t210906\t7811.33\tTOFU\tNULL\t21\t0\t0\t1\t0\t0\t0\t0",
+    "1426\t2026運勢\t在淡水拍到情侶，超級可愛",
+    "希望你們可以看到\t210906\t7811.33\tTOFU\t在淡水拍到情侶，超級可愛 希望你們可以看到\t21\t0\t0\t1\t0\t0\t0\t0"
+  ],
+  "stdout": "id\tkeyword\tpostText\tlikes\tlikesPerDay\tfunnelStage\topener50\tcharLen\thasNumber\tquestionMark\tyouFlag\tiFlag\tctaFlag\tresultFlag\tturnFlag\n1619\t2026運勢\t實在太帥了 都暈了我\n為了發這篇加入Threads🫠\t509424\t5094.24\tTOFU\tNULL\t26\t0\t0\t0\t1\t1\t0\t0\n1447\t2026運勢\t實在太帥了 都暈了我\n為了發這篇加入Threads🫠\t509424\t5094.24\tTOFU\t實在太帥了 都暈了我 為了發這篇加入Threads🫠\t26\t0\t0\t0\t1\t1\t0\t0\n1411\t招財\t公園裡發現一個音樂盒 \n一個招財貓 😂\t283056\t12306.78\tTOFU\t公園裡發現一個音樂盒 一個招財貓 😂\t19\t0\t0\t0\t0\t0\t1\t0\n2079\t招財\t公園裡發現一個音樂盒 \n一個招財貓 😂\t283056\t12306.78\tTOFU\tNULL\t19\t0\t0\t0\t0\t0\t1\t0\n2239\t水晶\t當主管問你有沒有衛生紙\n然後你的手剛好很巧\n（主管：⋯⋯⋯⋯⋯⋯）\t255147\t948.50\tTOFU\tNULL\t33\t0\t0\t1\t0\t0\t0\t0\n1620\t2026運勢\t我朋友超猛 爸爸開水泥車來載她\n我快笑死 全場焦點\t230047\t295.69\tTOFU\tNULL\t25\t0\t0\t0\t1\t0\t0\t0\n1621\t2026運勢\t在淡水拍到情侶，超級可愛\n希望你們可以看到\t210906\t7811.33\tTOFU\tNULL\t21\t0\t0\t1\t0\t0\t0\t0\n1426\t2026運勢\t在淡水拍到情侶，超級可愛\n希望你們可以看到\t210906\t7811.33\tTOFU\t在淡水拍到情侶，超級可愛 希望你們可以看到\t21\t0\t0\t1\t0\t0\t0\t0\n1622\t2026運勢\t當妳不小心傳到班群\t208526\t577.63\tTOFU\tNULL\t9\t0\t0\t1\t0\t0\t0\t0\n1623\t2026運勢\t幹在捷運上玩測距儀發車會跑走喔三小\t208023\t306.82\tTOFU\tNULL\t17\t0\t0\t0\t0\t0\t0\t0\n",
+  "stderr": "",
+  "execution_time_ms": 1564
+}

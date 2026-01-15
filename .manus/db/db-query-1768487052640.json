@@ -1,0 +1,170 @@
+{
+  "query": "\nSELECT \n  hookPattern,\n  hookType,\n  avgLikes,\n  viralRate,\n  sampleCount,\n  isActive\nFROM content_hooks\nORDER BY viralRate DESC\nLIMIT 20;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute \nSELECT \n  hookPattern,\n  hookType,\n  avgLikes,\n  viralRate,\n  sampleCount,\n  isActive\nFROM content_hooks\nORDER BY viralRate DESC\nLIMIT 20;\n",
+  "rows": [
+    {
+      "hookPattern": "熟悉張惠妹的人都知道，她每年元旦都要回到台東部落",
+      "hookType": "extracted",
+      "avgLikes": "152189",
+      "viralRate": "15218900",
+      "sampleCount": "1",
+      "isActive": "1"
+    },
+    {
+      "hookPattern": "還想說這裡怎麼沒人站😂",
+      "hookType": "extracted",
+      "avgLikes": "82896",
+      "viralRate": "8289600",
+      "sampleCount": "1",
+      "isActive": "1"
+    },
+    {
+      "hookPattern": "對於隨性到連羅浮宮都能遭小偷的法國人而言，202",
+      "hookType": "extracted",
+      "avgLikes": "69352",
+      "viralRate": "6935200",
+      "sampleCount": "1",
+      "isActive": "1"
+    },
+    {
+      "hookPattern": "台東跨年好扯 直播轉播沒廣告、沒有主持人浪費時間",
+      "hookType": "extracted",
+      "avgLikes": "101973",
+      "viralRate": "5098650",
+      "sampleCount": "1",
+      "isActive": "1"
+    },
+    {
+      "hookPattern": "淡信線往淡水的車廂裡面有一顆沒有家的電源寶寶 幫",
+      "hookType": "extracted",
+      "avgLikes": "50667",
+      "viralRate": "5066700",
+      "sampleCount": "1",
+      "isActive": "1"
+    },
+    {
+      "hookPattern": "2026最新CP 全「新」101煙火 你錄取了，",
+      "hookType": "extracted",
+      "avgLikes": "39205",
+      "viralRate": "3920500",
+      "sampleCount": "1",
+      "isActive": "1"
+    },
+    {
+      "hookPattern": "正式宣布2026 threads第一個流量女王就",
+      "hookType": "extracted",
+      "avgLikes": "38907",
+      "viralRate": "3890700",
+      "sampleCount": "1",
+      "isActive": "1"
+    },
+    {
+      "hookPattern": "蛤現在友情紀念冊還包含Threads了歐 我真的",
+      "hookType": "extracted",
+      "avgLikes": "37451",
+      "viralRate": "3745100",
+      "sampleCount": "1",
+      "isActive": "1"
+    },
+    {
+      "hookPattern": "兩間不同的廟都博到站杯怎麼辦",
+      "hookType": "extracted",
+      "avgLikes": "35452",
+      "viralRate": "3545200",
+      "sampleCount": "1",
+      "isActive": "1"
+    },
+    {
+      "hookPattern": "求解為什麼剛跨年完家裡立刻出現一條蛇 而且門窗都",
+      "hookType": "extracted",
+      "avgLikes": "34637",
+      "viralRate": "3463700",
+      "sampleCount": "1",
+      "isActive": "1"
+    },
+    {
+      "hookPattern": "Happy New Year 2026 Thai",
+      "hookType": "extracted",
+      "avgLikes": "33549",
+      "viralRate": "3354900",
+      "sampleCount": "1",
+      "isActive": "1"
+    },
+    {
+      "hookPattern": "這到底是哪一間的幸運餅乾出的，我要告他 ^ ^",
+      "hookType": "extracted",
+      "avgLikes": "97661",
+      "viralRate": "3255367",
+      "sampleCount": "1",
+      "isActive": "1"
+    },
+    {
+      "hookPattern": "蛤 原來台東2025跨2026 的超級演唱會 是",
+      "hookType": "extracted",
+      "avgLikes": "29024",
+      "viralRate": "2902400",
+      "sampleCount": "1",
+      "isActive": "1"
+    },
+    {
+      "hookPattern": "1問朋友家神明可不可以在神明桌底下吃葡萄 2我朋",
+      "hookType": "extracted",
+      "avgLikes": "24598",
+      "viralRate": "2459800",
+      "sampleCount": "1",
+      "isActive": "1"
+    },
+    {
+      "hookPattern": "Another year without the",
+      "hookType": "extracted",
+      "avgLikes": "21989",
+      "viralRate": "2198900",
+      "sampleCount": "1",
+      "isActive": "1"
+    },
+    {
+      "hookPattern": "坐到阿嬤位置賴皮不走的胖虎",
+      "hookType": "extracted",
+      "avgLikes": "42229",
+      "viralRate": "2111450",
+      "sampleCount": "1",
+      "isActive": "1"
+    },
+    {
+      "hookPattern": "New year, new platform 💪",
+      "hookType": "extracted",
+      "avgLikes": "20526",
+      "viralRate": "2052600",
+      "sampleCount": "1",
+      "isActive": "1"
+    },
+    {
+      "hookPattern": "跨年主ㄔˇ人MVP非 A-Lin 莫屬 開口講話",
+      "hookType": "extracted",
+      "avgLikes": "19727",
+      "viralRate": "1972700",
+      "sampleCount": "1",
+      "isActive": "1"
+    },
+    {
+      "hookPattern": "新年快樂 . 跟他打電話跨年 2025 12/3",
+      "hookType": "extracted",
+      "avgLikes": "19354",
+      "viralRate": "1935400",
+      "sampleCount": "1",
+      "isActive": "1"
+    },
+    {
+      "hookPattern": "2026 全部的追星人都會搶到票",
+      "hookType": "extracted",
+      "avgLikes": "37657",
+      "viralRate": "1882850",
+      "sampleCount": "1",
+      "isActive": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "hookPattern\thookType\tavgLikes\tviralRate\tsampleCount\tisActive\n熟悉張惠妹的人都知道，她每年元旦都要回到台東部落\textracted\t152189\t15218900\t1\t1\n還想說這裡怎麼沒人站😂\textracted\t82896\t8289600\t1\t1\n對於隨性到連羅浮宮都能遭小偷的法國人而言，202\textracted\t69352\t6935200\t1\t1\n台東跨年好扯 直播轉播沒廣告、沒有主持人浪費時間\textracted\t101973\t5098650\t1\t1\n淡信線往淡水的車廂裡面有一顆沒有家的電源寶寶 幫\textracted\t50667\t5066700\t1\t1\n2026最新CP 全「新」101煙火 你錄取了，\textracted\t39205\t3920500\t1\t1\n正式宣布2026 threads第一個流量女王就\textracted\t38907\t3890700\t1\t1\n蛤現在友情紀念冊還包含Threads了歐 我真的\textracted\t37451\t3745100\t1\t1\n兩間不同的廟都博到站杯怎麼辦\textracted\t35452\t3545200\t1\t1\n求解為什麼剛跨年完家裡立刻出現一條蛇 而且門窗都\textracted\t34637\t3463700\t1\t1\nHappy New Year 2026 Thai\textracted\t33549\t3354900\t1\t1\n這到底是哪一間的幸運餅乾出的，我要告他 ^ ^\textracted\t97661\t3255367\t1\t1\n蛤 原來台東2025跨2026 的超級演唱會 是\textracted\t29024\t2902400\t1\t1\n1問朋友家神明可不可以在神明桌底下吃葡萄 2我朋\textracted\t24598\t2459800\t1\t1\nAnother year without the\textracted\t21989\t2198900\t1\t1\n坐到阿嬤位置賴皮不走的胖虎\textracted\t42229\t2111450\t1\t1\nNew year, new platform 💪\textracted\t20526\t2052600\t1\t1\n跨年主ㄔˇ人MVP非 A-Lin 莫屬 開口講話\textracted\t19727\t1972700\t1\t1\n新年快樂 . 跟他打電話跨年 2025 12/3\textracted\t19354\t1935400\t1\t1\n2026 全部的追星人都會搶到票\textracted\t37657\t1882850\t1\t1\n",
+  "stderr": "",
+  "execution_time_ms": 1645
+}

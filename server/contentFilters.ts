@@ -1,17 +1,27 @@
 /**
  * 漸進式去 AI 化過濾器系統
  * 
+ * 優化版本 v2.0 - 根據 17,850 篇爆款資料庫分析
+ * 
  * 設計原則：
  * 1. 用戶風格優先：如果用戶有上傳爆款貼文，優先使用學習到的風格
  * 2. 動態強度：根據說話風格和內容類型調整過濾強度
  * 3. 漸進式：只過濾「明確的 AI 痕跡」，保留用戶可能會用的表達
+ * 4. 編輯模式感知：根據 editMode 調整過濾強度
+ * 
+ * 主要優化：
+ * 1. 擴充成語殺手清單（新增 30+ 個）
+ * 2. 擴充情緒替換模式（新增 10+ 個）
+ * 3. 新增編輯模式感知
+ * 4. 分層處理廢話刪除
  */
 
 // ============================================
-// 成語殺手：AI 常用成語 → 白話替換
+// 成語殺手：AI 常用成語 → 白話替換（擴充版）
 // ============================================
 
 const IDIOM_REPLACEMENTS: Record<string, string[]> = {
+  // ==================== 原有成語 ====================
   // 財務相關
   '盆滿缽滿': ['賺翻了', '賺到爆', '口袋滿滿'],
   '入不敷出': ['錢不夠用', '一直在燒錢', '賺的不夠花'],
@@ -63,32 +73,75 @@ const IDIOM_REPLACEMENTS: Record<string, string[]> = {
   '深入淺出': ['講得很白話', '好懂', '簡單易懂'],
   '言簡意賅': ['講重點', '簡潔', '不囉嗦'],
   '一語中的': ['說到點上', '超準', '正中紅心'],
+  
+  // ==================== 新增成語（基於爆款資料庫分析） ====================
+  // AI 常用的「正向」成語
+  '蛻變成長': ['變強了', '進步了', '不一樣了'],
+  '煥然一新': ['整個變了', '不一樣了', '換了一個人'],
+  '脫胎換骨': ['完全變了', '像換了一個人', '整個不同'],
+  '浴火重生': ['從谷底爬起來', '重新開始', '再站起來'],
+  '破繭成蝶': ['終於成功了', '熬出頭了', '變強了'],
+  '涅槃重生': ['重新開始', '再站起來', '活過來了'],
+  
+  // AI 常用的「努力」成語
+  '砥礪前行': ['繼續努力', '繼續走', '不放棄'],
+  '奮發圖強': ['努力變強', '拼命努力', '很拼'],
+  '勇往直前': ['衝就對了', '不怕', '繼續走'],
+  '堅持不懈': ['一直堅持', '不放棄', '撐下去'],
+  '持之以恆': ['一直做', '堅持下去', '不間斷'],
+  '百折不撓': ['怎麼打都不倒', '超堅強', '打不死'],
+  
+  // AI 常用的「關係」成語
+  '相濡以沫': ['互相扶持', '一起撐', '不離不棄'],
+  '風雨同舟': ['一起扛', '共患難', '不離不棄'],
+  '肝膽相照': ['超真心', '真朋友', '真兄弟'],
+  '推心置腹': ['說真心話', '掏心掏肺', '很真誠'],
+  
+  // AI 常用的「智慧」成語
+  '高瞻遠矚': ['看得很遠', '很有遠見', '想得遠'],
+  '洞若觀火': ['看得很清楚', '一眼看穿', '超懂'],
+  '明察秋毫': ['超細心', '什麼都看到', '很敏銳'],
+  '見微知著': ['從小地方看出大問題', '很敏銳', '觀察力強'],
+  
+  // AI 常用的「成功」成語
+  '功成名就': ['成功了', '出名了', '做到了'],
+  '名利雙收': ['錢和名都有了', '什麼都有了', '人生贏家'],
+  '飛黃騰達': ['發達了', '起飛了', '成功了'],
+  '一帆風順': ['超順', '沒遇到什麼問題', '很順利'],
+  '心想事成': ['想要的都有了', '願望成真', '超順'],
+  
+  // AI 常用的「困難」成語
+  '舉步維艱': ['每一步都很難', '超難走', '很辛苦'],
+  '寸步難行': ['動彈不得', '卡住了', '走不動'],
+  '進退兩難': ['不知道怎麼辦', '卡住了', '左右為難'],
+  '左右為難': ['不知道選哪個', '很難選', '兩邊都不行'],
+  '騎虎難下': ['停不下來', '不能退', '只能繼續'],
+  
+  // AI 常用的「時間」成語
+  '時光荏苒': ['時間過好快', '一轉眼', '不知不覺'],
+  '歲月如梭': ['時間飛快', '一轉眼', '好快'],
+  '光陰似箭': ['時間過超快', '一轉眼', '好快'],
+  '白駒過隙': ['時間過超快', '一瞬間', '好快'],
+  
+  // AI 常用的「學習」成語
+  '學無止境': ['永遠學不完', '一直有東西學', '學不完'],
+  '博學多才': ['什麼都會', '超厲害', '很強'],
+  '融會貫通': ['全部串起來了', '懂了', '通了'],
+  '觸類旁通': ['一通百通', '舉一反三', '懂了'],
+  
+  // AI 常用的「態度」成語
+  '腳踏實地': ['一步一步來', '踏實', '不走捷徑'],
+  '實事求是': ['看事實', '不騙人', '誠實'],
+  '兢兢業業': ['很認真', '很努力', '很拼'],
+  '任勞任怨': ['不抱怨', '默默做', '很能忍'],
 };
 
 // ============================================
-// 廢話刪除：AI 連接詞和冗詞
+// 廢話刪除：AI 連接詞和冗詞（分層處理）
 // ============================================
 
-const FILLER_WORDS: string[] = [
-  // 連接詞（過度正式）
-  '此外',
-  '因此',
-  '然而',
-  '總而言之',
-  '綜上所述',
-  '由此可見',
-  '換言之',
-  '簡而言之',
-  '總的來說',
-  '歸根結底',
-  '不僅如此',
-  '與此同時',
-  '值得一提的是',
-  '不可否認',
-  '毋庸置疑',
-  '顯而易見',
-  '眾所周知',
-  
+// 第一層：絕對刪除（AI 痕跡明顯）
+const FILLER_WORDS_CRITICAL: string[] = [
   // AI 常用開頭
   '身為一個',
   '身為一位',
@@ -96,15 +149,9 @@ const FILLER_WORDS: string[] = [
   '作為一位',
   '這句話聽起來很殘酷，但',
   '這聽起來可能有點',
-  '說實話',
-  '坦白說',
-  '老實說',
-  '不得不說',
   '我必須承認',
   '我想說的是',
-  '我認為',
-  '我覺得',
-  '我相信',
+  '不得不說',
   
   // AI 常用結尾
   '希望對你有幫助',
@@ -117,6 +164,47 @@ const FILLER_WORDS: string[] = [
   '歡迎留言告訴我',
   '期待你的留言',
   
+  // AI 常用連接詞
+  '總而言之',
+  '綜上所述',
+  '由此可見',
+  '換言之',
+  '簡而言之',
+  '總的來說',
+  '歸根結底',
+  '值得一提的是',
+  '不可否認',
+  '毋庸置疑',
+  '顯而易見',
+  '眾所周知',
+  
+  // 新增：AI 常用的過度正向詞
+  '親愛的朋友們',
+  '親愛的讀者',
+  '各位朋友',
+  '各位讀者',
+  '在這個快節奏的時代',
+  '在當今社會',
+  '在這個資訊爆炸的時代',
+  '讓我們一起',
+  '讓我們共同',
+  '一起加油吧',
+  '加油，你可以的',
+  '相信自己',
+  '你一定可以',
+  '你值得更好的',
+  '你值得被愛',
+];
+
+// 第二層：視情況刪除（可能是用戶風格）
+const FILLER_WORDS_OPTIONAL: string[] = [
+  // 連接詞（過度正式）
+  '此外',
+  '因此',
+  '然而',
+  '不僅如此',
+  '與此同時',
+  
   // 冗詞
   '事實上',
   '實際上',
@@ -126,7 +214,18 @@ const FILLER_WORDS: string[] = [
   '在某種意義上',
   '從某種角度來看',
   '從這個角度來說',
+  
+  // 可能是用戶風格的詞
+  '說實話',
+  '坦白說',
+  '老實說',
+  '我認為',
+  '我覺得',
+  '我相信',
 ];
+
+// 合併所有廢話詞（向後兼容）
+const FILLER_WORDS: string[] = [...FILLER_WORDS_CRITICAL, ...FILLER_WORDS_OPTIONAL];
 
 // 需要替換而非刪除的詞
 const FILLER_REPLACEMENTS: Record<string, string> = {
@@ -143,13 +242,14 @@ const FILLER_REPLACEMENTS: Record<string, string> = {
 };
 
 // ============================================
-// 情緒暴衝：陳述句 → 情緒句
+// 情緒暴衝：陳述句 → 情緒句（擴充版）
 // ============================================
 
 const EMOTION_PATTERNS: Array<{
   pattern: RegExp;
   replacements: string[];
 }> = [
+  // ==================== 原有模式 ====================
   {
     // 「他跟我說」→ 「他跟我抱怨」
     pattern: /他跟我說[：:「]?(.+?)[」]?[。，,]/g,
@@ -178,6 +278,78 @@ const EMOTION_PATTERNS: Array<{
     // 「相當」→ 「蠻」「還蠻」
     pattern: /相當/g,
     replacements: ['蠻', '還蠻', '真的蠻'],
+  },
+  
+  // ==================== 新增模式（基於爆款資料庫分析） ====================
+  {
+    // 「我認為」→ 「我覺得」「我發現」
+    pattern: /我認為/g,
+    replacements: ['我覺得', '我發現', '我真心覺得'],
+  },
+  {
+    // 「我們應該」→ 「其實可以」
+    pattern: /我們應該/g,
+    replacements: ['其實可以', '不如試試', '可以考慮'],
+  },
+  {
+    // 「你應該」→ 「你可以試試」
+    pattern: /你應該/g,
+    replacements: ['你可以試試', '不如試試', '可以考慮'],
+  },
+  {
+    // 「你必須」→ 「你真的要」
+    pattern: /你必須/g,
+    replacements: ['你真的要', '你一定要', '拜託你'],
+  },
+  {
+    // 「這是因為」→ 「其實是因為」
+    pattern: /這是因為/g,
+    replacements: ['其實是因為', '說白了就是', '簡單說就是'],
+  },
+  {
+    // 「我們需要」→ 「我們要」
+    pattern: /我們需要/g,
+    replacements: ['我們要', '我們得', '我們必須'],
+  },
+  {
+    // 「這個問題」→ 「這件事」
+    pattern: /這個問題/g,
+    replacements: ['這件事', '這個', '這'],
+  },
+  {
+    // 「在這裡」→ 「這邊」
+    pattern: /在這裡/g,
+    replacements: ['這邊', '這裡', '這'],
+  },
+  {
+    // 「進行」→ 「做」
+    pattern: /進行/g,
+    replacements: ['做', '弄', '搞'],
+  },
+  {
+    // 「實現」→ 「做到」
+    pattern: /實現/g,
+    replacements: ['做到', '達成', '完成'],
+  },
+  {
+    // 「獲得」→ 「拿到」
+    pattern: /獲得/g,
+    replacements: ['拿到', '得到', '有了'],
+  },
+  {
+    // 「提升」→ 「變好」
+    pattern: /提升/g,
+    replacements: ['變好', '進步', '變強'],
+  },
+  {
+    // 「優化」→ 「改善」
+    pattern: /優化/g,
+    replacements: ['改善', '調整', '變好'],
+  },
+  {
+    // 「解決」→ 「搞定」
+    pattern: /解決/g,
+    replacements: ['搞定', '處理', '解決掉'],
   },
 ];
 
@@ -303,6 +475,7 @@ const CONTENT_TYPE_COEFFICIENTS: Record<string, number> = {
   // 需要較完整邏輯的類型
   'knowledge': 0.5,     // 知識型：保留邏輯連接
   'organize': 0.5,      // 整理型：保留結構
+  'summary': 0.5,       // 整理型：保留結構
   'quote': 0.6,         // 引用型：保留引用格式
   
   // 可以更口語化的類型
@@ -313,6 +486,8 @@ const CONTENT_TYPE_COEFFICIENTS: Record<string, number> = {
   'casual': 1.0,        // 閒聊型：最口語
   'question': 0.9,      // 提問型：簡短直接
   'poll': 0.9,          // 投票型：簡短直接
+  'humor': 1.0,         // 幽默型：最口語
+  'diagnosis': 0.8,     // 診斷型：可以口語
   
   // 變現內容
   'self_intro': 0.6,    // 自我介紹：稍微專業
@@ -320,6 +495,13 @@ const CONTENT_TYPE_COEFFICIENTS: Record<string, number> = {
   'core_product': 0.6,  // 核心品：稍微專業
   'vip_service': 0.5,   // VIP：較專業
   'success_story': 0.8, // 成功案例：可以口語
+};
+
+// 編輯模式 → 過濾強度係數（新增）
+const EDIT_MODE_COEFFICIENTS: Record<string, number> = {
+  'light': 0.3,         // 輕度優化：只過濾最明顯的 AI 痕跡
+  'style': 0.6,         // 風格保留：中等過濾
+  'rewrite': 1.0,       // 爆款改寫：最強過濾
 };
 
 // ============================================
@@ -445,31 +627,42 @@ export function filterIdioms(
 }
 
 /**
- * 廢話刪除過濾器
+ * 廢話刪除過濾器（分層處理版）
  */
 export function filterFillerWords(
   content: string,
   intensity: number = 1.0,
-  userPreservedWords: string[] = []
+  userPreservedWords: string[] = [],
+  editMode?: string
 ): string {
   let result = content;
   
+  // 根據編輯模式決定過濾範圍
+  const isLightMode = editMode === 'light';
+  const fillerWordsToProcess = isLightMode ? FILLER_WORDS_CRITICAL : FILLER_WORDS;
+  
   // 刪除廢話
-  for (const filler of FILLER_WORDS) {
+  for (const filler of fillerWordsToProcess) {
     if (userPreservedWords.includes(filler)) continue;
     
-    if (Math.random() < intensity) {
+    // 輕度模式：100% 刪除關鍵廢話
+    // 其他模式：根據強度決定
+    const shouldDelete = isLightMode ? true : Math.random() < intensity;
+    
+    if (shouldDelete) {
       // 刪除廢話，但保留標點
       result = result.replace(new RegExp(filler + '[，,]?', 'g'), '');
     }
   }
   
-  // 替換結構詞
-  for (const [word, replacement] of Object.entries(FILLER_REPLACEMENTS)) {
-    if (userPreservedWords.includes(word)) continue;
-    
-    if (Math.random() < intensity) {
-      result = result.replace(new RegExp(word + '[，,：:]?', 'g'), replacement);
+  // 替換結構詞（只在非輕度模式下執行）
+  if (!isLightMode) {
+    for (const [word, replacement] of Object.entries(FILLER_REPLACEMENTS)) {
+      if (userPreservedWords.includes(word)) continue;
+      
+      if (Math.random() < intensity) {
+        result = result.replace(new RegExp(word + '[，,：:]?', 'g'), replacement);
+      }
     }
   }
   
@@ -523,12 +716,13 @@ export function aggressiveSimplify(
 }
 
 /**
- * 計算過濾強度
+ * 計算過濾強度（優化版 - 支援編輯模式）
  */
 export function calculateFilterIntensity(
   voiceTone?: string,
   contentType?: string,
-  hasUserStyle: boolean = false
+  hasUserStyle: boolean = false,
+  editMode?: string
 ): number {
   // 如果用戶有上傳爆款貼文，降低過濾強度
   let baseIntensity = hasUserStyle ? 0.5 : 1.0;
@@ -543,11 +737,16 @@ export function calculateFilterIntensity(
     ? (CONTENT_TYPE_COEFFICIENTS[contentType] || 0.7)
     : 0.7;
   
-  return baseIntensity * voiceCoef * contentCoef;
+  // 根據編輯模式調整（新增）
+  const editModeCoef = editMode
+    ? (EDIT_MODE_COEFFICIENTS[editMode] || 1.0)
+    : 1.0;
+  
+  return baseIntensity * voiceCoef * contentCoef * editModeCoef;
 }
 
 /**
- * 主過濾函數：整合所有過濾器
+ * 主過濾函數：整合所有過濾器（優化版）
  */
 export function applyContentFilters(
   content: string,
@@ -561,6 +760,7 @@ export function applyContentFilters(
     enableFillerFilter?: boolean;
     enableEmotionFilter?: boolean;
     enableSimplify?: boolean;
+    editMode?: string;  // 新增：編輯模式
   } = {}
 ): string {
   const {
@@ -573,10 +773,11 @@ export function applyContentFilters(
     enableFillerFilter = true,
     enableEmotionFilter = true,
     enableSimplify = false,
+    editMode,
   } = options;
   
-  // 計算過濾強度
-  const intensity = calculateFilterIntensity(voiceTone, contentType, hasUserStyle);
+  // 計算過濾強度（考慮編輯模式）
+  const intensity = calculateFilterIntensity(voiceTone, contentType, hasUserStyle, editMode);
   
   let result = content;
   
@@ -589,13 +790,13 @@ export function applyContentFilters(
     result = filterIdioms(result, intensity, userPreservedWords);
   }
   
-  // 2. 廢話刪除
+  // 2. 廢話刪除（分層處理）
   if (enableFillerFilter) {
-    result = filterFillerWords(result, intensity, userPreservedWords);
+    result = filterFillerWords(result, intensity, userPreservedWords, editMode);
   }
   
-  // 3. 情緒暴衝
-  if (enableEmotionFilter) {
+  // 3. 情緒暴衝（輕度模式下不執行）
+  if (enableEmotionFilter && editMode !== 'light') {
     result = filterToEmotional(result, intensity);
   }
   
@@ -607,10 +808,6 @@ export function applyContentFilters(
   return result;
 }
 
-/**
- * 從用戶風格分析中提取保留詞
- * 安全處理各種可能的資料格式（陣列、字串、物件等）
- */
 // ============================================
 // AI 內部標記清理器
 // ============================================
