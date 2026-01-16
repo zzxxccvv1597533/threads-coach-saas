@@ -5,6 +5,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { invokeLLM } from "./_core/llm";
+import { getModelForFeature } from "./services/llmConfig";
 import * as db from "./db";
 import { getDb } from "./db";
 import { postMetrics, ipProfiles } from "../drizzle/schema";
@@ -1520,6 +1521,7 @@ ${topicLibraryContext}
 ${clusterContext}
 ${viralFactorsPrompt}`;
 
+        // ✅ 方案 A：品質優先 - 腦力激盪使用 Gemini 2.5 Flash
         const response = await invokeLLM({
           messages: [
             { role: "system", content: systemPrompt },
@@ -1541,6 +1543,7 @@ contentType 可選值：knowledge(知識型), summary(懶人包), story(故事�
 
 每個主題都要與我的專業領域和受眾痛點相關。只輸出 JSON，不要其他文字。` }
           ],
+          model: getModelForFeature('brainstorm'),  // Gemini 2.5 Flash
           response_format: {
             type: "json_schema",
             json_schema: {
@@ -2758,11 +2761,13 @@ ${selectedOpenerPattern?.examples?.slice(0, 3).map((e: string, i: number) => `${
         // ✅ 在 User Prompt 結尾再次強調字數限制
         userPrompt += `\n\n❗❗❗ 最後提醒：此貼文字數必須在 ${wordLimit.min}-${wordLimit.max} 字之間！超過 ${wordLimit.max} 字 = 失敗，請精簡！`;
 
+        // ✅ 方案 A：品質優先 - 正文生成使用 Claude Sonnet 4
         const response = await invokeLLM({
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt }
           ],
+          model: getModelForFeature('content'),  // Claude Sonnet 4
         });
 
         await db.logApiUsage(ctx.user.id, 'generateDraft', 'llm', 600, 800);
@@ -3490,7 +3495,11 @@ ${creatorInfo}
           content: `【新的修改指令 - 必須執行】\n${input.instruction}\n\n請根據以上指令修改草稿，直接輸出修改後的完整內容。` 
         });
 
-        const response = await invokeLLM({ messages });
+        // ✅ 方案 A：品質優先 - AI 對話修改使用 Claude Sonnet 4
+        const response = await invokeLLM({ 
+          messages,
+          model: getModelForFeature('ai_chat'),  // Claude Sonnet 4
+        });
         const rawContent = response.choices[0]?.message?.content;
         let newContent = typeof rawContent === 'string' ? rawContent : '';
 

@@ -11,6 +11,7 @@ import { getActiveTemplates, getAvoidList } from "./promptService";
 import { type OpenerTemplate } from "../drizzle/schema";
 import { detectAiPatterns, quickDetect } from "./aiDetector";
 import { invokeLLM } from "./_core/llm";
+import { getModelForFeature } from "./services/llmConfig";
 import { eq, desc, and } from "drizzle-orm";
 
 // 新增：整合品質檢查和最近使用追蹤
@@ -236,7 +237,7 @@ async function generateSingleOpener(params: {
   });
 
   try {
-    // 調用 LLM 生成
+    // ✅ 方案 A：品質優先 - 開頭生成使用 Gemini 2.5 Flash
     const response = await invokeLLM({
       messages: [
         {
@@ -256,6 +257,7 @@ async function generateSingleOpener(params: {
           content: prompt,
         },
       ],
+      model: getModelForFeature('opener'),  // Gemini 2.5 Flash
     });
 
     const messageContent = response.choices[0]?.message?.content;

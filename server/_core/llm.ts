@@ -55,8 +55,25 @@ export type ToolChoice =
   | ToolChoiceByName
   | ToolChoiceExplicit;
 
+// 支援的 LLM 模型
+export type LLMModel = 
+  | 'gemini-2.5-flash'      // 預設模型，性價比最高
+  | 'gemini-2.5-flash-lite' // 最低成本
+  | 'gemini-2.5-pro'        // 高品質
+  | 'gemini-3-flash'        // 新一代快速模型
+  | 'gemini-3-pro'          // 新一代高品質
+  | 'gpt-4o'                // OpenAI 高品質
+  | 'gpt-4.1'               // OpenAI 最新
+  | 'gpt-4.1-mini'          // OpenAI 輕量
+  | 'gpt-5'                 // OpenAI 旗艦
+  | 'gpt-5-mini'            // OpenAI 旗艦輕量
+  | 'claude-sonnet-4'       // Claude 高品質創意寫作
+  | 'claude-haiku-4.5'      // Claude 輕量
+  | 'deepseek-r1';          // 低成本中文模型
+
 export type InvokeParams = {
   messages: Message[];
+  model?: LLMModel;  // 新增：指定使用的模型
   tools?: Tool[];
   toolChoice?: ToolChoice;
   tool_choice?: ToolChoice;
@@ -270,6 +287,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
 
   const {
     messages,
+    model = 'gemini-2.5-flash', // 預設使用 Gemini 2.5 Flash
     tools,
     toolChoice,
     tool_choice,
@@ -280,7 +298,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: "gemini-2.5-flash",
+    model,
     messages: messages.map(normalizeMessage),
   };
 

@@ -2179,3 +2179,34 @@
 ### LLM 最佳推薦
 - 腦力激盪/開頭生成/品質檢查：Gemini 2.5 Flash
 - 正文生成/AI 對話修改：Claude Sonnet 4
+
+
+## LLM 分級使用實作（方案 A：品質優先）(2026-01-16)
+
+### 核心修改
+- [x] 修改 llm.ts 新增 model 參數支援（支援 13 種模型）
+- [x] 建立 llmConfig.ts 模型配置檔（含三種方案：品質優先/成本優先/極致品質）
+- [x] 更新正文生成使用 Claude Sonnet 4（routers.ts generateDraft）
+- [x] 更新 AI 對話修改使用 Claude Sonnet 4（routers.ts refineDraft）
+- [x] 更新腦力激盪使用 Gemini 2.5 Flash（routers.ts brainstorm）
+- [x] 更新開頭生成使用 Gemini 2.5 Flash（openerGenerator.ts）
+
+### 方案 A 配置
+| 功能 | 模型 | 成本倍數 |
+|------|------|----------|
+| 腦力激盪 | gemini-2.5-flash | 1x |
+| 開頭生成 | gemini-2.5-flash | 1x |
+| 正文生成 | claude-sonnet-4 | 6x |
+| 品質檢查 | gemini-2.5-flash | 1x |
+| AI 對話修改 | claude-sonnet-4 | 6x |
+| 分析功能 | gemini-2.5-flash | 1x |
+
+### 測試驗證
+- [x] TypeScript 編譯無錯誤
+- [x] 406 個單元測試全部通過
+- [x] LLM 分級使用測試腳本通過
+
+### 預估成本
+- 預估月度成本（100 活躍用戶）：$85-120/月
+- 相比原方案（全 Flash）增加約 150-250%
+- 預期品質提升：25-35%
