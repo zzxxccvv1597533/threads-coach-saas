@@ -2873,48 +2873,64 @@ ${selectedOpenerPattern?.examples?.slice(0, 3).map((e: string, i: number) => `${
           enableSimplify: false, // 暴力降維預設關閉
         });
         
-        // ✅ 方案 B：字數檢查和自動精簡
+        // ✅ 方案 B 強化版：字數檢查和自動精簡（使用 Claude Sonnet 4 + 多次精簡）
         let actualWordCount = generatedContent.length;
         let wordCountWarning = '';
         let wasAutoCondensed = false;
+        let condenseAttempts = 0;
+        const maxCondenseAttempts = 2; // 最多精簡 2 次
         
-        // 如果字數超過上限 20% 以上，自動調用 AI 精簡
-        const overLimitThreshold = wordLimit.max * 1.2; // 超過 20% 才觸發自動精簡
-        if (actualWordCount > overLimitThreshold) {
+        // 如果字數超過上限，自動調用 AI 精簡（降低觸發門檻到 5%）
+        const overLimitThreshold = wordLimit.max * 1.05; // 超過 5% 就觸發自動精簡
+        
+        while (actualWordCount > overLimitThreshold && condenseAttempts < maxCondenseAttempts) {
+          condenseAttempts++;
           try {
-            console.log(`[字數控制] 內容超標（${actualWordCount} 字，上限 ${wordLimit.max} 字），啟動自動精簡...`);
+            console.log(`[字數控制] 第 ${condenseAttempts} 次精簡：內容超標（${actualWordCount} 字，上限 ${wordLimit.max} 字）`);
+            
+            // 計算需要刪除的字數
+            const excessWords = actualWordCount - wordLimit.max;
+            const targetWords = Math.floor(wordLimit.max * 0.95); // 目標是上限的 95%，留一點緩衝
             
             const condenseResponse = await invokeLLM({
               messages: [
                 { 
                   role: "system", 
-                  content: `你是一位專業的文案精簡師。你的任務是將內容精簡到指定字數內，同時保持核心訊息和語氣風格。
+                  content: `你是一位專業的文案精簡師。你的任務是將內容精簡到指定字數內。
 
-精簡原則：
-1. 保留開頭的 Hook（前 2-3 句）
-2. 保留結尾的 CTA
-3. 合併重複的觀點
-4. 刪除冗贅的修飾詞
-5. 如果有多個重點，只保留最重要的 2-3 個
-6. 保持原有的語氣和風格
-7. 保持「呼吸感」排版（段落之間要有空行）
+❗❗❗ 極度重要 ❗❗❗
+目標字數：${targetWords} 字以內
+絕對不能超過：${wordLimit.max} 字
+需要刪除至少：${excessWords} 字
+
+精簡策略（按優先順序執行）：
+1. 【刪除清單項目】如果有 4 個以上的重點/清單，只保留最重要的 2-3 個
+2. 【合併段落】將相似的觀點合併成一段
+3. 【精簡每個重點】每個重點只用 1-2 句話，不要展開說明
+4. 【刪除修飾詞】移除「其實」「真的」「老實說」等冗贅詞
+5. 【縮短過渡句】減少段落間的過渡語
+
+必須保留：
+- 開頭的 Hook（前 2-3 句）
+- 結尾的 CTA
+- 「呼吸感」排版（段落之間要有空行）
+- 原有的語氣和風格
 
 絕對不能：
-- 改變文章的核心訊息
+- 輸出任何說明文字
 - 添加新的內容
-- 改變語氣風格
-- 輸出任何說明文字，只輸出精簡後的文章` 
+- 改變核心訊息` 
                 },
                 { 
                   role: "user", 
-                  content: `請將以下內容精簡到 ${wordLimit.max} 字以內（目前 ${actualWordCount} 字）：
+                  content: `請將以下內容精簡到 ${targetWords} 字以內（目前 ${actualWordCount} 字，需要刪除至少 ${excessWords} 字）：
 
 ${generatedContent}
 
-請直接輸出精簡後的文章，不要有任何前置說明。` 
+請直接輸出精簡後的文章，不要有任何前置說明。記住：絕對不能超過 ${wordLimit.max} 字！` 
                 }
               ],
-              model: getModelForFeature('quality_check'),  // 使用較快的模型進行精簡
+              model: getModelForFeature('content'),  // 使用 Claude Sonnet 4 進行精簡（精簡能力更強）
             });
             
             const condensedContent = typeof condenseResponse.choices[0]?.message?.content === 'string' 
@@ -2922,30 +2938,38 @@ ${generatedContent}
               : '';
             
             // 檢查精簡後的字數
-            const condensedWordCount = condensedContent.length;
+            const cleanedCondensed = cleanAIOutput(condensedContent);
+            const condensedWordCount = cleanedCondensed.length;
+            
+            console.log(`[字數控制] 第 ${condenseAttempts} 次精簡結果：${condensedWordCount} 字`);
             
             // 只有當精簡後字數確實減少且在合理範圍內才採用
             if (condensedWordCount < actualWordCount && condensedWordCount >= wordLimit.min * 0.8) {
-              generatedContent = cleanAIOutput(condensedContent);
-              actualWordCount = generatedContent.length;
+              generatedContent = cleanedCondensed;
+              actualWordCount = condensedWordCount;
               wasAutoCondensed = true;
-              console.log(`[字數控制] 自動精簡完成：${condensedWordCount} 字`);
+              
+              if (actualWordCount <= wordLimit.max) {
+                console.log(`[字數控制] 精簡成功！最終字數：${actualWordCount} 字`);
+                break; // 字數已符合，停止精簡
+              }
             } else {
-              console.log(`[字數控制] 精簡結果不理想（${condensedWordCount} 字），保留原內容`);
+              console.log(`[字數控制] 精簡結果不理想，嘗試下一次...`);
             }
             
-            await db.logApiUsage(ctx.user.id, 'autoCondense', 'llm', 300, 400);
+            await db.logApiUsage(ctx.user.id, 'autoCondense', 'llm', 400, 500);
           } catch (condenseError) {
-            console.error('[字數控制] 自動精簡失敗:', condenseError);
-            // 精簡失敗不影響主流程，繼續使用原內容
+            console.error(`[字數控制] 第 ${condenseAttempts} 次精簡失敗:`, condenseError);
+            break; // 精簡失敗，停止嘗試
           }
         }
         
         // 更新字數警告
         if (actualWordCount > wordLimit.max) {
+          const overPercent = Math.round((actualWordCount - wordLimit.max) / wordLimit.max * 100);
           wordCountWarning = wasAutoCondensed 
-            ? `⚠️ 已自動精簡，但仍超過上限（${actualWordCount} 字，應為 ${wordLimit.min}-${wordLimit.max} 字），建議手動精簡`
-            : `⚠️ 字數超過上限（${actualWordCount} 字，應為 ${wordLimit.min}-${wordLimit.max} 字），建議精簡內容`;
+            ? `⚠️ 已自動精簡 ${condenseAttempts} 次，但仍超過上限 ${overPercent}%（${actualWordCount} 字，應為 ${wordLimit.min}-${wordLimit.max} 字），建議手動精簡`
+            : `⚠️ 字數超過上限 ${overPercent}%（${actualWordCount} 字，應為 ${wordLimit.min}-${wordLimit.max} 字），建議精簡內容`;
         } else if (actualWordCount < wordLimit.min) {
           wordCountWarning = `⚠️ 字數不足（${actualWordCount} 字，應為 ${wordLimit.min}-${wordLimit.max} 字），建議補充內容`;
         } else if (wasAutoCondensed) {
