@@ -2210,3 +2210,13 @@
 - 預估月度成本（100 活躍用戶）：$85-120/月
 - 相比原方案（全 Flash）增加約 150-250%
 - 預期品質提升：25-35%
+
+
+## Bug 修復 - IP Profile 頁面重複 key 錯誤 (2026-01-16) ✅
+
+- [x] 診斷問題根源：資料庫中 user_template_preferences 有重複的 templateCategory
+- [x] 清理資料庫中的重複記錄（mirror, emotion, question 各刪除 1 筆）
+- [x] 修復後端 getLearningProgress 加入去重邏輯
+- [x] 修復後端 upsertUserTemplatePreference 使用 id 精確定位
+- [x] 修復後端 incrementTemplatePreferenceStats 使用 id 精確定位
+- [x] 406 個單元測試全部通過

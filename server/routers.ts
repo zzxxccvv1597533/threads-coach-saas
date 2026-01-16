@@ -5629,10 +5629,18 @@ ${sampleTexts}
     getLearningProgress: protectedProcedure.query(async ({ ctx }) => {
       const preferences = await db.getUserTemplatePreferences(ctx.user.id);
       
-      const totalSelections = preferences.reduce((sum, p) => sum + (p.totalSelected || 0), 0);
+      // 去重：如果有重複的 templateCategory，只保留第一筆
+      const uniquePreferences = preferences.reduce((acc, p) => {
+        if (!acc.find(existing => existing.templateCategory === p.templateCategory)) {
+          acc.push(p);
+        }
+        return acc;
+      }, [] as typeof preferences);
+      
+      const totalSelections = uniquePreferences.reduce((sum, p) => sum + (p.totalSelected || 0), 0);
       
       // 排序獲取前 3 個偏好
-      const topPreferences = [...preferences]
+      const topPreferences = [...uniquePreferences]
         .sort((a, b) => parseFloat(b.preferenceScore || '0.5') - parseFloat(a.preferenceScore || '0.5'))
         .slice(0, 3)
         .map(p => ({
@@ -5647,6 +5655,8 @@ ${sampleTexts}
             question: '提問型',
             story: '故事型',
             quote: '引用型',
+            data: '數據型',
+            emotion: '情緒爆發型',
           }[p.templateCategory] || p.templateCategory,
         }));
       

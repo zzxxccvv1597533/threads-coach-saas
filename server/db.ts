@@ -3276,7 +3276,7 @@ export async function upsertUserTemplatePreference(
 ) {
   const database = await getDb();
   if (!database) throw new Error('Database not initialized');
-  // 先檢查是否存在
+  // 先檢查是否存在（只取第一筆，避免重複問題）
   const existing = await database
     .select()
     .from(userTemplatePreferences)
@@ -3285,19 +3285,15 @@ export async function upsertUserTemplatePreference(
         eq(userTemplatePreferences.userId, userId),
         eq(userTemplatePreferences.templateCategory, templateCategory)
       )
-    );
+    )
+    .limit(1);
   
   if (existing.length > 0) {
-    // 更新
+    // 更新（使用 id 精確定位，只更新第一筆）
     return database
       .update(userTemplatePreferences)
       .set(updates)
-      .where(
-        and(
-          eq(userTemplatePreferences.userId, userId),
-          eq(userTemplatePreferences.templateCategory, templateCategory)
-        )
-      );
+      .where(eq(userTemplatePreferences.id, existing[0].id));
   } else {
     // 插入
     return database.insert(userTemplatePreferences).values({
@@ -3315,7 +3311,7 @@ export async function incrementTemplatePreferenceStats(
 ) {
   const database = await getDb();
   if (!database) throw new Error('Database not initialized');
-  // 先獲取當前值
+  // 先獲取當前值（只取第一筆，避免重複問題）
   const existing = await database
     .select()
     .from(userTemplatePreferences)
@@ -3324,7 +3320,8 @@ export async function incrementTemplatePreferenceStats(
         eq(userTemplatePreferences.userId, userId),
         eq(userTemplatePreferences.templateCategory, templateCategory)
       )
-    );
+    )
+    .limit(1);
   
   if (existing.length > 0) {
     const currentValue = existing[0][field] || 0;
@@ -3334,15 +3331,11 @@ export async function incrementTemplatePreferenceStats(
       updates.lastSelectedAt = new Date();
     }
     
+    // 只更新第一筆記錄（使用 id 精確定位）
     return database
       .update(userTemplatePreferences)
       .set(updates)
-      .where(
-        and(
-          eq(userTemplatePreferences.userId, userId),
-          eq(userTemplatePreferences.templateCategory, templateCategory)
-        )
-      );
+      .where(eq(userTemplatePreferences.id, existing[0].id));
   } else {
     // 創建新記錄
     const values: Record<string, unknown> = {
