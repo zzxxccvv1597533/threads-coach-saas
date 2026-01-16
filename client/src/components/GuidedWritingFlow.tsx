@@ -1,7 +1,9 @@
 /**
  * GuidedWritingFlow - 完整引導式發文流程
  * 
- * 流程：選題 → 選類型 → 填寫專屬欄位 → 選擇開頭 → 生成全文 → 對話修改 → 人味潤飾
+ * 流程：選目標 → 選題 → 選受眾 → 選類型 → 填資料 → 選開頭 → 生成全文 → 對話修改 → 人味潤飾
+ * 
+ * 2026-01-17 更新：新增「選目標」步驟（目的導向選擇器）
  */
 
 import { useState, useRef, useEffect } from "react";
@@ -51,23 +53,67 @@ interface ChatMessage {
   content: string;
 }
 
-// 流程步驟定義（新增受眾選擇步驟）
+// 目標選項定義
+const GOAL_OPTIONS = [
+  {
+    id: 'connect',
+    name: '讓人更懂我',
+    description: '建立情感連結，讓讀者感受到你是真實的人',
+    icon: '💝',
+    subText: '分享故事、心情、生活',
+    recommendedTypes: ['story', 'casual', 'dialogue', 'humor'],
+    color: 'from-pink-500/10 to-rose-500/10 border-pink-200',
+  },
+  {
+    id: 'trust',
+    name: '讓人信任我',
+    description: '建立專業權威，讓讀者相信你的專業能力',
+    icon: '🎯',
+    subText: '分享知識、整理、教學',
+    recommendedTypes: ['knowledge', 'curation', 'summary', 'series', 'contrast'],
+    color: 'from-blue-500/10 to-indigo-500/10 border-blue-200',
+  },
+  {
+    id: 'engage',
+    name: '有人留言互動',
+    description: '提升互動率，讓讀者想要留言回應',
+    icon: '💬',
+    subText: '問問題、投票、對話',
+    recommendedTypes: ['question', 'poll', 'dialogue', 'diagnosis', 'contrast'],
+    color: 'from-emerald-500/10 to-teal-500/10 border-emerald-200',
+  },
+  {
+    id: 'sell',
+    name: '慢慢賣產品',
+    description: '軟性銷售，讓讀者對你的產品/服務產生興趣',
+    icon: '🛒',
+    subText: '故事帶產品、系列文',
+    recommendedTypes: ['story', 'series', 'contrast', 'diagnosis', 'knowledge'],
+    color: 'from-amber-500/10 to-orange-500/10 border-amber-200',
+  },
+];
+
+// 流程步驟定義（新增目標選擇步驟）
 const FLOW_STEPS = [
-  { id: 1, name: "選題", description: "AI 根據你的人設推薦主題" },
-  { id: 2, name: "選受眾", description: "選擇這篇文章要對誰說" },
-  { id: 3, name: "選類型", description: "選擇貼文呈現方式" },
-  { id: 4, name: "填資料", description: "填寫關鍵資訊" },
-  { id: 5, name: "選開頭", description: "選擇最吸引人的開頭" },
-  { id: 6, name: "生成全文", description: "AI 生成完整貼文" },
-  { id: 7, name: "對話修改", description: "與 AI 對話調整" },
-  { id: 8, name: "人味潤飾", description: "加入個人風格" },
+  { id: 1, name: "選目標", description: "你想達成什麼？" },
+  { id: 2, name: "選題", description: "AI 根據你的人設推薦主題" },
+  { id: 3, name: "選受眾", description: "選擇這篇文章要對誰說" },
+  { id: 4, name: "選類型", description: "選擇貼文呈現方式" },
+  { id: 5, name: "填資料", description: "填寫關鍵資訊" },
+  { id: 6, name: "選開頭", description: "選擇最吸引人的開頭" },
+  { id: 7, name: "生成全文", description: "AI 生成完整貼文" },
+  { id: 8, name: "對話修改", description: "與 AI 對話調整" },
+  { id: 9, name: "人味潤飾", description: "加入個人風格" },
 ];
 
 export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, onComplete, onNavigateToIp }: GuidedWritingFlowProps) {
   // 流程狀態
   const [currentStep, setCurrentStep] = useState(1);
   
-  // Step 1: 選題
+  // Step 1: 選目標（目的導向）
+  const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
+  
+  // Step 2: 選題
   const [topicHint, setTopicHint] = useState(initialTopic || "");
   const [selectedTopic, setSelectedTopic] = useState<{ title: string; audience: string; contentType: string; hook: string } | null>(null);
   const [topicSuggestions, setTopicSuggestions] = useState<Array<{ title: string; audience: string; contentType: string; hook: string }>>([]);
@@ -163,7 +209,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       }));
       console.log('[generateOpeners] Transformed hooks:', transformedHooks);
       setHookOptions(transformedHooks);
-      setCurrentStep(5);
+      setCurrentStep(6);
       toast.success(`已生成 ${data.candidates.length} 個開頭選項！`);
     },
     onError: (error) => {
@@ -196,7 +242,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         candidateId: undefined,
         templateCategory: undefined,
       })) : []);
-      setCurrentStep(5);
+      setCurrentStep(6);
       toast.success("Hook 選項已生成！");
     },
     onError: () => {
@@ -216,7 +262,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       if (data.styleMatch) {
         setStyleMatch(data.styleMatch);
       }
-      setCurrentStep(6);
+      setCurrentStep(7);
       toast.success("草稿已生成！");
     },
     onError: (error) => {
@@ -275,7 +321,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         }
       }
     }
-    setCurrentStep(2);
+    setCurrentStep(3);
   };
 
   // 處理生成 Hook - 使用新的 Opener Generator
@@ -457,13 +503,107 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
         </div>
       </div>
 
-      {/* Step 1: 選題 */}
+      {/* Step 1: 選目標（目的導向選擇器） */}
       {currentStep === 1 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
+              <span className="text-2xl">🎯</span>
+              你想達成什麼？
+            </CardTitle>
+            <CardDescription>
+              選擇你這篇文章的目標，AI 會根據目標推薦最適合的寫法
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* 提示訊息 */}
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-amber-800">
+                  <span className="font-medium">小提醒：</span>
+                  <span className="text-amber-700">
+                    不需要每篇都追求爆款，真實的內容比完美的公式更重要
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 目標選項 */}
+            <div className="grid gap-3">
+              {GOAL_OPTIONS.map((goal) => (
+                <div
+                  key={goal.id}
+                  className={`relative border rounded-xl p-4 cursor-pointer transition-all ${
+                    selectedGoal === goal.id
+                      ? `bg-gradient-to-r ${goal.color} border-2`
+                      : "hover:bg-muted/30 border-muted"
+                  }`}
+                  onClick={() => setSelectedGoal(goal.id)}
+                >
+                  <div className="flex items-start gap-4">
+                    {/* 選中指示器 */}
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                      selectedGoal === goal.id 
+                        ? "border-primary bg-primary" 
+                        : "border-muted-foreground/30"
+                    }`}>
+                      {selectedGoal === goal.id && (
+                        <Check className="w-4 h-4 text-primary-foreground" />
+                      )}
+                    </div>
+
+                    {/* 目標內容 */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{goal.icon}</span>
+                        <span className="font-semibold text-lg">{goal.name}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {goal.description}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2 italic">
+                        {goal.subText}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 確認按鈕 */}
+            <Button 
+              className="w-full mt-4"
+              disabled={!selectedGoal}
+              onClick={() => setCurrentStep(2)}
+            >
+              確認目標
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+
+            {/* 跳過選項 */}
+            <div className="text-center">
+              <button
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => {
+                  setSelectedGoal(null);
+                  setCurrentStep(2);
+                }}
+              >
+                我只是想發文，跳過這步
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Step 2: 選題 */}
+      {currentStep === 2 && (
+        <Card className="elegant-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
-                1
+                2
               </span>
               選擇主題
             </CardTitle>
@@ -563,13 +703,13 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
         </Card>
       )}
 
-      {/* Step 2: 選擇目標受眾 */}
-      {currentStep === 2 && (
+      {/* Step 3: 選擇目標受眾 */}
+      {currentStep === 3 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
-                2
+                3
               </span>
               這篇文章要對誰說？
             </CardTitle>
@@ -658,13 +798,13 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
             )}
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(1)}>
+              <Button variant="outline" onClick={() => setCurrentStep(2)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 上一步
               </Button>
               <Button 
                 className="flex-1"
-                onClick={() => setCurrentStep(3)}
+                onClick={() => setCurrentStep(4)}
               >
                 下一步
                 <ChevronRight className="w-4 h-4 ml-1" />
@@ -674,13 +814,13 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
         </Card>
       )}
 
-      {/* Step 3: 選擇文章類型 */}
-      {currentStep === 3 && (
+      {/* Step 4: 選擇文章類型 */}
+      {currentStep === 4 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
-                3
+                4
               </span>
               選擇文章類型
             </CardTitle>
@@ -735,14 +875,14 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
             </RadioGroup>
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(2)}>
+              <Button variant="outline" onClick={() => setCurrentStep(3)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 上一步
               </Button>
               <Button 
                 className="flex-1"
                 disabled={!selectedContentType}
-                onClick={() => setCurrentStep(4)}
+                onClick={() => setCurrentStep(5)}
               >
                 下一步
                 <ChevronRight className="w-4 h-4 ml-1" />
@@ -752,13 +892,13 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
         </Card>
       )}
 
-      {/* Step 4: 填寫專屬欄位 */}
-      {currentStep === 4 && (
+      {/* Step 5: 填寫專屬欄位 */}
+      {currentStep === 5 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
-                4
+                5
               </span>
               填寫關鍵資訊
             </CardTitle>
@@ -792,7 +932,7 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
             ))}
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(3)}>
+              <Button variant="outline" onClick={() => setCurrentStep(4)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 上一步
               </Button>
@@ -818,13 +958,13 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
         </Card>
       )}
 
-      {/* Step 5: Hook 選項（已優化：直接生成多種風格供選擇） */}
-      {currentStep === 5 && (
+      {/* Step 6: Hook 選項（已優化：直接生成多種風格供選擇） */}
+      {currentStep === 6 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
-                5
+                6
               </span>
               選擇開頭
             </CardTitle>
@@ -973,7 +1113,7 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
             })}
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(4)}>
+              <Button variant="outline" onClick={() => setCurrentStep(5)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 上一步
               </Button>
@@ -999,18 +1139,18 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
         </Card>
       )}
 
-      {/* Step 6 & 7: 生成結果與對話修改 */}
-      {(currentStep === 6 || currentStep === 7) && draftContent && (
+      {/* Step 7 & 8: 生成結果與對話修改 */}
+      {(currentStep === 7 || currentStep === 8) && draftContent && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
                 {currentStep}
               </span>
-              {currentStep === 6 ? "生成結果" : "對話修改"}
+              {currentStep === 7 ? "生成結果" : "對話修改"}
             </CardTitle>
             <CardDescription>
-              {currentStep === 6 ? "這是 AI 生成的草稿，你可以進行對話修改" : "告訴 AI 你想怎麼調整"}
+              {currentStep === 7 ? "這是 AI 生成的草稿，你可以進行對話修改" : "告訴 AI 你想怎麼調整"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -1194,13 +1334,13 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(5)}>
+              <Button variant="outline" onClick={() => setCurrentStep(6)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 重新選開頭
               </Button>
               <Button 
                 className="flex-1"
-                onClick={() => setCurrentStep(8)}
+                onClick={() => setCurrentStep(9)}
               >
                 下一步：人味潤飾
                 <ChevronRight className="w-4 h-4 ml-1" />
@@ -1210,13 +1350,13 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
         </Card>
       )}
 
-      {/* Step 8: 人味潤飾 */}
-      {currentStep === 8 && (
+      {/* Step 9: 人味潤飾 */}
+      {currentStep === 9 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
-                8
+                9
               </span>
               人味潤飾
             </CardTitle>
@@ -1256,7 +1396,7 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(7)}>
+              <Button variant="outline" onClick={() => setCurrentStep(8)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 繼續修改
               </Button>

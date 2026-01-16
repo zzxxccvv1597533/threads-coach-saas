@@ -300,6 +300,57 @@ export const CONTENT_TYPE_RULES: Record<string, ContentTypeRule> = {
     avoidPatterns: ['特徵太模糊', '沒有診斷結果', '太負面', '太長']
   },
   
+  // 新增：系列型（Day X、Part X、#系列標籤）
+  series: {
+    id: 'series',
+    name: '系列型',
+    description: '連續多篇的系列內容，如 Day 1-30 挑戰、Part 1-5 教學、#系列標籤',
+    wordLimit: {
+      min: 150,
+      max: 300,
+      optimal: 220,
+      reason: '系列內容每篇要精簡，讓讀者願意追完整個系列。單篇太長會降低追蹤意願'
+    },
+    successRate: 6.2,
+    avgLikes: 4800,
+    recommendedOpeners: ['數字開頭', '時間點', '冒號斷言', '情緒爆發'],
+    structureTemplate: [
+      '第一行：系列標記 + 主題（如「Day 7：...」「#創業日記 第 3 篇」）',
+      '第二段：今天的核心內容（2-3 句）',
+      '第三段：具體細節或心得（1-2 句）',
+      '第四段：預告下一篇或邀請追蹤',
+      '結尾：系列標籤 + 互動邀請'
+    ],
+    ctaSuggestions: ['追蹤看完整系列', '明天見', '想看下一篇的留言', '收藏這個系列', '你也在挑戰嗎？'],
+    keyFeatures: ['有連續性', '每篇獨立但相關', '有進度感', '易追蹤', '精簡'],
+    avoidPatterns: ['單篇太長', '沒有系列標記', '內容重複', '沒有預告', '太像流水帳']
+  },
+
+  // 新增：整理型（懶人包、清單、推薦、資源整理）- 從 summary 獨立出來更細緻定義
+  curation: {
+    id: 'curation',
+    name: '整理型',
+    description: '整理資源、推薦清單、懶人包、工具整理等實用內容',
+    wordLimit: {
+      min: 200,
+      max: 400,
+      optimal: 300,
+      reason: '整理型需要足夠空間列舉項目，但每項要精簡。4-6 個項目 × 每項 40-60 字最有效'
+    },
+    successRate: 5.8,
+    avgLikes: 5500,
+    recommendedOpeners: ['數字開頭', '冒號斷言', '禁忌/警告詞', '時間點'],
+    structureTemplate: [
+      '第一行：數字 + 主題（如「6 個讓我效率翻倍的工具」「懶人包：...」）',
+      '第二段：為什麼整理這個（痛點，1 句）',
+      '第三段起：清單項目（每項：名稱 + 一句話說明 + 為什麼推薦）',
+      '結尾：收藏提醒 + 補充邀請'
+    ],
+    ctaSuggestions: ['先收藏！', '還有什麼好用的？留言補充', '你用過哪個？', '存起來慢慢看', '哪個最實用？'],
+    keyFeatures: ['實用價值高', '易收藏', '條理分明', '有個人觀點', '精簡'],
+    avoidPatterns: ['只列名稱沒說明', '項目太多（超過 8 個）', '沒有個人觀點', '太像廣告', '每項太長']
+  },
+
   // 新增：幽默型（基於爆款資料庫分析，平均讚數最高）
   humor: {
     id: 'humor',
@@ -572,6 +623,28 @@ export function recommendContentType(material: string): {
       recommended: 'viewpoint',
       alternatives: ['contrast', 'casual'],
       reason: '素材包含觀點/看法元素，適合觀點型'
+    };
+  }
+  
+  // 檢測系列型特徵
+  const hasSeries = /Day\s*\d|Part\s*\d|第\s*\d+\s*(天|篇|集|章)|#.*系列|#.*挑戰|#.*日記/.test(material);
+  
+  if (hasSeries) {
+    return {
+      recommended: 'series',
+      alternatives: ['knowledge', 'story'],
+      reason: '素材包含系列標記（Day X、Part X、#系列），適合系列型'
+    };
+  }
+  
+  // 檢測整理型特徵
+  const hasCuration = /懶人包|推薦|整理|清單|工具|資源|必備|必收|盤點|合集/.test(material);
+  
+  if (hasCuration || hasList) {
+    return {
+      recommended: 'curation',
+      alternatives: ['summary', 'knowledge'],
+      reason: '素材包含整理/推薦/清單元素，適合整理型'
     };
   }
   
