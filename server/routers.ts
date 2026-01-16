@@ -1750,6 +1750,8 @@ ${audienceContext || '未設定'}
         hookStyle: z.string().optional(), // 指定的 Hook 風格
         // 專屬輸入欄位（根據類型不同）
         inputs: z.record(z.string(), z.string()).optional(),
+        // 目標受眾 ID（可選，如果指定則針對該受眾生成 Hook）
+        targetAudienceId: z.number().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const profile = await db.getIpProfileByUserId(ctx.user.id);
@@ -1763,10 +1765,24 @@ ${audienceContext || '未設定'}
         if (profile?.personaEmotion) ipContext += `情感共鳴：${profile.personaEmotion}\n`;
         if (profile?.personaViewpoint) ipContext += `獨特觀點：${profile.personaViewpoint}\n`;
         
-        // 受眾資訊
+        // 受眾資訊（強化版 - 支援目標受眾選擇）
         let audienceContext = '';
-        if (audiences && audiences.length > 0) {
-          audienceContext = audiences.map(a => 
+        if (input.targetAudienceId && audiences && audiences.length > 0) {
+          const targetAudience = audiences.find(a => a.id === input.targetAudienceId);
+          if (targetAudience) {
+            audienceContext = `❗❗❗【極度重要 - 目標受眾】❗❗❗
+
+這些 Hook 必須完全針對以下受眾設計：
+
+🎯 受眾名稱：${targetAudience.segmentName}
+
+🔥 他們的痛點（Hook 必須觸及）：
+${targetAudience.painPoint || '未設定'}
+
+❗ 要求：Hook 必須讓這個受眾覺得「這就是在說我」`;
+          }
+        } else if (audiences && audiences.length > 0) {
+          audienceContext = '【目標受眾 - Hook 要讓他們覺得「這就是在說我」】\n' + audiences.map(a => 
             `- ${a.segmentName}：痛點是「${a.painPoint || '未設定'}」`
           ).join('\n');
         }
@@ -1888,6 +1904,8 @@ ${viralOpenersContext}
         angle: z.string().optional(),
         // 生成模式：light(輕度優化) / preserve(風格保留) / rewrite(爆款改寫)
         editMode: z.enum(['light', 'preserve', 'rewrite']).optional().default('rewrite'),
+        // 目標受眾 ID（可選，如果指定則只針對該受眾寫作）
+        targetAudienceId: z.number().optional(),
         // 靈活化輸入欄位
         flexibleInput: z.object({
           topic: z.string().optional(),
@@ -2128,20 +2146,49 @@ ${viralOpenersContext}
           return parts.join('\n');
         };
         
-        // 建構受眾資料字串（強化版）
+        // 建構受眾資料字串（強化版 - 支援目標受眾選擇）
         const buildAudienceContext = () => {
           if (!audiences || audiences.length === 0) {
             return '【目標受眾】未設定，請用通用的語氣寫作。';
           }
           
+          // 如果有指定目標受眾，只針對該受眾寫作
+          if (input.targetAudienceId) {
+            const targetAudience = audiences.find(a => a.id === input.targetAudienceId);
+            if (targetAudience) {
+              return `❗❗❗【極度重要 - 目標受眾】❗❗❗
+
+這篇文章必須完全針對以下受眾寫作：
+
+🎯 受眾名稱：${targetAudience.segmentName}
+
+🔥 他們的痛點（必須在文章中觸及）：
+${targetAudience.painPoint || '未設定'}
+
+🌟 他們的渴望（文章要給他們希望）：
+${targetAudience.desiredOutcome || '未設定'}
+
+❗ 寫作要求：
+1. 開頭必須讓這個受眾覺得「這就是在說我」
+2. 內容要觸及他們的具體痛點
+3. 結尾要讓他們看到希望或下一步
+4. 用他們會說的話、他們能懂的詞彙`;
+            }
+          }
+          
+          // 沒有指定目標受眾，列出所有受眾但強化提示
           const audienceLines = audiences.map(a => {
             let line = `  • ${a.segmentName}`;
-            if (a.painPoint) line += `：他們的痛點是「${a.painPoint}」`;
-            if (a.desiredOutcome) line += `，渴望「${a.desiredOutcome}」`;
+            if (a.painPoint) line += `\n    痛點：${a.painPoint.substring(0, 100)}${a.painPoint.length > 100 ? '...' : ''}`;
+            if (a.desiredOutcome) line += `\n    渴望：${a.desiredOutcome.substring(0, 100)}${a.desiredOutcome.length > 100 ? '...' : ''}`;
             return line;
           });
           
-          return `【目標受眾 - 請針對他們的痛點寫作】\n${audienceLines.join('\n')}`;
+          return `【目標受眾 - 請針對他們的痛點寫作】
+
+重要：文章開頭必須讓受眾覺得「這就是在說我」
+
+${audienceLines.join('\n\n')}`;
         };
         
         // 建構內容支柱資料
@@ -5553,11 +5600,28 @@ ${sampleTexts}
         contentType: z.string().min(1, "請選擇內容類型"),
         hookStyle: z.string().optional(),
         targetAudience: z.string().optional(),
+        targetAudienceId: z.number().optional(), // 目標受眾 ID
         userContext: z.string().optional(),
         count: z.number().min(3).max(5).default(5),
       }))
       .mutation(async ({ ctx, input }) => {
-        const { topic, contentType, hookStyle, targetAudience, userContext, count } = input;
+        const { topic, contentType, hookStyle, targetAudience, targetAudienceId, userContext, count } = input;
+        
+        // 如果有指定 targetAudienceId，查詢受眾資料並加入 context
+        let enhancedUserContext = userContext || '';
+        if (targetAudienceId) {
+          const audiences = await db.getAudienceSegmentsByUserId(ctx.user.id);
+          const targetAudienceData = audiences?.find(a => a.id === targetAudienceId);
+          if (targetAudienceData) {
+            enhancedUserContext = `【目標受眾】${targetAudienceData.segmentName}
+痛點：${targetAudienceData.painPoint || '未設定'}
+渴望：${targetAudienceData.desiredOutcome || '未設定'}
+
+重要：開頭必須讓這個受眾覺得「這就是在說我」
+
+${enhancedUserContext}`.trim();
+          }
+        }
         
         try {
           const result = await generateMultipleOpeners({
@@ -5566,7 +5630,7 @@ ${sampleTexts}
             contentType,
             hookStyle,
             targetAudience,
-            userContext,
+            userContext: enhancedUserContext, // 使用強化後的 context
             count,
           });
           

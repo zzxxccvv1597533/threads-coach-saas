@@ -51,15 +51,16 @@ interface ChatMessage {
   content: string;
 }
 
-// 流程步驟定義（已優化：刪除獨立的 Hook 風格選擇步驟，直接生成多種風格供選擇）
+// 流程步驟定義（新增受眾選擇步驟）
 const FLOW_STEPS = [
   { id: 1, name: "選題", description: "AI 根據你的人設推薦主題" },
-  { id: 2, name: "選類型", description: "選擇貼文呈現方式" },
-  { id: 3, name: "填資料", description: "填寫關鍵資訊" },
-  { id: 4, name: "選開頭", description: "選擇最吸引人的開頭" },
-  { id: 5, name: "生成全文", description: "AI 生成完整貼文" },
-  { id: 6, name: "對話修改", description: "與 AI 對話調整" },
-  { id: 7, name: "人味潤飾", description: "加入個人風格" },
+  { id: 2, name: "選受眾", description: "選擇這篇文章要對誰說" },
+  { id: 3, name: "選類型", description: "選擇貼文呈現方式" },
+  { id: 4, name: "填資料", description: "填寫關鍵資訊" },
+  { id: 5, name: "選開頭", description: "選擇最吸引人的開頭" },
+  { id: 6, name: "生成全文", description: "AI 生成完整貼文" },
+  { id: 7, name: "對話修改", description: "與 AI 對話調整" },
+  { id: 8, name: "人味潤飾", description: "加入個人風格" },
 ];
 
 export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, onComplete, onNavigateToIp }: GuidedWritingFlowProps) {
@@ -71,13 +72,16 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
   const [selectedTopic, setSelectedTopic] = useState<{ title: string; audience: string; contentType: string; hook: string } | null>(null);
   const [topicSuggestions, setTopicSuggestions] = useState<Array<{ title: string; audience: string; contentType: string; hook: string }>>([]);
   
-  // Step 2: 選類型
+  // Step 2: 選受眾
+  const [selectedAudienceId, setSelectedAudienceId] = useState<number | null>(null);
+  
+  // Step 3: 選類型
   const [selectedContentType, setSelectedContentType] = useState("");
   
-  // Step 3: 填寫專屬欄位
+  // Step 4: 填寫專屬欄位
   const [typeInputs, setTypeInputs] = useState<Record<string, string | string[]>>({});
   
-  // Step 4: Hook 選項 - 整合新的 Opener Generator（已移除獨立的風格選擇步驟）
+  // Step 5: Hook 選項 - 整合新的 Opener Generator
   
   // Hook 選項狀態
   const [hookOptions, setHookOptions] = useState<Array<{ 
@@ -92,17 +96,17 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
   }>>([]);
   const [selectedHook, setSelectedHook] = useState("");
   
-  // Step 5: 生成全文
+  // Step 6: 生成全文
   const [draftContent, setDraftContent] = useState("");
   const [draftId, setDraftId] = useState<number | null>(null);
   
-  // Step 6: 對話修改
+  // Step 7: 對話修改
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isChatting, setIsChatting] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   
-  // Step 7: 人味潤飾
+  // Step 8: 人味潤飾
   const [catchphrases, setCatchphrases] = useState("");
   const [speakingStyle, setSpeakingStyle] = useState("");
   const [finalContent, setFinalContent] = useState("");
@@ -126,6 +130,9 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
     details: string[];
     suggestions: string[];
   } | null>(null);
+
+  // 查詢用戶的受眾設定
+  const { data: audienceSegments } = trpc.audience.list.useQuery();
 
   // API mutations
   const brainstorm = trpc.ai.brainstorm.useMutation({
@@ -156,7 +163,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       }));
       console.log('[generateOpeners] Transformed hooks:', transformedHooks);
       setHookOptions(transformedHooks);
-      setCurrentStep(4);
+      setCurrentStep(5);
       toast.success(`已生成 ${data.candidates.length} 個開頭選項！`);
     },
     onError: (error) => {
@@ -189,7 +196,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         candidateId: undefined,
         templateCategory: undefined,
       })) : []);
-      setCurrentStep(4);
+      setCurrentStep(5);
       toast.success("Hook 選項已生成！");
     },
     onError: () => {
@@ -287,6 +294,8 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : (v as string || '')}`)
         .join('\n'),
       count: 5, // 生成 5 個候選
+      // 傳遞目標受眾 ID
+      targetAudienceId: selectedAudienceId || undefined,
     });
   };
 
@@ -337,6 +346,8 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       contentType: selectedContentType,
       angle: selectedHook,
       flexibleInput: Object.keys(filledFlexibleInputs).length > 0 ? filledFlexibleInputs : undefined,
+      // 傳遞目標受眾 ID
+      targetAudienceId: selectedAudienceId || undefined,
     });
   };
 
@@ -552,13 +563,124 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
         </Card>
       )}
 
-      {/* Step 2: 選擇文章類型 */}
+      {/* Step 2: 選擇目標受眾 */}
       {currentStep === 2 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
                 2
+              </span>
+              這篇文章要對誰說？
+            </CardTitle>
+            <CardDescription>
+              選擇目標受眾，AI 會針對他們的痛點和渴望寫作
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {selectedTopic && (
+              <div className="bg-muted/30 rounded-lg p-3 mb-4">
+                <div className="text-sm text-muted-foreground">已選主題：</div>
+                <div className="font-medium">{selectedTopic.title}</div>
+              </div>
+            )}
+
+            {/* 受眾選擇列表 */}
+            {audienceSegments && audienceSegments.length > 0 ? (
+              <div className="space-y-3">
+                {/* 通用受眾選項 */}
+                <div
+                  className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                    selectedAudienceId === null
+                      ? "border-primary bg-primary/5"
+                      : "hover:border-primary/50"
+                  }`}
+                  onClick={() => setSelectedAudienceId(null)}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      selectedAudienceId === null ? "border-primary bg-primary" : "border-muted-foreground"
+                    }`}>
+                      {selectedAudienceId === null && <Check className="w-3 h-3 text-primary-foreground" />}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium">🌍 通用受眾</div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        AI 會參考所有受眾的痛點，寫出更廣泛的內容
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 具體受眾選項 */}
+                {audienceSegments.map((audience) => (
+                  <div
+                    key={audience.id}
+                    className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                      selectedAudienceId === audience.id
+                        ? "border-primary bg-primary/5"
+                        : "hover:border-primary/50"
+                    }`}
+                    onClick={() => setSelectedAudienceId(audience.id)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        selectedAudienceId === audience.id ? "border-primary bg-primary" : "border-muted-foreground"
+                      }`}>
+                        {selectedAudienceId === audience.id && <Check className="w-3 h-3 text-primary-foreground" />}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium">🎯 {audience.segmentName}</div>
+                        {audience.painPoint && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            <span className="text-red-500">🔥 痛點：</span>{audience.painPoint.substring(0, 80)}{audience.painPoint.length > 80 ? '...' : ''}
+                          </p>
+                        )}
+                        {audience.desiredOutcome && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            <span className="text-green-500">🌟 渴望：</span>{audience.desiredOutcome.substring(0, 80)}{audience.desiredOutcome.length > 80 ? '...' : ''}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Target className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>你還沒有設定受眾</p>
+                <p className="text-sm mt-1">請先到 IP 地基設定你的目標受眾</p>
+                <Button variant="outline" className="mt-4" onClick={onNavigateToIp}>
+                  前往設定受眾
+                </Button>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setCurrentStep(1)}>
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                上一步
+              </Button>
+              <Button 
+                className="flex-1"
+                onClick={() => setCurrentStep(3)}
+              >
+                下一步
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Step 3: 選擇文章類型 */}
+      {currentStep === 3 && (
+        <Card className="elegant-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
+                3
               </span>
               選擇文章類型
             </CardTitle>
@@ -571,6 +693,11 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
               <div className="bg-muted/30 rounded-lg p-3 mb-4">
                 <div className="text-sm text-muted-foreground">已選主題：</div>
                 <div className="font-medium">{selectedTopic.title}</div>
+                {selectedAudienceId && audienceSegments && (
+                  <div className="text-sm text-muted-foreground mt-1">
+                    目標受眾：{audienceSegments.find(a => a.id === selectedAudienceId)?.segmentName || '通用受眾'}
+                  </div>
+                )}
               </div>
             )}
 
@@ -608,22 +735,14 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
             </RadioGroup>
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(1)}>
+              <Button variant="outline" onClick={() => setCurrentStep(2)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 上一步
               </Button>
               <Button 
                 className="flex-1"
                 disabled={!selectedContentType}
-                onClick={() => {
-                  console.log('[Step 2] 下一步按鈕被點擊');
-                  console.log('[Step 2] selectedContentType:', selectedContentType);
-                  console.log('[Step 2] typeof selectedContentType:', typeof selectedContentType);
-                  console.log('[Step 2] selectedContentType.length:', selectedContentType?.length);
-                  console.log('[Step 2] 即將設定 currentStep 為 3');
-                  setCurrentStep(3);
-                  console.log('[Step 2] setCurrentStep(3) 已調用');
-                }}
+                onClick={() => setCurrentStep(4)}
               >
                 下一步
                 <ChevronRight className="w-4 h-4 ml-1" />
@@ -633,13 +752,13 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
         </Card>
       )}
 
-      {/* Step 3: 填寫專屬欄位 */}
-      {currentStep === 3 && (
+      {/* Step 4: 填寫專屬欄位 */}
+      {currentStep === 4 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
-                3
+                4
               </span>
               填寫關鍵資訊
             </CardTitle>
@@ -673,7 +792,7 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
             ))}
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(2)}>
+              <Button variant="outline" onClick={() => setCurrentStep(3)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 上一步
               </Button>
@@ -699,13 +818,13 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
         </Card>
       )}
 
-      {/* Step 4: Hook 選項（已優化：直接生成多種風格供選擇） */}
-      {currentStep === 4 && (
+      {/* Step 5: Hook 選項（已優化：直接生成多種風格供選擇） */}
+      {currentStep === 5 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
-                4
+                5
               </span>
               選擇開頭
             </CardTitle>
@@ -854,7 +973,7 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
             })}
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(3)}>
+              <Button variant="outline" onClick={() => setCurrentStep(4)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 上一步
               </Button>
@@ -880,18 +999,18 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
         </Card>
       )}
 
-      {/* Step 5 & 6: 生成結果與對話修改 */}
-      {(currentStep === 5 || currentStep === 6) && draftContent && (
+      {/* Step 6 & 7: 生成結果與對話修改 */}
+      {(currentStep === 6 || currentStep === 7) && draftContent && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
                 {currentStep}
               </span>
-              {currentStep === 5 ? "生成結果" : "對話修改"}
+              {currentStep === 6 ? "生成結果" : "對話修改"}
             </CardTitle>
             <CardDescription>
-              {currentStep === 5 ? "這是 AI 生成的草稿，你可以進行對話修改" : "告訴 AI 你想怎麼調整"}
+              {currentStep === 6 ? "這是 AI 生成的草稿，你可以進行對話修改" : "告訴 AI 你想怎麼調整"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -1075,13 +1194,13 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(4)}>
+              <Button variant="outline" onClick={() => setCurrentStep(5)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 重新選開頭
               </Button>
               <Button 
                 className="flex-1"
-                onClick={() => setCurrentStep(7)}
+                onClick={() => setCurrentStep(8)}
               >
                 下一步：人味潤飾
                 <ChevronRight className="w-4 h-4 ml-1" />
@@ -1091,13 +1210,13 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
         </Card>
       )}
 
-      {/* Step 7: 人味潤飾 */}
-      {currentStep === 7 && (
+      {/* Step 8: 人味潤飾 */}
+      {currentStep === 8 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
-                7
+                8
               </span>
               人味潤飾
             </CardTitle>
@@ -1137,7 +1256,7 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(6)}>
+              <Button variant="outline" onClick={() => setCurrentStep(7)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 繼續修改
               </Button>

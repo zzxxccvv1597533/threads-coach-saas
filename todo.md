@@ -2220,3 +2220,41 @@
 - [x] 修復後端 upsertUserTemplatePreference 使用 id 精確定位
 - [x] 修復後端 incrementTemplatePreferenceStats 使用 id 精確定位
 - [x] 406 個單元測試全部通過
+
+
+## 方案 C 實作 - 受眾選擇功能 + 強化提示詞 (2026-01-16)
+
+### 後端 API 修改
+- [ ] generateDraft API 新增 targetAudienceId 參數
+- [ ] generateHooks API 新增 targetAudienceId 參數
+- [ ] 強化提示詞中受眾的權重
+
+### 前端 UI 修改
+- [ ] 引導模式新增受眾選擇步驟
+- [ ] 進階模式新增受眾選擇步驟
+- [ ] 傳遞選擇的受眾到 API
+
+### 測試驗證
+- [ ] 測試受眾選擇功能
+- [ ] 驗證生成內容是否針對受眾
+
+
+
+## 方案 C 實作 - 受眾選擇功能 + 強化提示詞 (2026-01-16) ✅
+
+### 後端 API 修改
+- [x] generateDraft API 新增 targetAudienceId 參數
+- [x] opener.generate API 新增 targetAudienceId 參數
+- [x] 強化提示詞中受眾的權重（新增 buildAudienceContext 強化版）
+
+### 前端 UI 修改
+- [x] 引導模式新增受眾選擇步驟（Step 2）
+- [x] 流程步驟從 7 步擴展為 8 步
+- [x] 傳遞選擇的受眾到 API
+
+### 測試驗證
+- [x] TypeScript 編譯無錯誤
+- [x] 406 個單元測試全部通過
+
+### 新流程
+1. 選題 → 2. 選受眾 → 3. 選類型 → 4. 填資料 → 5. 選開頭 → 6. 生成全文 → 7. 對話修改 → 8. 人味潤飾
