@@ -183,6 +183,13 @@
       "when": 1768463502949,
       "tag": "0025_lame_starfox",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1768580020307,
+      "tag": "0026_powerful_blur",
+      "breakpoints": true
     }
   ]
 }

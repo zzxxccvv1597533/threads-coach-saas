@@ -1,0 +1,1 @@
+ALTER TABLE `viral_examples` ADD `contentType` enum('knowledge','story','opinion','interaction','casual','diagnostic');

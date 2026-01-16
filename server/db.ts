@@ -3388,6 +3388,11 @@ export async function getTieredViralExamples(options: {
     conditions.push(eq(viralExamples.keyword, options.keyword));
   }
   
+  // 內容類型篩選
+  if (options.contentType) {
+    conditions.push(eq(viralExamples.contentType, options.contentType as any));
+  }
+  
   // 排除已使用的範例
   if (options.excludeIds && options.excludeIds.length > 0) {
     conditions.push(sql`${viralExamples.id} NOT IN (${options.excludeIds.join(',')})`);
@@ -3488,6 +3493,7 @@ export async function getSmartViralExamples(options: {
   for (const { tier, count } of tierDistribution) {
     const tierExamples = await getTieredViralExamples({
       keyword: options.keyword,
+      contentType: options.contentType,
       tier,
       limit: count * 3, // 取多一些用於隨機
       excludeIds: usedIds,
@@ -3510,10 +3516,11 @@ export async function getSmartViralExamples(options: {
     }
   }
   
-  // 如果數量不足，從所有層級補充
+  // 如果數量不足，從所有層級補充（但仍然匹配內容類型）
   if (results.length < totalCount) {
     const remaining = await getTieredViralExamples({
       keyword: options.keyword,
+      contentType: options.contentType,
       tier: 'all',
       limit: (totalCount - results.length) * 2,
       excludeIds: usedIds,

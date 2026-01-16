@@ -710,6 +710,15 @@ export const viralExamples = mysqlTable("viral_examples", {
   // 來源標記
   isTop200: boolean("isTop200").default(false), // 是否來自 Top200
   isTop20: boolean("isTop20").default(false), // 是否來自 Top20_by_Keyword
+  // 內容類型分類（用於精準匹配範例）
+  contentType: mysqlEnum("contentType", [
+    "knowledge",    // 知識型（教學、清單、總結）
+    "story",        // 故事型（個人經歷、觀察）
+    "opinion",      // 觀點型（反差、金句）
+    "interaction",  // 互動型（提問、投票、對話）
+    "casual",       // 閒聊型
+    "diagnostic"    // 診斷型
+  ]),
   source: varchar("source", { length: 64 }).default("excel_import"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

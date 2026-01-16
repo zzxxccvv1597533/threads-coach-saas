@@ -27,7 +27,7 @@ export interface ModelConfig {
   costMultiplier: number;  // 相對於 Gemini 2.5 Flash 的成本倍數
 }
 
-// 方案 A：品質優先（推薦）
+// 方案 A：品質優先（推薦）- 測試版：正文使用 GPT-4o
 export const QUALITY_FIRST_CONFIG: Record<LLMFeature, ModelConfig> = {
   brainstorm: {
     model: 'gemini-2.5-flash',
@@ -40,9 +40,9 @@ export const QUALITY_FIRST_CONFIG: Record<LLMFeature, ModelConfig> = {
     costMultiplier: 1,
   },
   content: {
-    model: 'claude-sonnet-4',
-    description: '品質關鍵，風格一致性',
-    costMultiplier: 6,
+    model: 'gpt-4o',  // 測試：從 Claude Sonnet 4 改為 GPT-4o，測試字數遵守能力
+    description: '品質關鍵，字數遵守最佳',
+    costMultiplier: 5,
   },
   quality_check: {
     model: 'gemini-2.5-flash',

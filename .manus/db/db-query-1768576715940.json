@@ -1,0 +1,118 @@
+{
+  "query": "SELECT COUNT(*) as total_count FROM viral_examples;\nSELECT DISTINCT keyword FROM viral_examples LIMIT 20;\nSELECT * FROM viral_examples LIMIT 3;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute SELECT COUNT(*) as total_count FROM viral_examples;\nSELECT DISTINCT keyword FROM viral_examples LIMIT 20;\nSELECT * FROM viral_examples LIMIT 3;",
+  "rows": [
+    {
+      "total_count": "1240"
+    },
+    {
+      "total_count": "keyword"
+    },
+    {
+      "total_count": "脈輪"
+    },
+    {
+      "total_count": "塔羅"
+    },
+    {
+      "total_count": "事業運"
+    },
+    {
+      "total_count": "水晶"
+    },
+    {
+      "total_count": "姓名學"
+    },
+    {
+      "total_count": "感情運"
+    },
+    {
+      "total_count": "療癒"
+    },
+    {
+      "total_count": "星盤"
+    },
+    {
+      "total_count": "陽宅風水"
+    },
+    {
+      "total_count": "辦公室風水"
+    },
+    {
+      "total_count": "命理"
+    },
+    {
+      "total_count": "人類圖"
+    },
+    {
+      "total_count": "紫微斗數"
+    },
+    {
+      "total_count": "太陽星座"
+    },
+    {
+      "total_count": "水星逆行"
+    },
+    {
+      "total_count": "中獎"
+    },
+    {
+      "total_count": "手相"
+    },
+    {
+      "total_count": "犯太歲"
+    },
+    {
+      "total_count": "覺察"
+    },
+    {
+      "total_count": "改運"
+    },
+    {
+      "total_count": "id\tkeyword\tpostText\tlikes\tlikesPerDay\tpostDate\taccount\tthreadUrl\tfunnelStage\tcluster\topener50\tcharLen\thasNumber\tquestionMark\texclaimMark\tyouFlag\tiFlag\tctaFlag\ttimePressureFlag\tresultFlag\tturnFlag\tisTop200\tisTop20\tsource\tcreatedAt"
+    },
+    {
+      "total_count": "1379\t2026\t熟悉張惠妹的人都知道，她每年元旦都要回到台東部落，所以特別喜歡留在台灣跨年。有幾年其他巨星都出國賺錢，只有她還守在台北陪大家"
+    },
+    {
+      "total_count": "​"
+    },
+    {
+      "total_count": "近年她又進一步實現回饋家鄉台東的理想。2021，她自己在台東辦了免費個唱——在疫情之下，那幾乎是全球最盛大的跨年之一，吸引無數台灣人朝聖，台東訂房爆滿"
+    },
+    {
+      "total_count": "​"
+    },
+    {
+      "total_count": "這次她更自己扛下主辦，用自己的面子邀大明星來台東唱跨年，從頭到尾都在現場陪大家一起同樂。一流的卡司、硬體、樂手、煙火，而總預算僅僅 3500 萬，沒有廣告、沒有贊助"
+    },
+    {
+      "total_count": "​"
+    },
+    {
+      "total_count": "要知道一般請她在台灣上台唱幾首歌，隨便就是 500 萬起跳，如果在中國更是幾倍的酬勞。但她卻選擇犧牲唱酬、甚至自掏腰包，自己唱得比誰都還賣力，就為了做出最棒的台東跨年"
+    },
+    {
+      "total_count": "​"
+    },
+    {
+      "total_count": "而她始終沒有一句邀功，直到凌晨一點半她終於唱完，很多人才從 End Roll 上看到「總導演：aMEI」——為了給我們一個開心的跨年，她不曉得投入了多少時間、心力"
+    },
+    {
+      "total_count": "​"
+    },
+    {
+      "total_count": "在台灣當明星講話很容易受限，但有時只要觀察他們的行動，愛台灣、愛家鄉的心就已經表露無遺。2026 是阿妹出道 30 週年，我們一起珍惜這位國寶級的天后 ✨\t152189\t152189.00\t2026-01-01 19:52:09\tguagualer\thttps://www.threads.net/@guagualer/post/DS95EjwkSG1\tTOFU\tNULL\t熟悉張惠妹的人都知道，她每年元旦都要回到台東部落，所以特別喜歡留在台灣跨年。有幾年其他巨星都出國賺錢\t475\t1\t0\t0\t0\t1\t0\t0\t0\t1\t1\t0\texcel_top200\t2026-01-04 17:19:22"
+    },
+    {
+      "total_count": "1380\t2026\t還想說這裡怎麼沒人站😂\t82896\t82896.00\t2026-01-01 03:49:07\tburnt_burger_social_club\thttps://www.threads.net/@burnt_burger_social_club/post/DS8K3Ekk4LE\tMOFU\tNULL\t還想說這裡怎麼沒人站😂\t11\t0\t0\t0\t0\t0\t0\t0\t0\t0\t1\t0\texcel_top200\t2026-01-04 17:19:22"
+    },
+    {
+      "total_count": "1381\t2026\t對於隨性到連羅浮宮都能遭小偷的法國人而言，2026打成2036好像也是正常發揮而已🤣\t69352\t69352.00\t2026-01-01 09:12:16\tcecilia.cc.lin\thttps://www.threads.net/@cecilia.cc.lin/post/DS8vnTrDxec\tTOFU\tNULL\t對於隨性到連羅浮宮都能遭小偷的法國人而言，2026打成2036好像也是正常發揮而已🤣\t42\t1\t0\t0\t0\t0\t0\t0\t0\t0\t1\t0\texcel_top200\t2026-01-04 17:19:22"
+    }
+  ],
+  "messages": [],
+  "stdout": "total_count\n1240\nkeyword\n脈輪\n塔羅\n事業運\n水晶\n姓名學\n感情運\n療癒\n星盤\n陽宅風水\n辦公室風水\n命理\n人類圖\n紫微斗數\n太陽星座\n水星逆行\n中獎\n手相\n犯太歲\n覺察\n改運\nid\tkeyword\tpostText\tlikes\tlikesPerDay\tpostDate\taccount\tthreadUrl\tfunnelStage\tcluster\topener50\tcharLen\thasNumber\tquestionMark\texclaimMark\tyouFlag\tiFlag\tctaFlag\ttimePressureFlag\tresultFlag\tturnFlag\tisTop200\tisTop20\tsource\tcreatedAt\n1379\t2026\t熟悉張惠妹的人都知道，她每年元旦都要回到台東部落，所以特別喜歡留在台灣跨年。有幾年其他巨星都出國賺錢，只有她還守在台北陪大家\n​\n近年她又進一步實現回饋家鄉台東的理想。2021，她自己在台東辦了免費個唱——在疫情之下，那幾乎是全球最盛大的跨年之一，吸引無數台灣人朝聖，台東訂房爆滿\n​\n這次她更自己扛下主辦，用自己的面子邀大明星來台東唱跨年，從頭到尾都在現場陪大家一起同樂。一流的卡司、硬體、樂手、煙火，而總預算僅僅 3500 萬，沒有廣告、沒有贊助\n​\n要知道一般請她在台灣上台唱幾首歌，隨便就是 500 萬起跳，如果在中國更是幾倍的酬勞。但她卻選擇犧牲唱酬、甚至自掏腰包，自己唱得比誰都還賣力，就為了做出最棒的台東跨年\n​\n而她始終沒有一句邀功，直到凌晨一點半她終於唱完，很多人才從 End Roll 上看到「總導演：aMEI」——為了給我們一個開心的跨年，她不曉得投入了多少時間、心力\n​\n在台灣當明星講話很容易受限，但有時只要觀察他們的行動，愛台灣、愛家鄉的心就已經表露無遺。2026 是阿妹出道 30 週年，我們一起珍惜這位國寶級的天后 ✨\t152189\t152189.00\t2026-01-01 19:52:09\tguagualer\thttps://www.threads.net/@guagualer/post/DS95EjwkSG1\tTOFU\tNULL\t熟悉張惠妹的人都知道，她每年元旦都要回到台東部落，所以特別喜歡留在台灣跨年。有幾年其他巨星都出國賺錢\t475\t1\t0\t0\t0\t1\t0\t0\t0\t1\t1\t0\texcel_top200\t2026-01-04 17:19:22\n1380\t2026\t還想說這裡怎麼沒人站😂\t82896\t82896.00\t2026-01-01 03:49:07\tburnt_burger_social_club\thttps://www.threads.net/@burnt_burger_social_club/post/DS8K3Ekk4LE\tMOFU\tNULL\t還想說這裡怎麼沒人站😂\t11\t0\t0\t0\t0\t0\t0\t0\t0\t0\t1\t0\texcel_top200\t2026-01-04 17:19:22\n1381\t2026\t對於隨性到連羅浮宮都能遭小偷的法國人而言，2026打成2036好像也是正常發揮而已🤣\t69352\t69352.00\t2026-01-01 09:12:16\tcecilia.cc.lin\thttps://www.threads.net/@cecilia.cc.lin/post/DS8vnTrDxec\tTOFU\tNULL\t對於隨性到連羅浮宮都能遭小偷的法國人而言，2026打成2036好像也是正常發揮而已🤣\t42\t1\t0\t0\t0\t0\t0\t0\t0\t0\t1\t0\texcel_top200\t2026-01-04 17:19:22\n",
+  "stderr": "",
+  "execution_time_ms": 2192
+}

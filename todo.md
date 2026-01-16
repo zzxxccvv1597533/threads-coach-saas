@@ -2308,3 +2308,46 @@
 ### 測試驗證
 - [x] TypeScript 編譯無錯誤
 - [x] 406 個單元測試全部通過
+
+
+## 正文生成模型測試 - GPT-4o (2026-01-16)
+
+- [x] 將正文生成模型從 Claude Sonnet 4 改為 GPT-4o
+- [ ] 測試字數遵守效果（等待用戶測試）
+- [ ] 比較內容品質（等待用戶回饋）
+
+
+## 爆款文章按內容類型分類（方案 C）(2026-01-16) ✅
+
+### 資料庫修改
+- [x] 新增 viral_examples.content_type 欄位（knowledge/story/opinion/interaction/casual/diagnostic）
+- [x] 執行資料庫遷移
+
+### 規則分類
+- [x] 建立分類規則腳本（scripts/classifyViralExamples.ts）
+- [x] 批量分類 1,240 篇爆款（9 條規則判斷）
+- [x] 輸出分類統計報告
+
+### 分類統計
+| 類型 | 數量 | 比例 |
+|------|------|------|
+| 知識型 (knowledge) | 88 筆 | 7.1% |
+| 故事型 (story) | 44 筆 | 3.5% |
+| 觀點型 (opinion) | 89 筆 | 7.2% |
+| 互動型 (interaction) | 40 筆 | 3.2% |
+| 閒聊型 (casual) | 944 筆 | 76.1% |
+| 診斷型 (diagnostic) | 35 筆 | 2.8% |
+
+### 查詢邏輯修改
+- [x] 修改 getTieredViralExamples 支援 contentType 篩選
+- [x] 修改 getSmartViralExamples 傳遞 contentType
+- [x] 三層回退機制：類型+關鍵字 → 僅類型 → 僅關鍵字 → Top200
+
+### 測試驗證
+- [x] TypeScript 編譯無錯誤
+- [x] 406 個單元測試全部通過
+- [x] 驗證分類結果
+
+### 備註
+- 閒聊型佔比過高（76%），可能需要人工校正或優化分類規則
+- 系統已支援按內容類型篩選爆款範例
