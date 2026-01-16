@@ -2577,7 +2577,30 @@ ${audienceLines.join('\n\n')}`;
 【風格要求】${wordLimit.style}
 【重要】超過 ${wordLimit.max} 字 = 失敗，必須精簡！少於 ${wordLimit.min} 字 = 內容不足！`;
 
-        const systemPrompt = `${SYSTEM_PROMPTS.contentGeneration}
+        // 方案 A：在 System Prompt 最開頭加入強硬的字數限制
+        const hardWordLimitPrompt = `
+❗❗❗❗❗ 極度重要 - 字數限制（必須在生成前先讀）❗❗❗❗❗
+
+【絕對不能超過】${wordLimit.max} 字
+【最少需要】${wordLimit.min} 字
+【當前類型】${contentTypeInfo?.name || input.contentType}
+
+這是硬性限制，沒有例外。
+超過 ${wordLimit.max} 字 = 任務失敗，必須重寫。
+請在生成時隨時清點字數，確保不超過。
+
+如果內容太多，請：
+1. 刪除重複的觀點
+2. 精簡每個段落
+3. 只保留最核心的 2-3 個重點
+4. 不要用清單式列舉太多點
+
+❗❗❗❗❗ 字數限制結束 ❗❗❗❗❗
+`;
+
+        const systemPrompt = `${hardWordLimitPrompt}
+
+${SYSTEM_PROMPTS.contentGeneration}
 
 === 創作者 IP 地基（必須在內容中展現） ===
 ${ipContext || '未設定 IP 地基，請用通用風格寫作。'}
@@ -2805,8 +2828,18 @@ ${selectedOpenerPattern?.examples?.slice(0, 3).map((e: string, i: number) => `${
         
         userPrompt = editModeInstruction + '\n\n' + userPrompt;
         
-        // ✅ 在 User Prompt 結尾再次強調字數限制
-        userPrompt += `\n\n❗❗❗ 最後提醒：此貼文字數必須在 ${wordLimit.min}-${wordLimit.max} 字之間！超過 ${wordLimit.max} 字 = 失敗，請精簡！`;
+        // ✅ 方案 A：在 User Prompt 結尾再次強調字數限制（更強硬的語氣）
+        userPrompt += `\n\n❗❗❗❗❗ 最後提醒 - 字數限制 ❗❗❗❗❗
+
+【絕對不能超過】${wordLimit.max} 字
+【最少需要】${wordLimit.min} 字
+
+請在輸出前清點字數：
+- 如果超過 ${wordLimit.max} 字，請立即刪減內容
+- 如果有 5 個以上的重點，請精簡到 2-3 個
+- 每個重點只用 1-2 句話說明，不要展開
+
+超過 ${wordLimit.max} 字 = 任務失敗，必須重寫。`;
 
         // ✅ 方案 A：品質優先 - 正文生成使用 Claude Sonnet 4
         const response = await invokeLLM({
@@ -2840,13 +2873,83 @@ ${selectedOpenerPattern?.examples?.slice(0, 3).map((e: string, i: number) => `${
           enableSimplify: false, // 暴力降維預設關閉
         });
         
-        // ✅ 字數檢查和警告
-        const actualWordCount = generatedContent.length;
+        // ✅ 方案 B：字數檢查和自動精簡
+        let actualWordCount = generatedContent.length;
         let wordCountWarning = '';
+        let wasAutoCondensed = false;
+        
+        // 如果字數超過上限 20% 以上，自動調用 AI 精簡
+        const overLimitThreshold = wordLimit.max * 1.2; // 超過 20% 才觸發自動精簡
+        if (actualWordCount > overLimitThreshold) {
+          try {
+            console.log(`[字數控制] 內容超標（${actualWordCount} 字，上限 ${wordLimit.max} 字），啟動自動精簡...`);
+            
+            const condenseResponse = await invokeLLM({
+              messages: [
+                { 
+                  role: "system", 
+                  content: `你是一位專業的文案精簡師。你的任務是將內容精簡到指定字數內，同時保持核心訊息和語氣風格。
+
+精簡原則：
+1. 保留開頭的 Hook（前 2-3 句）
+2. 保留結尾的 CTA
+3. 合併重複的觀點
+4. 刪除冗贅的修飾詞
+5. 如果有多個重點，只保留最重要的 2-3 個
+6. 保持原有的語氣和風格
+7. 保持「呼吸感」排版（段落之間要有空行）
+
+絕對不能：
+- 改變文章的核心訊息
+- 添加新的內容
+- 改變語氣風格
+- 輸出任何說明文字，只輸出精簡後的文章` 
+                },
+                { 
+                  role: "user", 
+                  content: `請將以下內容精簡到 ${wordLimit.max} 字以內（目前 ${actualWordCount} 字）：
+
+${generatedContent}
+
+請直接輸出精簡後的文章，不要有任何前置說明。` 
+                }
+              ],
+              model: getModelForFeature('quality_check'),  // 使用較快的模型進行精簡
+            });
+            
+            const condensedContent = typeof condenseResponse.choices[0]?.message?.content === 'string' 
+              ? condenseResponse.choices[0].message.content 
+              : '';
+            
+            // 檢查精簡後的字數
+            const condensedWordCount = condensedContent.length;
+            
+            // 只有當精簡後字數確實減少且在合理範圍內才採用
+            if (condensedWordCount < actualWordCount && condensedWordCount >= wordLimit.min * 0.8) {
+              generatedContent = cleanAIOutput(condensedContent);
+              actualWordCount = generatedContent.length;
+              wasAutoCondensed = true;
+              console.log(`[字數控制] 自動精簡完成：${condensedWordCount} 字`);
+            } else {
+              console.log(`[字數控制] 精簡結果不理想（${condensedWordCount} 字），保留原內容`);
+            }
+            
+            await db.logApiUsage(ctx.user.id, 'autoCondense', 'llm', 300, 400);
+          } catch (condenseError) {
+            console.error('[字數控制] 自動精簡失敗:', condenseError);
+            // 精簡失敗不影響主流程，繼續使用原內容
+          }
+        }
+        
+        // 更新字數警告
         if (actualWordCount > wordLimit.max) {
-          wordCountWarning = `⚠️ 字數超過上限（${actualWordCount} 字，應為 ${wordLimit.min}-${wordLimit.max} 字），建議精簡內容`;
+          wordCountWarning = wasAutoCondensed 
+            ? `⚠️ 已自動精簡，但仍超過上限（${actualWordCount} 字，應為 ${wordLimit.min}-${wordLimit.max} 字），建議手動精簡`
+            : `⚠️ 字數超過上限（${actualWordCount} 字，應為 ${wordLimit.min}-${wordLimit.max} 字），建議精簡內容`;
         } else if (actualWordCount < wordLimit.min) {
           wordCountWarning = `⚠️ 字數不足（${actualWordCount} 字，應為 ${wordLimit.min}-${wordLimit.max} 字），建議補充內容`;
+        } else if (wasAutoCondensed) {
+          wordCountWarning = `✅ 已自動精簡至 ${actualWordCount} 字（符合 ${wordLimit.min}-${wordLimit.max} 字範圍）`;
         }
         
         // 創建草稿
