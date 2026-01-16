@@ -46,7 +46,7 @@ export const GOAL_OPTIONS: GoalOption[] = [
     name: '讓人更懂我',
     description: '建立情感連結，讓讀者感受到你是真實的人',
     icon: '💝',
-    recommendedTypes: ['story', 'casual', 'dialogue', 'humor'],
+    recommendedTypes: ['story', 'casual', 'dialogue'],
     endingStrategy: {
       type: 'reflective',
       name: '內省型收尾',
@@ -71,7 +71,7 @@ export const GOAL_OPTIONS: GoalOption[] = [
     name: '讓人信任我',
     description: '建立專業權威，讓讀者相信你的專業能力',
     icon: '🎯',
-    recommendedTypes: ['knowledge', 'curation', 'summary', 'series', 'contrast'],
+    recommendedTypes: ['knowledge', 'curation', 'series'],
     endingStrategy: {
       type: 'guiding',
       name: '引導型收尾',
@@ -96,7 +96,7 @@ export const GOAL_OPTIONS: GoalOption[] = [
     name: '有人留言互動',
     description: '提升互動率，讓讀者想要留言回應',
     icon: '💬',
-    recommendedTypes: ['question', 'poll', 'dialogue', 'diagnosis', 'contrast'],
+    recommendedTypes: ['question', 'poll', 'dialogue'],
     endingStrategy: {
       type: 'interactive',
       name: '互動型收尾',
@@ -121,7 +121,7 @@ export const GOAL_OPTIONS: GoalOption[] = [
     name: '慢慢賣產品',
     description: '軟性銷售，讓讀者對你的產品/服務產生興趣',
     icon: '🛒',
-    recommendedTypes: ['story', 'series', 'contrast', 'diagnosis', 'knowledge'],
+    recommendedTypes: ['story', 'series', 'knowledge'],
     endingStrategy: {
       type: 'open',
       name: '開放型收尾',

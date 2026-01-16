@@ -61,7 +61,7 @@ const GOAL_OPTIONS = [
     description: '建立情感連結，讓讀者感受到你是真實的人',
     icon: '💝',
     subText: '分享故事、心情、生活',
-    recommendedTypes: ['story', 'casual', 'dialogue', 'humor'],
+    recommendedTypes: ['story', 'casual', 'dialogue'],
     color: 'from-pink-500/10 to-rose-500/10 border-pink-200',
   },
   {
@@ -70,7 +70,7 @@ const GOAL_OPTIONS = [
     description: '建立專業權威，讓讀者相信你的專業能力',
     icon: '🎯',
     subText: '分享知識、整理、教學',
-    recommendedTypes: ['knowledge', 'curation', 'summary', 'series', 'contrast'],
+    recommendedTypes: ['knowledge', 'summary', 'viewpoint'],
     color: 'from-blue-500/10 to-indigo-500/10 border-blue-200',
   },
   {
@@ -79,7 +79,7 @@ const GOAL_OPTIONS = [
     description: '提升互動率，讓讀者想要留言回應',
     icon: '💬',
     subText: '問問題、投票、對話',
-    recommendedTypes: ['question', 'poll', 'dialogue', 'diagnosis', 'contrast'],
+    recommendedTypes: ['question', 'poll', 'dialogue'],
     color: 'from-emerald-500/10 to-teal-500/10 border-emerald-200',
   },
   {
@@ -87,8 +87,8 @@ const GOAL_OPTIONS = [
     name: '慢慢賣產品',
     description: '軟性銷售，讓讀者對你的產品/服務產生興趣',
     icon: '🛒',
-    subText: '故事帶產品、系列文',
-    recommendedTypes: ['story', 'series', 'contrast', 'diagnosis', 'knowledge'],
+    subText: '故事帶產品、知識分享',
+    recommendedTypes: ['story', 'knowledge', 'contrast'],
     color: 'from-amber-500/10 to-orange-500/10 border-amber-200',
   },
 ];
@@ -814,7 +814,7 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
         </Card>
       )}
 
-      {/* Step 4: 選擇文章類型 */}
+      {/* Step 4: 選擇文章類型（根據目標篩選） */}
       {currentStep === 4 && (
         <Card className="elegant-card">
           <CardHeader>
@@ -825,7 +825,7 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
               選擇文章類型
             </CardTitle>
             <CardDescription>
-              選擇最適合這個主題的呈現方式
+              根據你的目標「{GOAL_OPTIONS.find(g => g.id === selectedGoal)?.name || ''}」，推薦以下類型
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -841,12 +841,28 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
               </div>
             )}
 
+            {/* 目標提示 */}
+            {selectedGoal && (
+              <div className={`bg-gradient-to-r ${GOAL_OPTIONS.find(g => g.id === selectedGoal)?.color || ''} rounded-lg p-3 mb-2`}>
+                <div className="flex items-center gap-2 text-sm">
+                  <span>{GOAL_OPTIONS.find(g => g.id === selectedGoal)?.icon}</span>
+                  <span className="font-medium">目標：{GOAL_OPTIONS.find(g => g.id === selectedGoal)?.name}</span>
+                </div>
+              </div>
+            )}
+
             <RadioGroup
               value={selectedContentType}
               onValueChange={setSelectedContentType}
               className="grid gap-3"
             >
-              {ALL_CONTENT_TYPES_V2.map((type) => (
+              {/* 根據目標篩選類型 */}
+              {ALL_CONTENT_TYPES_V2
+                .filter(type => {
+                  const goalOption = GOAL_OPTIONS.find(g => g.id === selectedGoal);
+                  return goalOption ? goalOption.recommendedTypes.includes(type.id) : true;
+                })
+                .map((type) => (
                 <div
                   key={type.id}
                   className={`border rounded-lg p-4 cursor-pointer transition-all ${
