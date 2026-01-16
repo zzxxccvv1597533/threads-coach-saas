@@ -2060,3 +2060,53 @@
 - [x] 4.2 單元測試全部通過（30 個測試檔案，375 個測試全通過）
 - [ ] 4.3 保存 checkpoint（進行中）
 
+
+
+## 一次性全面優化（依據 final-optimization-report-v2.md）(2025-01-16)
+
+### Phase 1: 準備階段
+- [ ] 建立優化前的完整 checkpoint
+- [ ] 記錄當前系統基準指標
+
+### Phase 2: 基礎設施層
+- [x] 建立 server/infrastructure/cache.ts（快取服務）
+- [x] 建立 server/infrastructure/metrics-collector.ts（指標收集器）
+- [x] 建立 server/infrastructure/feature-flags.ts（Feature Flag 控制）
+- [x] 建立 shared/rules/opener-rules.ts（開頭規則抽離）
+- [x] 建立 shared/rules/quality-rules.ts（品質規則抽離）
+
+### Phase 3: 核心服務層
+- [x] 建立 server/services/adaptiveThreshold.ts（自適應品質門檻 - 混合方案）
+  - 計算用戶貼文前 30% 作為相對門檻
+  - 根據成長階段設定絕對下限（專家 300/成熟 150/成長 50/新手 20）
+  - 取兩者較大值作為最終門檻
+- [x] 建立 server/services/qualityChecker.ts（三層品質檢查機制）
+  - 第一層：Prompt 注入禁止句式檢查
+  - 第二層：AI Detector + Content Filter
+  - 第三層：品質分數計算 + 自動重試
+- [x] 建立 server/services/openerDNA.ts（開頭 DNA 提取）
+- [x] 建立 server/services/recentUsageTracker.ts（最近使用避免）
+
+### Phase 4: 整合層
+- [x] 擴展 server/fewShotLearning.ts（整合自適應門檻 + 成長階段判斷）
+- [x] 更新 server/openerGenerator.ts（整合 DNA 和品質檢查）
+- [x] 更新 server/data-driven-prompt-builder.ts（Prompt 長度控制 + 智能截斷）
+
+### Phase 5: 路由層模組化拆分
+- [ ] 抽離規則定義到 shared/rules/
+- [ ] 抽離 modules/quality/（品質相關模組）
+- [ ] 抽離 modules/learning/（學習相關模組）
+- [ ] 抽離 modules/generation/（生成相關模組）
+- [ ] 精簡 server/routers.ts（目標從 5,691 行減少到 1,500 行）
+
+### Phase 6: 測試階段
+- [x] 執行單元測試（32 檔案通過，406 測試通過）
+- [x] 執行整合測試
+- [x] 驗證 Feature Flag 控制
+- [ ] A/B 測試對比原始和優化後的品質分數（待上線後執行）
+
+### Phase 7: 交付階段
+- [ ] 建立最終 checkpoint
+- [x] 撰寫變更日誌（docs/CHANGELOG-optimization-v2.md）
+- [x] 更新系統文檔
+

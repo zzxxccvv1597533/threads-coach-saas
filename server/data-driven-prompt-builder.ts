@@ -7,7 +7,11 @@
  * 2. 範例隨機化 - 從資料庫隨機抽取範例
  * 3. 素材關鍵詞提取 - 強制使用素材關鍵詞
  * 4. 禁止複製指令 - 明確禁止複製範例
+ * 5. Prompt 長度控制 - 智能截斷和壓縮
  */
+
+// 新增：Prompt 長度控制
+import { recordPromptLength } from './infrastructure/metrics-collector';
 
 import { 
   buildOpenerRulesPrompt, 
@@ -346,7 +350,108 @@ ${context.materialKeywords.length > 0 ? `4. 第一行必須包含：${context.ma
 □ 結尾是否有互動引導？
 `;
 
-  return { systemPrompt, context };
+  // Prompt 長度控制和智能截斷
+  const { truncatedPrompt, wasTruncated, originalLength } = truncatePromptIfNeeded(systemPrompt);
+  
+  // 記錄指標
+  recordPromptLength(originalLength, wasTruncated);
+  
+  if (wasTruncated) {
+    console.log(`[DataDriven] Prompt truncated: ${originalLength} -> ${truncatedPrompt.length} chars`);
+  }
+
+  return { systemPrompt: truncatedPrompt, context };
+}
+
+/**
+ * Prompt 長度限制配置
+ */
+const PROMPT_LIMITS = {
+  MAX_SYSTEM_PROMPT_CHARS: 8000,  // 系統提示詞最大字符數
+  MAX_EXAMPLE_CHARS: 300,         // 單個範例最大字符數
+  MAX_EXAMPLES_COUNT: 3,          // 最大範例數量
+  PRIORITY_SECTIONS: [            // 優先保留的段落（按優先級排序）
+    '絕對禁止',
+    '第一層',
+    '第二層',
+    '最終指示',
+    '第三層',
+  ],
+};
+
+/**
+ * 智能截斷 Prompt
+ */
+function truncatePromptIfNeeded(prompt: string): {
+  truncatedPrompt: string;
+  wasTruncated: boolean;
+  originalLength: number;
+} {
+  const originalLength = prompt.length;
+  
+  if (originalLength <= PROMPT_LIMITS.MAX_SYSTEM_PROMPT_CHARS) {
+    return { truncatedPrompt: prompt, wasTruncated: false, originalLength };
+  }
+  
+  // 需要截斷
+  let truncatedPrompt = prompt;
+  
+  // 策略 1：截斷範例內容
+  truncatedPrompt = truncateExamples(truncatedPrompt);
+  
+  if (truncatedPrompt.length <= PROMPT_LIMITS.MAX_SYSTEM_PROMPT_CHARS) {
+    return { truncatedPrompt, wasTruncated: true, originalLength };
+  }
+  
+  // 策略 2：移除低優先級段落
+  truncatedPrompt = removeLowPrioritySections(truncatedPrompt);
+  
+  if (truncatedPrompt.length <= PROMPT_LIMITS.MAX_SYSTEM_PROMPT_CHARS) {
+    return { truncatedPrompt, wasTruncated: true, originalLength };
+  }
+  
+  // 策略 3：強制截斷
+  truncatedPrompt = truncatedPrompt.slice(0, PROMPT_LIMITS.MAX_SYSTEM_PROMPT_CHARS);
+  
+  return { truncatedPrompt, wasTruncated: true, originalLength };
+}
+
+/**
+ * 截斷範例內容
+ */
+function truncateExamples(prompt: string): string {
+  // 截斷「--- 範例」和「--- 案例」之間的內容
+  const examplePattern = /---\s*(範例|案例|成功案例)[\s\S]*?---/g;
+  
+  return prompt.replace(examplePattern, (match) => {
+    if (match.length > PROMPT_LIMITS.MAX_EXAMPLE_CHARS) {
+      // 保留開頭和結尾標記，截斷中間內容
+      const lines = match.split('\n');
+      const header = lines[0];
+      const footer = lines[lines.length - 1];
+      const content = lines.slice(1, -1).join('\n');
+      const truncatedContent = content.slice(0, PROMPT_LIMITS.MAX_EXAMPLE_CHARS - 100) + '...';
+      return `${header}\n${truncatedContent}\n${footer}`;
+    }
+    return match;
+  });
+}
+
+/**
+ * 移除低優先級段落
+ */
+function removeLowPrioritySections(prompt: string): string {
+  // 嘗試移除「風格參考範例」段落
+  const styleExamplePattern = /【風格參考範例】[\s\S]*?【學習要點】/g;
+  let result = prompt.replace(styleExamplePattern, '【學習要點】');
+  
+  // 如果還是太長，移除「爆款開頭參考」段落
+  if (result.length > PROMPT_LIMITS.MAX_SYSTEM_PROMPT_CHARS) {
+    const viralOpenerPattern = /【該關鍵字爆款開頭參考】[\s\S]*?⚠️ 同質性警告/g;
+    result = result.replace(viralOpenerPattern, '⚠️ 同質性警告');
+  }
+  
+  return result;
 }
 
 /**

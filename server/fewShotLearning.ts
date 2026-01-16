@@ -5,9 +5,22 @@
  * 1. 從用戶的爆款貼文中提取成功模式
  * 2. 將成功模式反哺到生成策略
  * 3. 根據用戶風格動態調整 prompt
+ * 4. 整合自適應門檻和成長階段判斷
  */
 
 import * as db from './db';
+import {
+  calculateAdaptiveThreshold,
+  calculateUserMetrics,
+  calculateExampleCounts,
+  determineUserStage,
+  getStageName,
+  type UserStage,
+  type AdaptiveThresholdResult,
+} from './services/adaptiveThreshold';
+import { extractOpenerDNA, buildPersonalizedOpenerPrompt, type OpenerDNA } from './services/openerDNA';
+import { isFeatureEnabled } from './infrastructure/feature-flags';
+import { withCache, CACHE_TTL } from './infrastructure/cache';
 
 // 類型定義
 interface UserStyleProfile {
@@ -46,6 +59,10 @@ interface FewShotContext {
     openerType: string;
   }>;
   personalizedPrompt: string;
+  // 新增：自適應門檻相關
+  adaptiveThreshold?: AdaptiveThresholdResult;
+  openerDNA?: OpenerDNA;
+  userStage?: UserStage;
 }
 
 /**
@@ -163,10 +180,24 @@ export async function buildEnhancedFewShotContext(userId: number): Promise<FewSh
   // 2. 提取成功模式
   const viralPatterns = await extractViralPatterns(userId);
   
-  // 3. 取得最近成功的貼文（從樣本貼文中）
+  // 3. 取得樣本貼文並計算互動數
   const samplePosts = (userStyle?.samplePosts as Array<{ content: string; engagement?: number; addedAt: string }>) || [];
+  const engagements = samplePosts.map(p => p.engagement || 0);
+  
+  // 4. 計算自適應門檻（混合方案）
+  let adaptiveThreshold: AdaptiveThresholdResult | undefined;
+  let userStage: UserStage | undefined;
+  
+  if (isFeatureEnabled('ADAPTIVE_THRESHOLD') && engagements.length > 0) {
+    const metrics = calculateUserMetrics(engagements);
+    adaptiveThreshold = calculateAdaptiveThreshold(metrics, engagements);
+    userStage = adaptiveThreshold.stage;
+  }
+  
+  // 5. 根據自適應門檻過濾成功貼文
+  const minEngagement = adaptiveThreshold?.threshold || 50;
   const recentSuccesses = samplePosts
-    .filter(p => (p.engagement || 0) >= 50) // 至少 50 互動
+    .filter(p => (p.engagement || 0) >= minEngagement)
     .sort((a, b) => (b.engagement || 0) - (a.engagement || 0))
     .slice(0, 5)
     .map(p => ({
@@ -176,10 +207,26 @@ export async function buildEnhancedFewShotContext(userId: number): Promise<FewSh
       openerType: detectOpenerType((p.content || '').split('\n')[0] || ''),
     }));
   
-  // 4. 建構個人化 prompt
-  const personalizedPrompt = buildPersonalizedPrompt(userStyle, viralPatterns, recentSuccesses);
+  // 6. 提取開頭 DNA
+  let openerDNA: OpenerDNA | undefined;
+  if (isFeatureEnabled('OPENER_DNA') && samplePosts.length > 0) {
+    const userPosts = samplePosts.map(p => ({
+      content: p.content || '',
+      engagement: p.engagement || 0,
+    }));
+    openerDNA = await extractOpenerDNA(String(userId), userPosts, minEngagement);
+  }
   
-  // 5. 轉換 userStyle 為 UserStyleProfile
+  // 7. 建構個人化 prompt（整合 DNA 和階段資訊）
+  const personalizedPrompt = buildPersonalizedPromptWithDNA(
+    userStyle,
+    viralPatterns,
+    recentSuccesses,
+    openerDNA,
+    userStage
+  );
+  
+  // 8. 轉換 userStyle 為 UserStyleProfile
   const styleProfile: UserStyleProfile | null = userStyle ? {
     toneStyle: userStyle.toneStyle,
     commonPhrases: (userStyle.commonPhrases as string[]) || [],
@@ -196,6 +243,9 @@ export async function buildEnhancedFewShotContext(userId: number): Promise<FewSh
     viralPatterns,
     recentSuccesses,
     personalizedPrompt,
+    adaptiveThreshold,
+    openerDNA,
+    userStage,
   };
 }
 
@@ -274,6 +324,116 @@ function buildPersonalizedPrompt(
   }
   
   // 6. 禁止事項（強化版）
+  parts.push(`=== 禁止事項（違反即失敗） ===`);
+  parts.push(`1. 禁止複製任何範例的開頭句式`);
+  parts.push(`2. 禁止每篇都用同樣的開場白`);
+  parts.push(`3. 禁止過度使用口頭禪（每篇最多 1-2 個）`);
+  parts.push(`4. 禁止使用 AI 常見詞彙（讓我們、親愛的、值得一提）`);
+  
+  return parts.join('\n');
+}
+
+/**
+ * 建構個人化 prompt（整合 DNA 和階段資訊）
+ */
+function buildPersonalizedPromptWithDNA(
+  userStyle: Awaited<ReturnType<typeof db.getUserWritingStyle>>,
+  viralPatterns: ViralPattern[],
+  recentSuccesses: Array<{ content: string; likes: number; openerType: string }>,
+  openerDNA?: OpenerDNA,
+  userStage?: UserStage
+): string {
+  const parts: string[] = [];
+  
+  // 0. 用戶階段資訊
+  if (userStage) {
+    const stageName = getStageName(userStage);
+    parts.push(`=== 用戶階段：${stageName} ===`);
+    
+    if (userStage === 'expert') {
+      parts.push(`你已經是專家級創作者，系統將主要參考你的個人風格。`);
+    } else if (userStage === 'mature') {
+      parts.push(`你已經有穩定的個人風格，系統將平衡參考你的風格和系統建議。`);
+    } else if (userStage === 'growing') {
+      parts.push(`你正在成長中，系統將提供更多爆款範例供你參考。`);
+    } else {
+      parts.push(`歡迎新手！系統將提供豐富的爆款範例幫助你快速上手。`);
+    }
+    parts.push(``);
+  }
+  
+  // 1. 開頭 DNA 特徵（新增）
+  if (openerDNA) {
+    parts.push(`=== 你的開頭 DNA ===`);
+    parts.push(buildPersonalizedOpenerPrompt(openerDNA));
+    parts.push(``);
+  }
+  
+  // 2. 風格精神（強化版）
+  if (userStyle?.toneStyle) {
+    parts.push(`=== 你的寫作風格 DNA ===`);
+    parts.push(`【核心語氣】${userStyle.toneStyle}`);
+    parts.push(`重要：學習這個語氣的「感覺」，不是複製句子。`);
+    parts.push(``);
+  }
+  
+  // 3. 成功模式分析（流量反哺）
+  if (viralPatterns.length > 0) {
+    parts.push(`=== 你的爆文成功模式（數據驅動） ===`);
+    parts.push(`以下是根據你過去貼文分析出的成功模式：`);
+    parts.push(``);
+    
+    for (const pattern of viralPatterns.slice(0, 3)) {
+      parts.push(`【${pattern.openerType}】成功率 ${pattern.successRate.toFixed(0)}%，平均互動 ${pattern.avgEngagement.toFixed(0)}`);
+      if (pattern.examples.length > 0) {
+        parts.push(`  範例：${pattern.examples[0].substring(0, 30)}...`);
+      }
+    }
+    parts.push(``);
+    parts.push(`建議：優先使用「${viralPatterns[0]?.openerType || '情緒爆發型'}」開頭，這是你最成功的模式。`);
+    parts.push(``);
+  }
+  
+  // 4. 個人詞彙庫（強化版）
+  if (userStyle?.viralElements) {
+    const ve = userStyle.viralElements as { emotionWords?: string[]; identityTags?: string[] };
+    if (ve.emotionWords && ve.emotionWords.length > 0) {
+      parts.push(`=== 你的個人詞彙庫 ===`);
+      parts.push(`【情緒詞】使用這些詞彙讓內容更有你的風格：`);
+      parts.push(`  ${ve.emotionWords.slice(0, 5).join('、')}`);
+      parts.push(``);
+    }
+  }
+  
+  // 5. 口頭禪（限制使用）
+  if (userStyle?.catchphrases && (userStyle.catchphrases as string[]).length > 0) {
+    const catchphrases = userStyle.catchphrases as string[];
+    parts.push(`【口頭禪】偶爾使用，不要每篇都用：`);
+    parts.push(`  ${catchphrases.slice(0, 3).join('、')}`);
+    parts.push(``);
+  }
+  
+  // 6. 最近成功案例（Few-Shot）
+  if (recentSuccesses.length > 0) {
+    parts.push(`=== 你最近的成功案例 ===`);
+    parts.push(`學習這些貼文的「節奏」和「語氣」，不是複製內容：`);
+    parts.push(``);
+    
+    // 隨機選取 1 篇
+    const randomIndex = Math.floor(Math.random() * recentSuccesses.length);
+    const selected = recentSuccesses[randomIndex];
+    
+    parts.push(`--- 成功案例（${selected.likes} 讚，${selected.openerType}）---`);
+    parts.push(selected.content.length > 300 ? selected.content.substring(0, 300) + '...' : selected.content);
+    parts.push(`--- 案例結束 ---`);
+    parts.push(``);
+    parts.push(`【學習要點】`);
+    parts.push(`✓ 學習：句子長短的節奏、換行的頻率、說話的語氣`);
+    parts.push(`✗ 禁止：複製開頭句式、使用同樣的句型、抄襲內容`);
+    parts.push(``);
+  }
+  
+  // 7. 禁止事項（強化版）
   parts.push(`=== 禁止事項（違反即失敗） ===`);
   parts.push(`1. 禁止複製任何範例的開頭句式`);
   parts.push(`2. 禁止每篇都用同樣的開場白`);

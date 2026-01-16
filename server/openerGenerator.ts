@@ -2,7 +2,7 @@
  * Opener Generator 模組
  * 
  * 負責生成多個開頭候選供學員選擇
- * 整合 Prompt Service、AI Detector 和 Bandit 策略
+ * 整合 Prompt Service、AI Detector、Bandit 策略、品質檢查和最近使用追蹤
  */
 
 import { getDb } from "./db";
@@ -12,6 +12,12 @@ import { type OpenerTemplate } from "../drizzle/schema";
 import { detectAiPatterns, quickDetect } from "./aiDetector";
 import { invokeLLM } from "./_core/llm";
 import { eq, desc, and } from "drizzle-orm";
+
+// 新增：整合品質檢查和最近使用追蹤
+import { performQualityCheck, autoFixContent, type QualityCheckResult } from "./services/qualityChecker";
+import { recordUsage, wasRecentlyUsed, getStylesToAvoid } from "./services/recentUsageTracker";
+import { isFeatureEnabled } from "./infrastructure/feature-flags";
+import { recordGeneration } from "./infrastructure/metrics-collector";
 
 // ============================================
 // 類型定義
@@ -27,6 +33,10 @@ export interface OpenerCandidate {
   aiFlags: string[];
   scoreLevel: string;
   isExploration: boolean; // 是否為探索模式生成
+  // 新增：品質檢查結果
+  qualityResult?: QualityCheckResult;
+  wasAutoFixed?: boolean;
+  originalText?: string; // 自動修復前的原始文字
 }
 
 export interface GenerateOpenersInput {
@@ -249,10 +259,38 @@ async function generateSingleOpener(params: {
     });
 
     const messageContent = response.choices[0]?.message?.content;
-    const openerText = typeof messageContent === 'string' ? messageContent.trim() : "";
+    let openerText = typeof messageContent === 'string' ? messageContent.trim() : "";
 
     // 進行 AI 痕跡檢測
     const detection = await detectAiPatterns(openerText);
+    
+    // 新增：品質檢查
+    let qualityResult: QualityCheckResult | undefined;
+    let wasAutoFixed = false;
+    let originalText: string | undefined;
+    
+    if (isFeatureEnabled('QUALITY_CHECKER')) {
+      qualityResult = performQualityCheck(openerText, 'short');
+      
+      // 如果品質不通過，嘗試自動修復
+      if (!qualityResult.passed && qualityResult.shouldRetry) {
+        originalText = openerText;
+        const fixResult = autoFixContent(openerText);
+        if (fixResult.changes.length > 0) {
+          openerText = fixResult.fixed;
+          wasAutoFixed = true;
+          // 重新檢查修復後的品質
+          qualityResult = performQualityCheck(openerText, 'short');
+        }
+      }
+      
+      // 記錄指標
+      recordGeneration(
+        0, // duration - 稍後可以加入計時器
+        qualityResult.passed,
+        'opener'
+      );
+    }
 
     return {
       templateId: template.id,
@@ -263,6 +301,9 @@ async function generateSingleOpener(params: {
       aiFlags: detection.matches.map(m => m.pattern),
       scoreLevel: getScoreLevel(detection.overallScore),
       isExploration,
+      qualityResult,
+      wasAutoFixed,
+      originalText,
     };
   } catch (error) {
     console.error(`[OpenerGenerator] Failed to generate opener:`, error);
