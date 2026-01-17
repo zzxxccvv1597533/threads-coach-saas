@@ -1525,7 +1525,35 @@ ${viralFactorsPrompt}`;
         const response = await invokeLLM({
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: `請根據我的 IP 地基和受眾，給我5個今天可以發的貼文主題建議。${input.topic ? `參考方向：${input.topic}` : ''}
+            { role: "user", content: input.topic 
+              ? `【重要】用戶已提供參考方向，所有主題必須圍繞這個方向。
+
+參考方向：${input.topic}
+
+請根據以上參考方向，結合我的 IP 地基和受眾，給我5個主題建議。
+
+【核心約束】
+1. 所有 5 個主題都必須直接圍繞「${input.topic}」這個方向
+2. 不允許跳到其他無關主題（即使與我的專業相關）
+3. 可以用不同的內容類型來表達同一個方向（故事型、觀點型、提問型等）
+4. 每個主題都要是參考方向的不同切角或表達方式
+
+請用 JSON 格式回覆：
+{
+  "topics": [
+    {
+      "title": "主題名稱",
+      "audience": "適合哪一群人",
+      "contentType": "story",
+      "hook": "一句讓人想繼續看的開頭"
+    }
+  ]
+}
+
+contentType 可選值：knowledge(知識型), summary(懶人包), story(故事型), viewpoint(觀點型), contrast(反差型), casual(日常閃文), dialogue(對話型), question(提問型), poll(投票型), quote(金句型), diagnosis(診斷型)
+
+只輸出 JSON，不要其他文字。`
+              : `請根據我的 IP 地基和受眾，給我5個今天可以發的貼文主題建議。
 
 請用 JSON 格式回覆：
 {
