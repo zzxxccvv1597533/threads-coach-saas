@@ -30,6 +30,7 @@ import {
   Target,
   Gift,
   Star,
+  Check,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GuidedWritingFlow } from "@/components/GuidedWritingFlow";
@@ -1811,7 +1812,7 @@ function DraftResultWithChat({
               </div>
             </div>
 
-            {/* 對話歷史 */}
+            {/* 對話歷史 - 只顯示用戶的修改指令，AI 回覆顯示簡短確認 */}
             {chatMessages.map((msg, idx) => (
               <div key={idx} className="flex gap-3">
                 {msg.role === 'user' ? (
@@ -1829,16 +1830,17 @@ function DraftResultWithChat({
                     </div>
                   </>
                 ) : (
-                  // AI 回覆 - 靠左
+                  // AI 回覆 - 靠左，只顯示簡短確認訊息
                   <>
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shrink-0">
                       <Sparkles className="w-4 h-4 text-white" />
                     </div>
                     <div className="flex-1 max-w-[85%] space-y-2">
                       <div className="text-sm font-medium text-muted-foreground">幕創 AI</div>
-                      <div className="bg-muted/50 rounded-2xl rounded-tl-sm p-4">
-                        <div className="prose prose-sm max-w-none text-foreground">
-                          <Streamdown>{msg.content}</Streamdown>
+                      <div className="bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-2xl rounded-tl-sm p-3">
+                        <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 text-sm">
+                          <Check className="w-4 h-4" />
+                          <span>已根據你的指令修改完成，請查看上方最新版本</span>
                         </div>
                       </div>
                     </div>

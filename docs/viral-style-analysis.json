@@ -1,0 +1,34 @@
+{
+  "totalPosts": 1240,
+  "avgLength": 0,
+  "toneWordStats": {},
+  "teachingWordStats": {
+    "count": 0,
+    "avgPerPost": 0,
+    "postsWithWord": 0
+  },
+  "marketingWordStats": {
+    "count": 0,
+    "avgPerPost": 0,
+    "postsWithWord": 0
+  },
+  "formalEmotionStats": {
+    "count": 0,
+    "avgPerPost": 0,
+    "postsWithWord": 0
+  },
+  "metaphorStats": {
+    "count": 0,
+    "avgPerPost": 0,
+    "postsWithWord": 0
+  },
+  "structureStats": {
+    "hasHook": 0,
+    "hasCta": 0,
+    "hasQuestion": 0,
+    "avgParagraphs": 0,
+    "avgSentenceLength": null
+  },
+  "topToneWords": [],
+  "samplePosts": []
+}

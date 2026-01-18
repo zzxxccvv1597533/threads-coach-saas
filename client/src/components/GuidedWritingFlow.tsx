@@ -1303,7 +1303,7 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
               </div>
             </div>
 
-            {/* 對話區域 */}
+            {/* 對話區域 - 只顯示用戶指令和 AI 簡短確認 */}
             {chatMessages.length > 0 && (
               <div className="space-y-3 max-h-60 overflow-y-auto">
                 {chatMessages.map((msg, index) => (
@@ -1312,15 +1312,21 @@ ${speakingStyle ? `說話風格：${speakingStyle}` : ''}
                     className={`p-3 rounded-lg ${
                       msg.role === "user"
                         ? "bg-primary/10 ml-8"
-                        : "bg-muted mr-8"
+                        : "bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 mr-8"
                     }`}
                   >
                     <div className="text-xs text-muted-foreground mb-1">
-                      {msg.role === "user" ? "你" : "AI"}
+                      {msg.role === "user" ? "你" : "幕創 AI"}
                     </div>
                     <div className="text-sm whitespace-pre-wrap">
-                      {msg.content.slice(0, 200)}
-                      {msg.content.length > 200 && "..."}
+                      {msg.role === "user" ? (
+                        msg.content
+                      ) : (
+                        <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
+                          <Check className="w-4 h-4" />
+                          <span>已根據你的指令修改完成，請查看上方最新版本</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
