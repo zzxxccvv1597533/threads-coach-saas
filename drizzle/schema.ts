@@ -963,3 +963,55 @@ export const openerEmbeddings = mysqlTable("opener_embeddings", {
 
 export type OpenerEmbedding = typeof openerEmbeddings.$inferSelect;
 export type InsertOpenerEmbedding = typeof openerEmbeddings.$inferInsert;
+
+
+// ============================================
+// 爆款範例 Embedding（語意匹配）
+// ============================================
+export const viralExampleEmbeddings = mysqlTable("viral_example_embeddings", {
+  id: int("id").autoincrement().primaryKey(),
+  viralExampleId: int("viralExampleId").notNull(), // 關聯的爆款範例 ID
+  embedding: text("embedding").notNull(), // JSON 格式的向量（1536 維）
+  contentType: varchar("contentType", { length: 32 }), // 內容類型（冗餘儲存方便查詢）
+  keyword: varchar("keyword", { length: 64 }), // 關鍵字（冗餘儲存方便查詢）
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ViralExampleEmbedding = typeof viralExampleEmbeddings.$inferSelect;
+export type InsertViralExampleEmbedding = typeof viralExampleEmbeddings.$inferInsert;
+
+// ============================================
+// 爆款聚類結果（K-means 分析）
+// ============================================
+export const viralClusters = mysqlTable("viral_clusters", {
+  id: int("id").autoincrement().primaryKey(),
+  clusterId: int("clusterId").notNull(), // 聚類 ID（0 到 K-1）
+  centroid: text("centroid").notNull(), // 聚類中心向量（JSON 格式）
+  size: int("size").notNull(), // 該聚類的樣本數量
+  // 聚類特徵摘要
+  topKeywords: text("topKeywords"), // 該聚類的高頻關鍵字（JSON 陣列）
+  avgLikes: int("avgLikes"), // 平均讚數
+  avgCharLen: int("avgCharLen"), // 平均字數
+  dominantContentType: varchar("dominantContentType", { length: 32 }), // 主要內容類型
+  // LLM 提煉的爆款公式
+  formulaName: varchar("formulaName", { length: 128 }), // 公式名稱
+  formulaDescription: text("formulaDescription"), // 公式描述
+  formulaExample: text("formulaExample"), // 公式範例
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ViralCluster = typeof viralClusters.$inferSelect;
+export type InsertViralCluster = typeof viralClusters.$inferInsert;
+
+// 爆款範例與聚類的關聯
+export const viralExampleClusterMappings = mysqlTable("viral_example_cluster_mappings", {
+  id: int("id").autoincrement().primaryKey(),
+  viralExampleId: int("viralExampleId").notNull(),
+  clusterId: int("clusterId").notNull(),
+  distance: decimal("distance", { precision: 10, scale: 6 }), // 與聚類中心的距離
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ViralExampleClusterMapping = typeof viralExampleClusterMappings.$inferSelect;
+export type InsertViralExampleClusterMapping = typeof viralExampleClusterMappings.$inferInsert;

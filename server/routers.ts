@@ -21,6 +21,7 @@ import { quickDetect } from "./aiDetector";
 import { getContentTypeRule } from "../shared/content-type-rules";
 import { buildStylePolishSystemPrompt, buildStylePolishUserPrompt, validateSemanticPreservation, buildStylePolishContext } from "./style-polish-prompt";
 import { checkOpenerHomogeneityV2, saveOpenerEmbedding, checkSemanticFidelity, rankCandidatesByDiversity } from "./embedding-service";
+import { findSimilarViralExamples, getSmartFewShotExamples, getClusteringSummary, getEmbeddingStats } from "./viral-embedding-service";
 
 // Admin procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -2246,6 +2247,26 @@ ${viralOpenersContext}
         // ✅ P0+P1 優化：Few-Shot Learning - 取得爆款貼文範例
         const fewShotPrompt = await db.buildFewShotPrompt(materialContent, 3);
         
+        // ✅ v3.0 Embedding 語意匹配：根據素材內容找出最相似的爆款範例
+        let semanticFewShotPrompt = '';
+        try {
+          const smartExamples = await getSmartFewShotExamples(
+            materialContent,
+            input.contentType,
+            3
+          );
+          if (smartExamples.length > 0) {
+            semanticFewShotPrompt = `\n=== 語意匹配爆款範例（基於 1,240 篇爆款分析） ===\n`;
+            smartExamples.forEach((ex, i) => {
+              semanticFewShotPrompt += `\n範例 ${i + 1}（${ex.likes} 讚，${ex.matchReason}）：\n${ex.postText.substring(0, 200)}...\n`;
+            });
+            semanticFewShotPrompt += `\n請參考以上範例的結構和語氣，但要結合創作者的風格來寫。\n`;
+            console.log('[Embedding] 語意匹配找到', smartExamples.length, '篇相似爆款');
+          }
+        } catch (embeddingError) {
+          console.warn('[Embedding] 語意匹配失敗:', embeddingError);
+        }
+        
         // ✅ 數據驅動三層提示詞系統（新增）
         const dataDrivenContext = await collectDataDrivenContext(input.contentType, materialContent);
         const selectedOpenerPattern = dataDrivenContext.selectedOpenerPattern;
@@ -2824,6 +2845,7 @@ ${viralFactorsPrompt}
 ${hooksPrompt}
 
 ${fewShotPrompt}
+${semanticFewShotPrompt}
 ${topicLibraryContext}
 ${clusterContext}
 

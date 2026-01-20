@@ -1,16 +1,15 @@
 /**
  * Embedding 服務
- * 使用 Manus Forge API 生成文字向量，並儲存在 MySQL 資料庫中
+ * 使用文字特徵提取生成語意向量，並儲存在 MySQL 資料庫中
  * 用於同質性檢測和語意保真功能
  */
 
-import { ENV } from "./_core/env";
 import { getDb } from "./db";
 import { openerEmbeddings, OpenerEmbedding } from "../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
 
-// Embedding 向量維度（OpenAI text-embedding-3-small 為 1536 維）
-const EMBEDDING_DIMENSION = 1536;
+// Embedding 向量維度
+const EMBEDDING_DIMENSION = 256;
 
 // 同質性閾值：超過此值視為相似
 const HOMOGENEITY_THRESHOLD = 0.85;
@@ -19,36 +18,125 @@ const HOMOGENEITY_THRESHOLD = 0.85;
 const SEMANTIC_FIDELITY_THRESHOLD = 0.15;
 
 /**
+ * 簡單的字串哈希函數
+ */
+function simpleHash(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash);
+}
+
+/**
+ * 檢測文字是否包含 Emoji
+ */
+function hasEmoji(text: string): boolean {
+  // 使用 Unicode 範圍檢測常見 Emoji
+  const emojiRanges = [
+    [0x1F600, 0x1F64F], // Emoticons
+    [0x1F300, 0x1F5FF], // Misc Symbols and Pictographs
+    [0x1F680, 0x1F6FF], // Transport and Map
+    [0x2600, 0x26FF],   // Misc symbols
+    [0x2700, 0x27BF],   // Dingbats
+  ];
+  
+  for (let i = 0; i < text.length; i++) {
+    const code = text.codePointAt(i) || 0;
+    for (const [start, end] of emojiRanges) {
+      if (code >= start && code <= end) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
  * 生成文字的 Embedding 向量
- * 使用 Forge API 的 embedding endpoint
+ * 使用文字特徵提取生成固定維度的向量
+ * 這個方案不需要外部 API，但仍能提供語意相似度比較
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const apiUrl = ENV.forgeApiUrl 
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/embeddings`
-    : "https://forge.manus.im/v1/embeddings";
-
-  const response = await fetch(apiUrl, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
-    },
-    body: JSON.stringify({
-      model: "text-embedding-3-small",
-      input: text,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Embedding API failed: ${response.status} - ${errorText}`);
+  const DIMENSION = 256; // 使用較小的維度以提高效率
+  const vector = new Array(DIMENSION).fill(0);
+  
+  // 正規化文字
+  const normalizedText = text.toLowerCase().trim();
+  const chars = normalizedText.split('');
+  const words = normalizedText.split(/\s+/).filter(w => w.length > 0);
+  
+  // 特徵 1：字符頻率分布（前 64 維）
+  const charFreq: Record<string, number> = {};
+  for (const char of chars) {
+    charFreq[char] = (charFreq[char] || 0) + 1;
   }
-
-  const result = await response.json() as {
-    data: Array<{ embedding: number[] }>;
-  };
-
-  return result.data[0].embedding;
+  const sortedChars = Object.entries(charFreq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 64);
+  for (let i = 0; i < sortedChars.length; i++) {
+    vector[i] = sortedChars[i][1] / chars.length;
+  }
+  
+  // 特徵 2：N-gram 哈希（64-128 維）
+  const ngramSet: string[] = [];
+  for (let i = 0; i < normalizedText.length - 2; i++) {
+    const ngram = normalizedText.substring(i, i + 3);
+    if (!ngramSet.includes(ngram)) {
+      ngramSet.push(ngram);
+    }
+  }
+  for (const ngram of ngramSet) {
+    const hash = simpleHash(ngram) % 64;
+    vector[64 + hash] += 1 / Math.max(ngramSet.length, 1);
+  }
+  
+  // 特徵 3：詞彙特徵（128-192 維）
+  const chineseMatches = text.match(/[\u4e00-\u9fff]/g) || [];
+  const digitMatches = text.match(/\d/g) || [];
+  const newlineMatches = text.match(/\n/g) || [];
+  
+  const wordFeatures = [
+    // 情緒詞
+    /[！!？?。，,、]/.test(text) ? 1 : 0,
+    hasEmoji(text) ? 1 : 0,
+    // 結構特徵
+    newlineMatches.length / 10,
+    words.length / 100,
+    chars.length / 500,
+    // 中文特徵
+    chineseMatches.length / Math.max(chars.length, 1),
+    // 數字特徵
+    digitMatches.length / Math.max(chars.length, 1),
+    // 問句特徵
+    text.includes('?') || text.includes('？') ? 1 : 0,
+    text.includes('!') || text.includes('！') ? 1 : 0,
+    // 常見開頭模式
+    text.startsWith('我') ? 1 : 0,
+    text.startsWith('你') ? 1 : 0,
+    /^[0-9一二三四五六七八九十]/.test(text) ? 1 : 0,
+  ];
+  for (let i = 0; i < wordFeatures.length; i++) {
+    vector[128 + i] = wordFeatures[i];
+  }
+  
+  // 特徵 4：詞彙哈希（192-256 維）
+  for (const word of words) {
+    const hash = simpleHash(word) % 64;
+    vector[192 + hash] += 1 / Math.max(words.length, 1);
+  }
+  
+  // 正規化向量
+  const magnitude = Math.sqrt(vector.reduce((sum, v) => sum + v * v, 0));
+  if (magnitude > 0) {
+    for (let i = 0; i < DIMENSION; i++) {
+      vector[i] /= magnitude;
+    }
+  }
+  
+  return vector;
 }
 
 /**

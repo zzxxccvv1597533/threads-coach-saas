@@ -197,6 +197,13 @@
       "when": 1768884410416,
       "tag": "0027_solid_siren",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1768885820716,
+      "tag": "0028_sad_rafael_vega",
+      "breakpoints": true
     }
   ]
 }
