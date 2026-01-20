@@ -150,99 +150,63 @@ export function buildLayer2ContentTypeRules(contentType: string): string {
 }
 
 /**
- * 建構第三層：關鍵字專屬規則提示詞（優化版 - 解決同質性問題）
+ * 建構第三層：關鍵字專屬規則提示詞（P0-3 精簡版）
+ * 
+ * 優化重點：
+ * 1. 移除冗餘的同質性警告（已在最終指示中涵蓋）
+ * 2. 精簡 Few-Shot 範例（從 3-5 個改為 1-2 個）
+ * 3. 移除重複的禁止項目
  */
 export function buildLayer3KeywordRules(context: DataDrivenPromptContext): string {
-  const { matchedKeywords, viralOpeners, fewShotExamples, materialKeywords, selectedOpenerPattern } = context;
+  const { matchedKeywords, viralOpeners, fewShotExamples, materialKeywords } = context;
   
+  // 如果沒有匹配到任何數據，返回精簡提示
   if (matchedKeywords.length === 0 && viralOpeners.length === 0) {
     return `
-=== 第三層：爆款開頭參考 ===
+=== 第三層：風格參考 ===
 
-【通用爆款開頭格式】
-由於未匹配到特定關鍵字，請使用「${selectedOpenerPattern.name}」格式：
-
-【格式說明】${selectedOpenerPattern.instruction}
-
-【格式範例】（學習格式，禁止複製內容）
-${selectedOpenerPattern.examples.slice(0, 3).map((e, i) => `${i + 1}. ${e}`).join('\n')}
-
-⚠️ 重要：你必須根據素材創造全新的開頭，禁止使用上述範例的內容。
+未匹配到特定關鍵字數據，請根據素材自由發揮。
 `;
   }
   
   let prompt = `
-=== 第三層：關鍵字專屬規則 ===
+=== 第三層：關鍵字數據參考 ===
 `;
 
-  // 關鍵字資訊
+  // 關鍵字資訊（精簡版）
   if (matchedKeywords.length > 0) {
     const topKeyword = matchedKeywords[0];
     prompt += `
 【匹配關鍵字】${topKeyword.keyword}
-【該關鍵字爆文率】${((topKeyword.viralRate || 0) / 100).toFixed(1)}%
-【該關鍵字最佳貼文類型】${topKeyword.bestContentType || '未知'}
-【該關鍵字平均讚數】${topKeyword.avgLikes || 0}
+【爆文率】${((topKeyword.viralRate || 0) / 100).toFixed(1)}% | 【平均讚數】${topKeyword.avgLikes || 0}
 `;
-
-    // 爆文因子
-    if (topKeyword.viralFactors) {
-      const factors = topKeyword.viralFactors as any;
-      prompt += `
-【該關鍵字的爆文因子】
-`;
-      if (factors.resultFlag !== undefined) {
-        prompt += `• 結果導向詞使用率：${(factors.resultFlag * 100).toFixed(1)}%\n`;
-      }
-      if (factors.youFlag !== undefined) {
-        prompt += `• 「你」字使用率：${(factors.youFlag * 100).toFixed(1)}%\n`;
-      }
-    }
   }
 
-  // 爆款開頭範例（隨機抽取的）
+  // 爆款開頭參考（精簡為 2-3 個）
   if (viralOpeners.length > 0) {
+    const topOpeners = viralOpeners.slice(0, 3);
     prompt += `
-【該關鍵字爆款開頭參考】（學習格式，禁止複製）
-${viralOpeners.map((o, i) => `${i + 1}. ${o.opener50}（${o.likes} 讚）`).join('\n')}
-
-⚠️ 同質性警告：
-1. 上述範例僅供參考「格式」和「技巧」
-2. 禁止直接複製或改寫上述開頭
-3. 你必須根據素材創造全新的開頭
-4. 開頭必須包含素材中的核心概念
+【爆款開頭參考】（感受節奏，不要模仿結構）
+${topOpeners.map((o, i) => `${i + 1}. ${o.opener50}`).join('\n')}
 `;
   }
 
-  // 素材關鍵詞強制使用
+  // 素材關鍵詞（從「必須」改為「建議」）
   if (materialKeywords.length > 0) {
     prompt += `
-【⚠️ 素材關鍵詞 - 必須使用】
-你的素材包含：${materialKeywords.join('、')}
-第一行必須包含至少一個上述關鍵詞，確保開頭與素材緊密相關。
+【素材關鍵詞】建議開頭融入：${materialKeywords.slice(0, 3).join('、')}
 `;
   }
 
-  // Few-Shot 範例（隨機抽取的）
+  // Few-Shot 範例（精簡為 1 個，只取最高讚的）
   if (fewShotExamples.length > 0) {
+    const topExample = fewShotExamples[0];
+    const truncated = topExample.postText.length > 200 
+      ? topExample.postText.substring(0, 200) + '...' 
+      : topExample.postText;
     prompt += `
-【風格參考範例】（學習風格，禁止複製）
-以下是該主題的高讚貼文，學習其「節奏」和「語氣」：
-`;
-    fewShotExamples.forEach((example, index) => {
-      const truncated = example.postText.length > 300 
-        ? example.postText.substring(0, 300) + '...' 
-        : example.postText;
-      prompt += `
---- 範例 ${index + 1}（${example.likes} 讚）---
+【氛圍參考】（感受說話方式，不要模仿結構）
 ${truncated}
-`;
-    });
-    
-    prompt += `
-【學習要點】
-✓ 學習：句子長短的節奏、換行的頻率、說話的語氣
-✗ 禁止：複製開頭句式、使用同樣的句型、抄襲內容
 `;
   }
 
@@ -318,36 +282,47 @@ ${additionalContext.userStyleContext}
     }
   }
 
-  // 加入最終指示（強化同質性警告）
+  // 加入最終指示（P0-2 優化：「必須」改為「推薦」，精簡檢查清單）
   systemPrompt += `
 === 最終指示 ===
 
 【第一行最重要 - 決定 80% 成敗】
-1. 本次必須使用「${context.selectedOpenerPattern.name}」格式
-2. 第一行必須獨立成段（後面空一行）
-3. 第一行不能超過 30 字
-${context.materialKeywords.length > 0 ? `4. 第一行必須包含：${context.materialKeywords.slice(0, 3).join('、')} 其中之一` : ''}
 
-【字數控制】
-嚴格遵守 ${typeRule?.wordLimit.min || 150}-${typeRule?.wordLimit.max || 400} 字
+參考以下開頭公式，選擇最適合素材的方式自然開場：
 
-【⚠️ 同質性警告 - 違反即失敗】
-1. 禁止複製任何範例的開頭
-2. 禁止使用「經營自己的關鍵」「學習的真相」等常見開頭
-3. 必須根據素材創造全新的、獨特的開頭
-4. 開頭必須與素材內容緊密相關
+1. 「冒號斷言」：[主題]的[真相/關鍵/本質]：[觀點]
+   例：「經營自己的關鍵：不是努力，是選擇」
+
+2. 「情緒爆發」：我真的[情緒][感受]
+   例：「我真的受夠了」「我到現在還在氣」
+
+3. 「時間點」：[時間]我[發現/遇到][事件]
+   例：「三年前我辢職的時候」「昨天我看到一則留言」
+
+4. 「鏡像式」：你是不是也[共鳴點]?
+   例：「你是不是也有過這種感覺？」
+
+5. 「反差式」：[常見認知]，但其實[反轉觀點]
+   例：「大家都說要努力，但我發現努力的人通常最慈」
+
+→ 不要刻意套用，根據素材自然表達即可
+${context.materialKeywords.length > 0 ? `→ 建議開頭融入：${context.materialKeywords.slice(0, 3).join('、')} 其中之一` : ''}
+
+【字數控制】${typeRule?.wordLimit.min || 150}-${typeRule?.wordLimit.max || 400} 字
+
+【結尾方式（自然選擇，不要刻意）】
+• 觀點收尾：「這兩個根本不一樣吧」
+• 疑問收尾：「你怎麼看？」
+• 留白收尾：「就這樣」
+• 召喚同類：「有人跟我一樣嗎？」
+
+【品質標準】
+✓ 開頭與素材緊密相關
+✓ 有呼吸感（每 2-4 行空一行）
+✓ 像傳訊息給朋友，不是寫文章
 
 【輸出格式】
 直接輸出可發布的貼文，不要任何解釋或標題
-
-【檢查清單】
-□ 第一行是否使用了「${context.selectedOpenerPattern.name}」格式？
-□ 第一行是否獨立成段（後面空一行）？
-□ 第一行是否與素材相關（包含素材關鍵詞）？
-□ 第一行是否是全新創作（非複製範例）？
-□ 字數是否在範圍內？
-□ 是否有呼吸感（每 2-4 行空一行）？
-□ 結尾是否有互動引導？
 `;
 
   // Prompt 長度控制和智能截斷

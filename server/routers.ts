@@ -19,6 +19,7 @@ import { generateMultipleOpeners, markOpenerSelected, type OpenerCandidate } fro
 import { selectAndRank, getTopN } from "./selector";
 import { quickDetect } from "./aiDetector";
 import { getContentTypeRule } from "../shared/content-type-rules";
+import { buildStylePolishSystemPrompt, buildStylePolishUserPrompt, validateSemanticPreservation, buildStylePolishContext } from "./style-polish-prompt";
 
 // Admin procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -1252,6 +1253,129 @@ ${input.content}` }
         }
         
         return { content: typeof result === 'string' ? result : input.content };
+      }),
+
+    // 風格潤飾 API（專用）
+    // 與 refineDraft 的差異：只改語氣，不改內容/結構/字數
+    stylePolish: protectedProcedure
+      .input(z.object({ 
+        content: z.string(),
+        // 可選：強制使用特定風格（如果用戶沒有設定風格）
+        forceStyle: z.object({
+          catchphrases: z.array(z.string()).optional(),
+          speakingStyle: z.string().optional(),
+          toneStyle: z.string().optional(),
+        }).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // 1. 載入用戶風格資料
+        const userStyle = await db.getUserWritingStyle(ctx.user.id);
+        const profile = await db.getIpProfileByUserId(ctx.user.id);
+        
+        // 2. 從 userStyle.samplePosts 取得爆款範例（Few-Shot）
+        const samplePosts = userStyle?.samplePosts || [];
+        const viralExamples = samplePosts
+          .filter((s: { content: string; engagement?: number }) => s.content && s.content.length > 50)
+          .slice(0, 3)
+          .map((s: { content: string }) => s.content);
+        
+        // 3. 建立 StylePolishContext
+        // 從 userStyle 和 profile 取得風格資料
+        const catchphrasesArr = userStyle?.catchphrases || [];
+        const commonPhrasesArr = userStyle?.commonPhrases || [];
+        const emotionWordsArr = userStyle?.viralElements?.emotionWords || [];
+        
+        const styleData = {
+          catchphrases: input.forceStyle?.catchphrases?.join('、') || catchphrasesArr.join('、') || '',
+          speakingStyle: input.forceStyle?.speakingStyle || '',
+          toneStyle: input.forceStyle?.toneStyle || userStyle?.toneStyle || profile?.voiceTone || '',
+          commonPhrases: commonPhrasesArr.join('、') || '',
+          emotionExpressions: emotionWordsArr.join('、') || '',
+        };
+        
+        const context = buildStylePolishContext(
+          input.content,
+          styleData,
+          viralExamples
+        );
+        
+        // 4. 檢查是否有足夠的風格資料
+        const hasStyleData = context.catchphrases.length > 0 || 
+                             context.speakingStyle || 
+                             context.viralExamples.length > 0;
+        
+        if (!hasStyleData) {
+          return {
+            success: false,
+            content: input.content,
+            message: '尚未設定個人風格。請先到「IP 地基」→「我的風格」上傳你的爆款貼文，讓 AI 學習你的說話方式。',
+            validation: null,
+          };
+        }
+        
+        // 5. 建立提示詞
+        const systemPrompt = buildStylePolishSystemPrompt(context);
+        const userPrompt = buildStylePolishUserPrompt(input.content);
+        
+        // 6. 調用 LLM
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          model: getModelForFeature('ai_chat'),  // 使用高品質模型
+        });
+        
+        await db.logApiUsage(ctx.user.id, 'stylePolish', 'llm', 400, 500);
+        
+        let polishedContent = response.choices[0]?.message?.content;
+        if (typeof polishedContent !== 'string') {
+          polishedContent = input.content;
+        }
+        
+        // 7. 清理 AI 輸出
+        polishedContent = cleanAIOutput(polishedContent);
+        
+        // 8. 語意驗證
+        const validation = validateSemanticPreservation(input.content, polishedContent);
+        
+        // 9. 如果驗證失敗且字數差異過大，嘗試重新生成
+        if (!validation.wordCountValid && validation.warnings.length > 0) {
+          // 字數差異過大，嘗試精簡版重新生成
+          const retryResponse = await invokeLLM({
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: `${userPrompt}\n\n【重要】上次潤飾後字數變化太大，這次請嚴格控制在 ${context.originalWordCount} 字左右。` },
+            ],
+            model: getModelForFeature('quality_check'),  // 使用較快的模型重試
+          });
+          
+          const retryContent = retryResponse.choices[0]?.message?.content;
+          if (typeof retryContent === 'string') {
+            const retryValidation = validateSemanticPreservation(input.content, retryContent);
+            if (retryValidation.wordCountValid || 
+                Math.abs(retryValidation.polishedWordCount - context.originalWordCount) < 
+                Math.abs(validation.polishedWordCount - context.originalWordCount)) {
+              // 重試版本更好，使用重試版本
+              polishedContent = cleanAIOutput(retryContent);
+              return {
+                success: true,
+                content: polishedContent,
+                message: '已套用你的個人風格潤飾完成。',
+                validation: retryValidation,
+              };
+            }
+          }
+        }
+        
+        return {
+          success: true,
+          content: polishedContent,
+          message: validation.isValid 
+            ? '已套用你的個人風格潤飾完成。' 
+            : `已潤飾完成，但有些地方可能需要檢查：${validation.warnings.join('、')}`,
+          validation,
+        };
       }),
   }),
 

@@ -414,27 +414,48 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
     });
   };
 
-  // 處理人味潤飾
+  // 處理人味潤飾（使用新的 stylePolish API）
+  const stylePolish = trpc.draft.stylePolish.useMutation({
+    onSuccess: (data) => {
+      setIsChatting(false);
+      if (data.success) {
+        setDraftContent(data.content);
+        setFinalContent(data.content);
+        toast.success(data.message);
+        
+        // 如果有警告，顯示提示
+        if (data.validation?.warnings && data.validation.warnings.length > 0) {
+          toast.info(`提示：${data.validation.warnings[0]}`, { duration: 5000 });
+        }
+      } else {
+        toast.error(data.message);
+      }
+    },
+    onError: (error) => {
+      setIsChatting(false);
+      toast.error(`潤飾失敗：${error.message}`);
+    },
+  });
+
   const handlePolish = () => {
     if (!catchphrases && !speakingStyle) {
-      setFinalContent(draftContent);
-      toast.success("已完成！");
+      // 沒有輸入風格資料，但可能有系統存儲的風格
+      // 嘗試使用系統存儲的風格進行潤飾
+      setIsChatting(true);
+      stylePolish.mutate({
+        content: draftContent,
+      });
       return;
     }
 
-    const polishInstruction = `請幫我潤飾這篇文章，加入以下個人風格：
-${catchphrases ? `口頭禪：${catchphrases}` : ''}
-${speakingStyle ? `說話風格：${speakingStyle}` : ''}
-保持原本的內容結構，只是讓語氣更有我的個人特色。`;
-
-    setChatMessages(prev => [...prev, { role: "user", content: polishInstruction }]);
+    // 有輸入風格資料，使用用戶提供的風格
     setIsChatting(true);
-
-    refineDraft.mutate({
-      currentDraft: draftContent,
-      instruction: polishInstruction,
-      draftId: draftId || undefined,
-      chatHistory: chatMessages,
+    stylePolish.mutate({
+      content: draftContent,
+      forceStyle: {
+        catchphrases: catchphrases ? catchphrases.split(/[,，、]/).map(s => s.trim()).filter(Boolean) : undefined,
+        speakingStyle: speakingStyle || undefined,
+      },
     });
   };
 

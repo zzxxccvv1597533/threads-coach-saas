@@ -2512,3 +2512,26 @@
 ### 提示詞優化建議
 - [ ] 整理優化建議的優缺點
 - [ ] 整理可能會發生的問題
+
+
+## P0 提示詞優化執行 (2025-01-20) ✅
+
+### P0-1: stylePolish 專用 API 與語意驗證
+- [x] 新增 style-polish-prompt.ts 專用提示詞檔案
+- [x] 新增 stylePolish API（server/routers.ts）
+- [x] 實作語意驗證函數（字數、段落、語意保真、新觀點檢測）
+- [x] 新增 stylePolish 單元測試（待補充）
+
+### P0-2: 開頭模式從「必須」改為「推薦」
+- [x] 修改 buildDataDrivenSystemPrompt() 移除「必須」字眼
+- [x] 改為提供 5 種開頭公式讓 LLM 選擇（冒號斷言、情緒爆發、時間點、鏡像式、反差式）
+- [x] 結尾從「強制 CTA」改為「自然選擇」
+
+### P0-3: 精簡提示詞架構
+- [x] 移除冗餘的檢查清單（從 7 項改為 3 項品質標準）
+- [x] 精簡 Few-Shot 範例（從 3-5 個改為 1 個）
+- [x] 移除重複的禁止項目和同質性警告
+
+### P0-4: 前端更新
+- [x] 更新 GuidedWritingFlow 使用新的 stylePolish API
+- [ ] 更新 DraftDetail 使用新的 stylePolish API（待補充）
