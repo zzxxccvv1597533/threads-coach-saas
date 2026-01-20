@@ -291,7 +291,17 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
 
   // 處理主題生成
   const handleGenerateTopics = () => {
-    brainstorm.mutate({ topic: topicHint || undefined });
+    // P0 優化：傳遞 selectedGoal 到後端，讓目標選擇影響腦力激盪
+    const goalMapping: Record<string, 'awareness' | 'trust' | 'engagement' | 'sales'> = {
+      'awareness': 'awareness',
+      'trust': 'trust',
+      'engagement': 'engagement',
+      'sales': 'sales',
+    };
+    brainstorm.mutate({ 
+      topic: topicHint || undefined,
+      goal: selectedGoal ? goalMapping[selectedGoal] : undefined,
+    });
   };
 
   // 處理選擇主題
