@@ -6394,6 +6394,75 @@ ${enhancedUserContext}`.trim();
         return { success: true, newScore: clampedScore };
       }),
   }),
+
+  // ==================== P2 優化：帳號健康度和內容組合分析 ====================
+  accountHealth: router({
+    // 取得帳號健康度診斷
+    getDiagnosis: protectedProcedure.query(async ({ ctx }) => {
+      const diagnosis = await db.getAccountHealthDiagnosis(ctx.user.id);
+      return diagnosis;
+    }),
+
+    // 取得內容組合分析
+    getContentMix: protectedProcedure.query(async ({ ctx }) => {
+      const analysis = await db.getContentMixAnalysis(ctx.user.id);
+      return analysis;
+    }),
+
+    // 識別用戶領域
+    getUserDomain: protectedProcedure.query(async ({ ctx }) => {
+      const domain = await db.identifyUserDomain(ctx.user.id);
+      return domain;
+    }),
+
+    // 取得個人化選題推薦
+    getTopicSuggestions: protectedProcedure
+      .input(z.object({
+        count: z.number().min(1).max(10).default(5),
+        goal: z.enum(['awareness', 'trust', 'engagement', 'sales']).optional(),
+      }).optional())
+      .query(async ({ ctx, input }) => {
+        const suggestions = await db.getPersonalizedTopicSuggestions(
+          ctx.user.id, 
+          input?.count || 5
+        );
+        
+        // 如果有指定目標，過濾推薦
+        if (input?.goal) {
+          suggestions.topics = suggestions.topics.filter(t => t.targetGoal === input.goal);
+        }
+        
+        return suggestions;
+      }),
+
+    // 取得完整的 Dashboard 數據（整合多個 API）
+    getDashboardData: protectedProcedure.query(async ({ ctx }) => {
+      const [diagnosis, contentMix, domain, suggestions] = await Promise.all([
+        db.getAccountHealthDiagnosis(ctx.user.id),
+        db.getContentMixAnalysis(ctx.user.id),
+        db.identifyUserDomain(ctx.user.id),
+        db.getPersonalizedTopicSuggestions(ctx.user.id, 3),
+      ]);
+      
+      return {
+        healthScore: diagnosis.overallScore,
+        contentHealth: diagnosis.contentHealth,
+        interactionHealth: diagnosis.interactionHealth,
+        growthHealth: diagnosis.growthHealth,
+        personaConsistency: diagnosis.personaConsistency,
+        contentMix: {
+          last7Days: contentMix.last7Days,
+          categoryDistribution: contentMix.categoryDistribution,
+          recommendation: contentMix.recommendation,
+        },
+        domain: {
+          primary: domain.primaryDomain,
+          confidence: domain.confidence,
+        },
+        todaySuggestions: suggestions.topics,
+      };
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

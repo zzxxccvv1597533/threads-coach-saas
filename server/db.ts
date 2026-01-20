@@ -1,4 +1,4 @@
-import { eq, desc, and, or, sql, inArray } from "drizzle-orm";
+import { eq, desc, and, or, sql, inArray, gte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
   InsertUser, users, 
@@ -3689,4 +3689,580 @@ export async function batchInsertOpenerHooks(hooks: Array<{
   }
   
   return insertedCount;
+}
+
+
+// ==================== P2 優化：帳號健康度和內容組合分析 ====================
+
+// 取得用戶過去 N 天的草稿統計（按內容類型）
+export async function getRecentDraftStats(userId: number, days: number = 7): Promise<{
+  contentType: string;
+  count: number;
+  lastCreatedAt: Date | null;
+}[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  
+  const drafts = await db.select().from(draftPosts)
+    .where(and(
+      eq(draftPosts.userId, userId),
+      gte(draftPosts.createdAt, startDate)
+    ));
+  
+  // 按類型統計
+  const stats: Record<string, { count: number; lastCreatedAt: Date | null }> = {};
+  for (const draft of drafts) {
+    const type = draft.contentType || 'unknown';
+    if (!stats[type]) {
+      stats[type] = { count: 0, lastCreatedAt: null };
+    }
+    stats[type].count++;
+    if (!stats[type].lastCreatedAt || (draft.createdAt && draft.createdAt > stats[type].lastCreatedAt)) {
+      stats[type].lastCreatedAt = draft.createdAt;
+    }
+  }
+  
+  return Object.entries(stats).map(([contentType, data]) => ({
+    contentType,
+    count: data.count,
+    lastCreatedAt: data.lastCreatedAt,
+  }));
+}
+
+// 取得用戶的內容組合分析
+export async function getContentMixAnalysis(userId: number): Promise<{
+  totalPosts: number;
+  last7Days: number;
+  last30Days: number;
+  typeDistribution: { type: string; count: number; percentage: number }[];
+  categoryDistribution: {
+    emotional: { count: number; percentage: number; types: string[] };
+    brand: { count: number; percentage: number; types: string[] };
+    interactive: { count: number; percentage: number; types: string[] };
+    monetization: { count: number; percentage: number; types: string[] };
+  };
+  recommendation: {
+    nextType: string;
+    reason: string;
+    urgency: 'high' | 'medium' | 'low';
+  };
+}> {
+  const db = await getDb();
+  if (!db) {
+    return {
+      totalPosts: 0,
+      last7Days: 0,
+      last30Days: 0,
+      typeDistribution: [],
+      categoryDistribution: {
+        emotional: { count: 0, percentage: 0, types: [] },
+        brand: { count: 0, percentage: 0, types: [] },
+        interactive: { count: 0, percentage: 0, types: [] },
+        monetization: { count: 0, percentage: 0, types: [] },
+      },
+      recommendation: { nextType: 'story', reason: '開始建立人設', urgency: 'low' },
+    };
+  }
+  
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  
+  // 取得所有草稿
+  const allDrafts = await db.select().from(draftPosts).where(eq(draftPosts.userId, userId));
+  const last7DaysDrafts = allDrafts.filter(d => d.createdAt && d.createdAt >= sevenDaysAgo);
+  const last30DaysDrafts = allDrafts.filter(d => d.createdAt && d.createdAt >= thirtyDaysAgo);
+  
+  // 類型分類
+  const emotionalTypes = ['story', 'viewpoint', 'contrast', 'casual', 'dialogue', 'quote'];
+  const brandTypes = ['knowledge', 'summary', 'teaching', 'list'];
+  const interactiveTypes = ['question', 'poll', 'dialogue'];
+  const monetizationTypes = ['profile_intro', 'service_intro', 'lead_promo', 'success_story', 'limited_offer', 'plus_one', 'lead_magnet', 'free_value'];
+  
+  // 統計過去 7 天的類型分佈
+  const typeCount: Record<string, number> = {};
+  for (const draft of last7DaysDrafts) {
+    const type = draft.contentType || 'unknown';
+    typeCount[type] = (typeCount[type] || 0) + 1;
+  }
+  
+  const total7Days = last7DaysDrafts.length;
+  const typeDistribution = Object.entries(typeCount)
+    .map(([type, count]) => ({
+      type,
+      count,
+      percentage: total7Days > 0 ? Math.round((count / total7Days) * 100) : 0,
+    }))
+    .sort((a, b) => b.count - a.count);
+  
+  // 分類統計
+  const emotionalCount = last7DaysDrafts.filter(d => emotionalTypes.includes(d.contentType || '')).length;
+  const brandCount = last7DaysDrafts.filter(d => brandTypes.includes(d.contentType || '')).length;
+  const interactiveCount = last7DaysDrafts.filter(d => interactiveTypes.includes(d.contentType || '')).length;
+  const monetizationCount = last7DaysDrafts.filter(d => monetizationTypes.includes(d.contentType || '')).length;
+  
+  const categoryDistribution = {
+    emotional: {
+      count: emotionalCount,
+      percentage: total7Days > 0 ? Math.round((emotionalCount / total7Days) * 100) : 0,
+      types: emotionalTypes,
+    },
+    brand: {
+      count: brandCount,
+      percentage: total7Days > 0 ? Math.round((brandCount / total7Days) * 100) : 0,
+      types: brandTypes,
+    },
+    interactive: {
+      count: interactiveCount,
+      percentage: total7Days > 0 ? Math.round((interactiveCount / total7Days) * 100) : 0,
+      types: interactiveTypes,
+    },
+    monetization: {
+      count: monetizationCount,
+      percentage: total7Days > 0 ? Math.round((monetizationCount / total7Days) * 100) : 0,
+      types: monetizationTypes,
+    },
+  };
+  
+  // 黃金比例：情緒 50% / 互動 30% / 品牌 15% / 變現 5%
+  // 計算推薦
+  let recommendation: { nextType: string; reason: string; urgency: 'high' | 'medium' | 'low' };
+  
+  if (total7Days === 0) {
+    recommendation = { nextType: 'story', reason: '開始建立人設，分享你的故事', urgency: 'high' };
+  } else if (categoryDistribution.interactive.percentage < 20) {
+    recommendation = { nextType: 'question', reason: '互動內容不足，建議發一篇提問型貼文提高互動', urgency: 'high' };
+  } else if (categoryDistribution.emotional.percentage < 40) {
+    recommendation = { nextType: 'story', reason: '情緒內容偏少，建議分享一個故事建立連結', urgency: 'medium' };
+  } else if (categoryDistribution.brand.percentage < 10 && total7Days >= 5) {
+    recommendation = { nextType: 'knowledge', reason: '可以適當增加一些乾貨內容建立專業形象', urgency: 'low' };
+  } else {
+    recommendation = { nextType: 'casual', reason: '內容比例健康，繼續保持！可以發一篇閒聊型', urgency: 'low' };
+  }
+  
+  return {
+    totalPosts: allDrafts.length,
+    last7Days: total7Days,
+    last30Days: last30DaysDrafts.length,
+    typeDistribution,
+    categoryDistribution,
+    recommendation,
+  };
+}
+
+// 取得帳號健康度診斷
+export async function getAccountHealthDiagnosis(userId: number): Promise<{
+  overallScore: number;
+  contentHealth: {
+    score: number;
+    postFrequency: number; // 過去 7 天發文數
+    typeBalance: number; // 類型均衡度 0-100
+    avgWordCount: number;
+    issues: string[];
+    suggestions: string[];
+  };
+  interactionHealth: {
+    score: number;
+    avgComments: number;
+    avgLikes: number;
+    replyRate: number; // 回覆率
+    issues: string[];
+    suggestions: string[];
+  };
+  growthHealth: {
+    score: number;
+    followerTrend: 'up' | 'stable' | 'down' | 'unknown';
+    reachTrend: 'up' | 'stable' | 'down' | 'unknown';
+    issues: string[];
+    suggestions: string[];
+  };
+  personaConsistency: {
+    score: number;
+    hasIpProfile: boolean;
+    hasAudience: boolean;
+    hasContentPillars: boolean;
+    issues: string[];
+    suggestions: string[];
+  };
+}> {
+  const db = await getDb();
+  
+  // 預設值
+  const defaultResult = {
+    overallScore: 0,
+    contentHealth: {
+      score: 0,
+      postFrequency: 0,
+      typeBalance: 0,
+      avgWordCount: 0,
+      issues: ['尚無發文數據'],
+      suggestions: ['開始使用發文工作室創作內容'],
+    },
+    interactionHealth: {
+      score: 0,
+      avgComments: 0,
+      avgLikes: 0,
+      replyRate: 0,
+      issues: ['尚無互動數據'],
+      suggestions: ['發布內容後記錄戰報數據'],
+    },
+    growthHealth: {
+      score: 0,
+      followerTrend: 'unknown' as const,
+      reachTrend: 'unknown' as const,
+      issues: ['尚無成長數據'],
+      suggestions: ['持續發文並追蹤數據'],
+    },
+    personaConsistency: {
+      score: 0,
+      hasIpProfile: false,
+      hasAudience: false,
+      hasContentPillars: false,
+      issues: ['尚未設定 IP 地基'],
+      suggestions: ['前往 IP 地基完成人設設定'],
+    },
+  };
+  
+  if (!db) return defaultResult;
+  
+  // 1. 取得 IP 地基
+  const ipProfile = await db.select().from(ipProfiles).where(eq(ipProfiles.userId, userId)).limit(1);
+  const hasIpProfile = ipProfile.length > 0 && !!(ipProfile[0].occupation || ipProfile[0].personaExpertise);
+  
+  // 2. 取得受眾
+  const audiences = await db.select().from(audienceSegments).where(eq(audienceSegments.userId, userId));
+  const hasAudience = audiences.length > 0;
+  
+  // 3. 取得內容支柱
+  const pillars = await db.select().from(contentPillars).where(eq(contentPillars.userId, userId));
+  const hasContentPillars = pillars.length > 0;
+  
+  // 4. 取得過去 7 天的草稿
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  
+  const recentDrafts = await db.select().from(draftPosts)
+    .where(and(
+      eq(draftPosts.userId, userId),
+      gte(draftPosts.createdAt, sevenDaysAgo)
+    ));
+  
+  // 5. 取得戰報數據
+  const userPosts = await db.select().from(posts).where(eq(posts.userId, userId));
+  const postIds = userPosts.map(p => p.id);
+  
+  let metrics: PostMetric[] = [];
+  if (postIds.length > 0) {
+    metrics = await db.select().from(postMetrics).where(inArray(postMetrics.postId, postIds));
+  }
+  
+  // 計算內容健康度
+  const postFrequency = recentDrafts.length;
+  const typeSet = new Set(recentDrafts.map(d => d.contentType));
+  const typeBalance = Math.min(100, typeSet.size * 20); // 每種類型 20 分，最多 100
+  const avgWordCount = recentDrafts.length > 0
+    ? Math.round(recentDrafts.reduce((sum, d) => sum + (d.body?.length || 0), 0) / recentDrafts.length)
+    : 0;
+  
+  const contentIssues: string[] = [];
+  const contentSuggestions: string[] = [];
+  
+  if (postFrequency < 3) {
+    contentIssues.push('發文頻率偏低（每週少於 3 篇）');
+    contentSuggestions.push('建議每週至少發 3-5 篇貼文');
+  }
+  if (typeBalance < 40) {
+    contentIssues.push('內容類型單一');
+    contentSuggestions.push('嘗試不同類型的貼文，如故事型、提問型');
+  }
+  if (avgWordCount > 0 && avgWordCount < 100) {
+    contentIssues.push('平均字數偏少');
+    contentSuggestions.push('適當增加內容深度');
+  }
+  
+  const contentScore = Math.min(100, 
+    (postFrequency >= 5 ? 40 : postFrequency * 8) +
+    (typeBalance * 0.4) +
+    (avgWordCount >= 200 ? 20 : avgWordCount / 10)
+  );
+  
+  // 計算互動健康度
+  const avgComments = metrics.length > 0
+    ? Math.round(metrics.reduce((sum, m) => sum + (m.comments || 0), 0) / metrics.length)
+    : 0;
+  const avgLikes = metrics.length > 0
+    ? Math.round(metrics.reduce((sum, m) => sum + (m.likes || 0), 0) / metrics.length)
+    : 0;
+  
+  const interactionIssues: string[] = [];
+  const interactionSuggestions: string[] = [];
+  
+  if (metrics.length === 0) {
+    interactionIssues.push('尚無戰報數據');
+    interactionSuggestions.push('發布內容後記得填寫戰報');
+  } else {
+    if (avgComments < 5) {
+      interactionIssues.push('平均留言數偏低');
+      interactionSuggestions.push('在貼文結尾加入引導互動的問題');
+    }
+    if (avgLikes < 50) {
+      interactionIssues.push('平均讚數偏低');
+      interactionSuggestions.push('嘗試使用更吸引人的開頭');
+    }
+  }
+  
+  const interactionScore = metrics.length > 0
+    ? Math.min(100, (avgComments * 5) + (avgLikes / 10))
+    : 0;
+  
+  // 計算成長健康度
+  const growthIssues: string[] = [];
+  const growthSuggestions: string[] = [];
+  
+  if (metrics.length < 5) {
+    growthIssues.push('數據樣本不足，無法分析趨勢');
+    growthSuggestions.push('持續發文並記錄數據');
+  }
+  
+  const growthScore = metrics.length >= 5 ? 60 : metrics.length * 12;
+  
+  // 計算人設一致性
+  const personaIssues: string[] = [];
+  const personaSuggestions: string[] = [];
+  
+  if (!hasIpProfile) {
+    personaIssues.push('尚未設定 IP 地基');
+    personaSuggestions.push('前往 IP 地基完成人設設定');
+  }
+  if (!hasAudience) {
+    personaIssues.push('尚未設定目標受眾');
+    personaSuggestions.push('在 IP 地基中設定你的目標受眾');
+  }
+  if (!hasContentPillars) {
+    personaIssues.push('尚未設定內容支柱');
+    personaSuggestions.push('設定 2-3 個主要的內容主題');
+  }
+  
+  const personaScore = 
+    (hasIpProfile ? 40 : 0) +
+    (hasAudience ? 30 : 0) +
+    (hasContentPillars ? 30 : 0);
+  
+  // 計算總分
+  const overallScore = Math.round(
+    (contentScore * 0.3) +
+    (interactionScore * 0.3) +
+    (growthScore * 0.2) +
+    (personaScore * 0.2)
+  );
+  
+  return {
+    overallScore,
+    contentHealth: {
+      score: Math.round(contentScore),
+      postFrequency,
+      typeBalance,
+      avgWordCount,
+      issues: contentIssues.length > 0 ? contentIssues : ['內容健康度良好'],
+      suggestions: contentSuggestions.length > 0 ? contentSuggestions : ['繼續保持！'],
+    },
+    interactionHealth: {
+      score: Math.round(interactionScore),
+      avgComments,
+      avgLikes,
+      replyRate: 0, // 需要額外數據計算
+      issues: interactionIssues.length > 0 ? interactionIssues : ['互動健康度良好'],
+      suggestions: interactionSuggestions.length > 0 ? interactionSuggestions : ['繼續保持！'],
+    },
+    growthHealth: {
+      score: Math.round(growthScore),
+      followerTrend: 'unknown',
+      reachTrend: 'unknown',
+      issues: growthIssues.length > 0 ? growthIssues : ['持續追蹤中'],
+      suggestions: growthSuggestions.length > 0 ? growthSuggestions : ['繼續發文累積數據'],
+    },
+    personaConsistency: {
+      score: personaScore,
+      hasIpProfile,
+      hasAudience,
+      hasContentPillars,
+      issues: personaIssues.length > 0 ? personaIssues : ['人設設定完整'],
+      suggestions: personaSuggestions.length > 0 ? personaSuggestions : ['繼續保持！'],
+    },
+  };
+}
+
+// 識別用戶領域（從 IP 地基推斷）
+export async function identifyUserDomain(userId: number): Promise<{
+  primaryDomain: string;
+  subDomains: string[];
+  keywords: string[];
+  confidence: number;
+}> {
+  const db = await getDb();
+  
+  const defaultResult = {
+    primaryDomain: '通用',
+    subDomains: [],
+    keywords: [],
+    confidence: 0,
+  };
+  
+  if (!db) return defaultResult;
+  
+  // 取得 IP 地基
+  const ipProfile = await db.select().from(ipProfiles).where(eq(ipProfiles.userId, userId)).limit(1);
+  
+  if (ipProfile.length === 0) return defaultResult;
+  
+  const profile = ipProfile[0];
+  
+  // 領域關鍵字映射
+  const domainKeywords: Record<string, string[]> = {
+    '身心靈': ['療癒', '冥想', '靈性', '能量', '心靈', '塔羅', '占星', '靈魂', '覺醒', '修行', '瑜珈', '正念', '內在', '自我成長'],
+    '商業創業': ['創業', '行銷', '業務', '銷售', '品牌', '電商', '網路', '賺錢', '被動收入', '副業', '斜槓'],
+    '職場發展': ['職場', '工作', '升遷', '轉職', '履歷', '面試', '主管', '領導', '管理'],
+    '親子教育': ['親子', '教育', '育兒', '媽媽', '爸爸', '孩子', '教養', '學習'],
+    '兩性關係': ['愛情', '感情', '婚姻', '約會', '分手', '復合', '曖昧', '關係'],
+    '健康養生': ['健康', '養生', '減肥', '瘦身', '運動', '健身', '飲食', '營養'],
+    '投資理財': ['投資', '理財', '股票', '基金', '房地產', '財務自由', '存錢'],
+    '設計創意': ['設計', '創意', '美學', '藝術', '攝影', '插畫', '品牌設計'],
+    '科技技術': ['程式', '工程師', 'AI', '科技', '軟體', '開發', '技術'],
+  };
+  
+  // 組合所有可用的文字
+  const allText = [
+    profile.occupation || '',
+    profile.personaExpertise || '',
+    profile.personaEmotion || '',
+    profile.personaViewpoint || '',
+    profile.viewpointStatement || '',
+  ].join(' ').toLowerCase();
+  
+  // 計算每個領域的匹配分數
+  const domainScores: { domain: string; score: number; matchedKeywords: string[] }[] = [];
+  
+  for (const [domain, keywords] of Object.entries(domainKeywords)) {
+    const matchedKeywords = keywords.filter(kw => allText.includes(kw.toLowerCase()));
+    if (matchedKeywords.length > 0) {
+      domainScores.push({
+        domain,
+        score: matchedKeywords.length,
+        matchedKeywords,
+      });
+    }
+  }
+  
+  // 排序
+  domainScores.sort((a, b) => b.score - a.score);
+  
+  if (domainScores.length === 0) {
+    return {
+      primaryDomain: '通用',
+      subDomains: [],
+      keywords: allText.split(/\s+/).filter(w => w.length > 1).slice(0, 5),
+      confidence: 0.3,
+    };
+  }
+  
+  const primary = domainScores[0];
+  const subDomains = domainScores.slice(1, 3).map(d => d.domain);
+  
+  return {
+    primaryDomain: primary.domain,
+    subDomains,
+    keywords: primary.matchedKeywords,
+    confidence: Math.min(1, primary.score / 5),
+  };
+}
+
+// 取得個人化選題推薦
+export async function getPersonalizedTopicSuggestions(userId: number, count: number = 5): Promise<{
+  topics: {
+    title: string;
+    contentType: string;
+    reason: string;
+    viralRate?: number;
+    targetGoal: 'awareness' | 'trust' | 'engagement' | 'sales';
+  }[];
+  basedOn: {
+    domain: string;
+    stage: string;
+    recentTypes: string[];
+  };
+}> {
+  const db = await getDb();
+  
+  const defaultResult = {
+    topics: [
+      { title: '分享你為什麼開始做這件事', contentType: 'story', reason: '建立人設的基礎', targetGoal: 'awareness' as const },
+      { title: '你最常被問的一個問題', contentType: 'dialogue', reason: '展現專業並引發互動', targetGoal: 'trust' as const },
+      { title: '你最近的一個小發現', contentType: 'casual', reason: '輕鬆內容增加親近感', targetGoal: 'engagement' as const },
+    ],
+    basedOn: {
+      domain: '通用',
+      stage: 'startup',
+      recentTypes: [],
+    },
+  };
+  
+  if (!db) return defaultResult;
+  
+  // 取得用戶領域
+  const domain = await identifyUserDomain(userId);
+  
+  // 取得經營階段
+  const growthMetricsResult = await db.select().from(ipProfiles).where(eq(ipProfiles.userId, userId)).limit(1);
+  const stage = 'startup'; // 預設起步階段
+  
+  // 取得最近發文類型
+  const contentMix = await getContentMixAnalysis(userId);
+  const recentTypes = contentMix.typeDistribution.slice(0, 3).map(t => t.type);
+  
+  // 根據領域和階段生成推薦
+  const topicTemplates: Record<string, { title: string; contentType: string; reason: string; targetGoal: 'awareness' | 'trust' | 'engagement' | 'sales' }[]> = {
+    '身心靈': [
+      { title: '我第一次接觸療癒的契機', contentType: 'story', reason: '建立人設，讓人認識你', targetGoal: 'awareness' },
+      { title: '很多人問我：要怎麼開始練習冥想？', contentType: 'dialogue', reason: '展現專業，建立信任', targetGoal: 'trust' },
+      { title: '你相信能量嗎？', contentType: 'question', reason: '引發討論，增加互動', targetGoal: 'engagement' },
+      { title: '今天的一個小覺察', contentType: 'casual', reason: '日常分享，拉近距離', targetGoal: 'awareness' },
+      { title: '這個月我幫助了 10 位個案', contentType: 'success_story', reason: '展示成果，軟性推廣', targetGoal: 'sales' },
+    ],
+    '商業創業': [
+      { title: '我為什麼離開穩定工作去創業', contentType: 'story', reason: '建立人設，引發共鳴', targetGoal: 'awareness' },
+      { title: '創業第一年我犯的最大錯誤', contentType: 'contrast', reason: '真實分享，建立信任', targetGoal: 'trust' },
+      { title: '你覺得創業最難的是什麼？', contentType: 'question', reason: '引發討論，了解受眾', targetGoal: 'engagement' },
+      { title: '今天學到的一個商業洞察', contentType: 'knowledge', reason: '輸出價值，建立專業', targetGoal: 'trust' },
+      { title: '我的服務如何幫助客戶提升業績', contentType: 'success_story', reason: '展示成果，引導轉化', targetGoal: 'sales' },
+    ],
+    '通用': [
+      { title: '我為什麼開始經營這個帳號', contentType: 'story', reason: '建立人設的第一步', targetGoal: 'awareness' },
+      { title: '最近讓我印象深刻的一件事', contentType: 'casual', reason: '日常分享，拉近距離', targetGoal: 'awareness' },
+      { title: '你們平常都怎麼...？', contentType: 'question', reason: '引發互動，了解受眾', targetGoal: 'engagement' },
+      { title: '我對這件事的看法', contentType: 'viewpoint', reason: '表達立場，吸引同頻', targetGoal: 'trust' },
+      { title: '這個方法幫助我解決了...', contentType: 'knowledge', reason: '輸出價值，建立專業', targetGoal: 'trust' },
+    ],
+  };
+  
+  const templates = topicTemplates[domain.primaryDomain] || topicTemplates['通用'];
+  
+  // 根據內容組合建議調整順序
+  const recommendation = contentMix.recommendation;
+  const sortedTemplates = [...templates].sort((a, b) => {
+    if (a.contentType === recommendation.nextType) return -1;
+    if (b.contentType === recommendation.nextType) return 1;
+    return 0;
+  });
+  
+  return {
+    topics: sortedTemplates.slice(0, count),
+    basedOn: {
+      domain: domain.primaryDomain,
+      stage,
+      recentTypes,
+    },
+  };
 }

@@ -1,5 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import React from "react";
+import React, { useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -38,6 +38,7 @@ export default function Dashboard() {
   const { data: tasks, isLoading: tasksLoading } = trpc.task.today.useQuery();
   const { data: weeklyReport, isLoading: reportLoading } = trpc.post.weeklyReport.useQuery();
   const { data: contentTypeStats } = trpc.draft.contentTypeStats.useQuery();
+  const { data: accountHealthData, isLoading: healthLoading } = trpc.accountHealth.getDashboardData.useQuery();
   const { data: growthMetrics, isLoading: metricsLoading } = trpc.growthMetrics.get.useQuery();
   const utils = trpc.useUtils();
   const setManualStageMutation = trpc.growthMetrics.setManualStage.useMutation({
@@ -201,6 +202,188 @@ export default function Dashboard() {
           onSetManualStage={handleSetManualStage}
           onUpdateMetrics={handleUpdateMetrics}
         />
+
+        {/* P2 優化：今日推薦選題和帳號健康度 */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* 今日推薦選題 */}
+          <Card className="elegant-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-amber-500" />
+                今日推薦選題
+              </CardTitle>
+              <CardDescription>
+                根據你的領域和內容組合，推薦適合今天發的主題
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {healthLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : accountHealthData?.todaySuggestions && accountHealthData.todaySuggestions.length > 0 ? (
+                <div className="space-y-3">
+                  {accountHealthData.todaySuggestions.map((topic, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        // 導航到寫作工作室，帶入選題
+                        setLocation(`/writing-studio?topic=${encodeURIComponent(topic.title)}&type=${topic.contentType}`);
+                      }}
+                      className="w-full text-left p-4 rounded-lg border border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all group"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="font-medium group-hover:text-primary transition-colors">
+                            {topic.title}
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {topic.reason}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            topic.targetGoal === 'awareness' ? 'bg-blue-100 text-blue-700' :
+                            topic.targetGoal === 'trust' ? 'bg-emerald-100 text-emerald-700' :
+                            topic.targetGoal === 'engagement' ? 'bg-amber-100 text-amber-700' :
+                            'bg-purple-100 text-purple-700'
+                          }`}>
+                            {topic.targetGoal === 'awareness' ? '讓人更懂我' :
+                             topic.targetGoal === 'trust' ? '讓人信任我' :
+                             topic.targetGoal === 'engagement' ? '有人互動' : '引導變現'}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {{
+                              story: '故事型',
+                              dialogue: '對話型',
+                              question: '提問型',
+                              casual: '閒聊型',
+                              knowledge: '乾貨型',
+                              viewpoint: '觀點型',
+                              contrast: '反差型',
+                              success_story: '案例故事',
+                            }[topic.contentType] || topic.contentType}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => setLocation('/writing-studio')}
+                  >
+                    查看更多選題
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-muted-foreground mb-4">完善 IP 地基後，系統會推薦適合你的選題</p>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setLocation('/ip-profile')}
+                  >
+                    完善 IP 地基
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 帳號健康度摘要 */}
+          <Card className="elegant-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="w-5 h-5 text-emerald-500" />
+                帳號健康度
+              </CardTitle>
+              <CardDescription>
+                綜合分析你的內容、互動和人設一致性
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {healthLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                </div>
+              ) : accountHealthData ? (
+                <div className="space-y-4">
+                  {/* 總分 */}
+                  <div className="text-center p-4 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5">
+                    <div className="text-4xl font-bold text-primary">
+                      {accountHealthData.healthScore}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">綜合健康分數</p>
+                  </div>
+
+                  {/* 各維度分數 */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-lg bg-muted/30">
+                      <div className="flex items-center gap-2 mb-1">
+                        <FileText className="w-4 h-4 text-blue-500" />
+                        <span className="text-sm font-medium">內容</span>
+                      </div>
+                      <div className="text-xl font-bold">{accountHealthData.contentHealth.score}</div>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/30">
+                      <div className="flex items-center gap-2 mb-1">
+                        <MessageSquare className="w-4 h-4 text-emerald-500" />
+                        <span className="text-sm font-medium">互動</span>
+                      </div>
+                      <div className="text-xl font-bold">{accountHealthData.interactionHealth.score}</div>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/30">
+                      <div className="flex items-center gap-2 mb-1">
+                        <TrendingUp className="w-4 h-4 text-amber-500" />
+                        <span className="text-sm font-medium">成長</span>
+                      </div>
+                      <div className="text-xl font-bold">{accountHealthData.growthHealth.score}</div>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/30">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Sparkles className="w-4 h-4 text-purple-500" />
+                        <span className="text-sm font-medium">人設</span>
+                      </div>
+                      <div className="text-xl font-bold">{accountHealthData.personaConsistency.score}</div>
+                    </div>
+                  </div>
+
+                  {/* 內容組合建議 */}
+                  {accountHealthData.contentMix.recommendation && (
+                    <div className={`p-3 rounded-lg text-sm ${
+                      accountHealthData.contentMix.recommendation.urgency === 'high' 
+                        ? 'bg-amber-50 text-amber-700 border border-amber-200' 
+                        : accountHealthData.contentMix.recommendation.urgency === 'medium'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    }`}>
+                      <p className="font-medium mb-1">
+                        {accountHealthData.contentMix.recommendation.urgency === 'high' ? '⚠️' : '💡'} 內容組合建議
+                      </p>
+                      <p>{accountHealthData.contentMix.recommendation.reason}</p>
+                    </div>
+                  )}
+
+                  {/* 領域識別 */}
+                  {accountHealthData.domain.primary !== '通用' && (
+                    <div className="text-center text-sm text-muted-foreground">
+                      識別領域：<span className="font-medium text-foreground">{accountHealthData.domain.primary}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-muted-foreground">無法載入健康度數據</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Main Content Grid */}
         <div className="grid gap-6 lg:grid-cols-2">
