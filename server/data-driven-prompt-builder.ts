@@ -21,6 +21,11 @@ import {
   OPENER_RULES,
   HIGH_EFFECT_OPENER_PATTERNS
 } from '../shared/opener-rules';
+import { 
+  getRecommendedFormulasForType, 
+  buildDynamicOpenerFormulasPrompt,
+  type ContentType 
+} from './formula-type-mapping';
 import { buildContentTypePrompt, getContentTypeRule, CONTENT_TYPE_RULES } from '../shared/content-type-rules';
 import * as db from './db';
 import type { KeywordBenchmark, ContentHook } from '../drizzle/schema';
@@ -282,30 +287,13 @@ ${additionalContext.userStyleContext}
     }
   }
 
-  // 加入最終指示（P0-2 優化：「必須」改為「推薦」，精簡檢查清單）
+  // 加入最終指示（P1 優化：動態公式推薦，根據類型選擇最適合的 5 種開頭公式）
+  const dynamicFormulasPrompt = buildDynamicOpenerFormulasPrompt(contentType as ContentType);
+  
   systemPrompt += `
 === 最終指示 ===
 
-【第一行最重要 - 決定 80% 成敗】
-
-參考以下開頭公式，選擇最適合素材的方式自然開場：
-
-1. 「冒號斷言」：[主題]的[真相/關鍵/本質]：[觀點]
-   例：「經營自己的關鍵：不是努力，是選擇」
-
-2. 「情緒爆發」：我真的[情緒][感受]
-   例：「我真的受夠了」「我到現在還在氣」
-
-3. 「時間點」：[時間]我[發現/遇到][事件]
-   例：「三年前我辢職的時候」「昨天我看到一則留言」
-
-4. 「鏡像式」：你是不是也[共鳴點]?
-   例：「你是不是也有過這種感覺？」
-
-5. 「反差式」：[常見認知]，但其實[反轉觀點]
-   例：「大家都說要努力，但我發現努力的人通常最慈」
-
-→ 不要刻意套用，根據素材自然表達即可
+${dynamicFormulasPrompt}
 ${context.materialKeywords.length > 0 ? `→ 建議開頭融入：${context.materialKeywords.slice(0, 3).join('、')} 其中之一` : ''}
 
 【字數控制】${typeRule?.wordLimit.min || 150}-${typeRule?.wordLimit.max || 400} 字

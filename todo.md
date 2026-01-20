@@ -2535,3 +2535,31 @@
 ### P0-4: 前端更新
 - [x] 更新 GuidedWritingFlow 使用新的 stylePolish API
 - [ ] 更新 DraftDetail 使用新的 stylePolish API（待補充）
+
+
+## P1/P2 優化執行 (2025-01-20) ✅
+
+### 動態公式推薦機制
+- [x] 分析 13 種公式與 6 種貼文類型的適配度
+- [x] 實作 getRecommendedFormulasForType() 函數（formula-type-mapping.ts）
+- [x] 根據類型動態選擇 5 種最適合的公式
+- [x] 更新提示詞構建器使用動態公式
+
+### Few-Shot 品質閘
+- [x] 實作 getQualifiedFewShotSamples() 函數（few-shot-quality-gate.ts）
+- [x] 新增 likes > 50 過濾條件
+- [x] 新增主題匹配度計算（使用關鍵詞比對）
+- [x] 標注範例來源（user/system）
+
+### 前端 Diff 顯示
+- [x] 實作 ContentDiff 組件（client/src/components/ContentDiff.tsx）
+- [x] 支援並排顯示和內聯 Diff 顯示
+- [x] 顯示字數變化統計
+- [ ] 整合到潤飾功能顯示（待補充）
+
+### 候選生成機制
+- [x] 實作 candidate-generation.ts 候選生成機制
+- [x] 實作 MMR 演算法選擇最多樣的候選
+- [x] 實作候選評分邏輯（多樣性分數）
+- [ ] 實作前端候選展示組件（待補充）
+- [ ] 修改生成 API 一次生成 3 候選（待整合）
