@@ -1015,3 +1015,158 @@ export const viralExampleClusterMappings = mysqlTable("viral_example_cluster_map
 
 export type ViralExampleClusterMapping = typeof viralExampleClusterMappings.$inferSelect;
 export type InsertViralExampleClusterMapping = typeof viralExampleClusterMappings.$inferInsert;
+
+
+// ============================================
+// 50 個 IP 帳號數據系統
+// ============================================
+
+// IP 帳號基本資訊
+export const ipAccounts = mysqlTable("ip_accounts", {
+  id: int("id").autoincrement().primaryKey(),
+  accountName: varchar("accountName", { length: 128 }).notNull(), // 帳號名稱
+  accountHandle: varchar("accountHandle", { length: 64 }), // 帳號 handle
+  // 領域分類
+  primaryCategory: varchar("primaryCategory", { length: 64 }), // 主要領域（身心靈、自媒體、財經等）
+  subCategory: varchar("subCategory", { length: 64 }), // 細分領域（命理、心理諮商、能量療癒等）
+  // 帳號統計
+  totalPosts: int("totalPosts").default(0), // 總貼文數
+  viralPosts: int("viralPosts").default(0), // 爆款貼文數（>1000讚）
+  viralRate: decimal("viralRate", { precision: 5, scale: 4 }), // 爆款率
+  avgLikes: int("avgLikes").default(0), // 平均讚數
+  avgCharLen: int("avgCharLen").default(0), // 平均字數
+  // 風格特徵
+  styleType: varchar("styleType", { length: 64 }), // 風格類型（短文型、長文型、故事型、提問型）
+  contentMix: json("contentMix").$type<{
+    shortPost: number; // 短文比例
+    longPost: number; // 長文比例
+    storyPost: number; // 故事型比例
+    questionPost: number; // 提問型比例
+  }>(),
+  // 成長軌跡
+  growthRate: decimal("growthRate", { precision: 10, scale: 2 }), // 成長率（%）
+  earlyAvgLikes: int("earlyAvgLikes").default(0), // 早期平均讚數
+  recentAvgLikes: int("recentAvgLikes").default(0), // 近期平均讚數
+  // 來源
+  sourceFile: varchar("sourceFile", { length: 128 }), // 來源檔案名稱
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type IpAccount = typeof ipAccounts.$inferSelect;
+export type InsertIpAccount = typeof ipAccounts.$inferInsert;
+
+// IP 帳號貼文
+export const ipPosts = mysqlTable("ip_posts", {
+  id: int("id").autoincrement().primaryKey(),
+  accountId: int("accountId").notNull(), // 關聯的 IP 帳號 ID
+  // 貼文內容
+  postText: text("postText").notNull(), // 貼文完整內容
+  opener50: varchar("opener50", { length: 200 }), // 開頭前 50 字
+  charLen: int("charLen"), // 字數
+  // 互動數據
+  likes: int("likes").default(0), // 讚數
+  comments: int("comments").default(0), // 留言數
+  shares: int("shares").default(0), // 分享數
+  reach: int("reach").default(0), // 觸及數
+  // 發文時間
+  postDate: timestamp("postDate"), // 發文日期
+  postUrl: varchar("postUrl", { length: 256 }), // 貼文連結
+  // 內容特徵
+  contentType: varchar("contentType", { length: 32 }), // 內容類型（AI 分析）
+  hookType: varchar("hookType", { length: 32 }), // 開頭類型（AI 分析）
+  // 爆款標記
+  isViral: boolean("isViral").default(false), // 是否為爆款（>1000讚）
+  isSuperViral: boolean("isSuperViral").default(false), // 是否為超級爆款（>5000讚）
+  // 特徵標記
+  hasNumber: boolean("hasNumber").default(false),
+  hasQuestion: boolean("hasQuestion").default(false),
+  hasExclaim: boolean("hasExclaim").default(false),
+  startsWithI: boolean("startsWithI").default(false), // 以「我」開頭
+  startsWithYou: boolean("startsWithYou").default(false), // 以「你」開頭
+  // 來源
+  sourceFile: varchar("sourceFile", { length: 128 }), // 來源檔案名稱
+  rowIndex: int("rowIndex"), // Excel 行號
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type IpPost = typeof ipPosts.$inferSelect;
+export type InsertIpPost = typeof ipPosts.$inferInsert;
+
+// IP 貼文 Embedding
+export const ipPostEmbeddings = mysqlTable("ip_post_embeddings", {
+  id: int("id").autoincrement().primaryKey(),
+  postId: int("postId").notNull(), // 關聯的貼文 ID
+  accountId: int("accountId").notNull(), // 關聯的帳號 ID（冗餘儲存方便查詢）
+  embedding: text("embedding").notNull(), // JSON 格式的向量（256 維）
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type IpPostEmbedding = typeof ipPostEmbeddings.$inferSelect;
+export type InsertIpPostEmbedding = typeof ipPostEmbeddings.$inferInsert;
+
+// IP 帳號爆款成功因素分析
+export const ipSuccessFactors = mysqlTable("ip_success_factors", {
+  id: int("id").autoincrement().primaryKey(),
+  accountId: int("accountId").notNull(), // 關聯的 IP 帳號 ID
+  // 分析維度
+  analysisType: mysqlEnum("analysisType", [
+    "topic",      // 主題選擇
+    "angle",      // 選題方向
+    "content_type", // 內容類型
+    "presentation" // 呈現方式
+  ]).notNull(),
+  // 分析結果
+  factorName: varchar("factorName", { length: 128 }).notNull(), // 因素名稱
+  factorDescription: text("factorDescription"), // 因素描述
+  // 數據支撐
+  viralCount: int("viralCount").default(0), // 爆款數量
+  totalCount: int("totalCount").default(0), // 總數量
+  viralRate: decimal("viralRate", { precision: 5, scale: 4 }), // 爆款率
+  avgLikes: int("avgLikes").default(0), // 平均讚數
+  // 範例
+  examples: json("examples").$type<Array<{
+    postId: number;
+    opener: string;
+    likes: number;
+  }>>(),
+  // 權重（用於系統推薦）
+  weight: decimal("weight", { precision: 5, scale: 4 }).default("1.0000"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type IpSuccessFactor = typeof ipSuccessFactors.$inferSelect;
+export type InsertIpSuccessFactor = typeof ipSuccessFactors.$inferInsert;
+
+// 全局爆款規則（從所有 IP 萃取的隱性規則）
+export const globalViralRules = mysqlTable("global_viral_rules", {
+  id: int("id").autoincrement().primaryKey(),
+  // 規則分類
+  ruleCategory: mysqlEnum("ruleCategory", [
+    "topic",        // 主題規則
+    "angle",        // 選題規則
+    "content_type", // 內容類型規則
+    "presentation", // 呈現方式規則
+    "hook",         // 開頭規則
+    "length",       // 長度規則
+    "emotion"       // 情緒規則
+  ]).notNull(),
+  // 規則內容
+  ruleName: varchar("ruleName", { length: 128 }).notNull(), // 規則名稱
+  ruleDescription: text("ruleDescription"), // 規則描述
+  ruleCondition: text("ruleCondition"), // 規則條件（JSON 格式）
+  ruleAction: text("ruleAction"), // 規則動作（提示詞片段）
+  // 數據支撐
+  supportingIpCount: int("supportingIpCount").default(0), // 支持此規則的 IP 數量
+  totalViralCount: int("totalViralCount").default(0), // 總爆款數量
+  avgViralRate: decimal("avgViralRate", { precision: 5, scale: 4 }), // 平均爆款率
+  // 權重
+  weight: decimal("weight", { precision: 5, scale: 4 }).default("1.0000"),
+  isActive: boolean("isActive").default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type GlobalViralRule = typeof globalViralRules.$inferSelect;
+export type InsertGlobalViralRule = typeof globalViralRules.$inferInsert;
