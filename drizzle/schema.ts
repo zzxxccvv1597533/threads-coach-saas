@@ -947,3 +947,19 @@ export const userTemplatePreferences = mysqlTable("user_template_preferences", {
 });
 export type UserTemplatePreference = typeof userTemplatePreferences.$inferSelect;
 export type InsertUserTemplatePreference = typeof userTemplatePreferences.$inferInsert;
+
+
+// ============================================
+// Embedding 同質性檢測
+// ============================================
+export const openerEmbeddings = mysqlTable("opener_embeddings", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: varchar("userId", { length: 64 }).notNull(), // 用戶 ID
+  opener: text("opener").notNull(), // 開頭文字（前 100 字）
+  embedding: text("embedding").notNull(), // JSON 格式的向量（1536 維）
+  draftId: int("draftId"), // 關聯的草稿 ID（可選）
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type OpenerEmbedding = typeof openerEmbeddings.$inferSelect;
+export type InsertOpenerEmbedding = typeof openerEmbeddings.$inferInsert;

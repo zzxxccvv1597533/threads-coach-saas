@@ -190,6 +190,13 @@
       "when": 1768580020307,
       "tag": "0026_powerful_blur",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1768884410416,
+      "tag": "0027_solid_siren",
+      "breakpoints": true
     }
   ]
 }

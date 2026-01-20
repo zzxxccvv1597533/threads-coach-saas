@@ -20,6 +20,7 @@ import { selectAndRank, getTopN } from "./selector";
 import { quickDetect } from "./aiDetector";
 import { getContentTypeRule } from "../shared/content-type-rules";
 import { buildStylePolishSystemPrompt, buildStylePolishUserPrompt, validateSemanticPreservation, buildStylePolishContext } from "./style-polish-prompt";
+import { checkOpenerHomogeneityV2, saveOpenerEmbedding, checkSemanticFidelity, rankCandidatesByDiversity } from "./embedding-service";
 
 // Admin procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -1336,8 +1337,37 @@ ${input.content}` }
         // 7. 清理 AI 輸出
         polishedContent = cleanAIOutput(polishedContent);
         
-        // 8. 語意驗證
+        // 8. 語意驗證（基礎版）
         const validation = validateSemanticPreservation(input.content, polishedContent);
+        
+        // 8.1 Embedding 語意保真檢測（進階版）
+        let semanticFidelity: {
+          isFaithful: boolean;
+          semanticDistance: number;
+          warning?: string;
+        } | null = null;
+        
+        try {
+          semanticFidelity = await checkSemanticFidelity(
+            input.content,
+            polishedContent
+          );
+          
+          if (semanticFidelity) {
+            console.log('[Embedding] 語意保真檢測:', {
+              isFaithful: semanticFidelity.isFaithful,
+              semanticDistance: semanticFidelity.semanticDistance,
+            });
+            
+            // 如果語意偏離太大，加入警告
+            if (!semanticFidelity.isFaithful && semanticFidelity.warning) {
+              validation.warnings.push(semanticFidelity.warning);
+              validation.isValid = false;
+            }
+          }
+        } catch (embeddingError) {
+          console.warn('[Embedding] 語意保真檢測失敗:', embeddingError);
+        }
         
         // 9. 如果驗證失敗且字數差異過大，嘗試重新生成
         if (!validation.wordCountValid && validation.warnings.length > 0) {
@@ -3189,6 +3219,39 @@ ${generatedContent}
           } : null
         );
         
+        // ✅ Embedding 同質性檢測（非阻塞）
+        let homogeneityCheck: {
+          isHomogeneous: boolean;
+          maxSimilarity: number;
+          suggestion?: string;
+        } | null = null;
+        
+        try {
+          // 提取開頭（前 100 字）
+          const opener = generatedContent.substring(0, 100);
+          
+          // 檢測同質性
+          homogeneityCheck = await checkOpenerHomogeneityV2(
+            ctx.user.id.toString(),
+            opener
+          );
+          
+          // 儲存新開頭的 Embedding（用於未來檢測）
+          await saveOpenerEmbedding(
+            ctx.user.id.toString(),
+            opener,
+            draft?.id
+          );
+          
+          console.log('[Embedding] 同質性檢測完成:', {
+            isHomogeneous: homogeneityCheck.isHomogeneous,
+            maxSimilarity: homogeneityCheck.maxSimilarity,
+          });
+        } catch (embeddingError) {
+          // Embedding 檢測失敗不影響主流程
+          console.warn('[Embedding] 同質性檢測失敗:', embeddingError);
+        }
+        
         return {
           content: generatedContent,
           draftId: draft?.id,
@@ -3204,6 +3267,8 @@ ${generatedContent}
           },
           // 風格匹配度
           styleMatch: styleMatchResult,
+          // 同質性檢測結果
+          homogeneity: homogeneityCheck,
         };
       }),
 

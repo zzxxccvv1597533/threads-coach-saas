@@ -2563,3 +2563,31 @@
 - [x] 實作候選評分邏輯（多樣性分數）
 - [ ] 實作前端候選展示組件（待補充）
 - [ ] 修改生成 API 一次生成 3 候選（待整合）
+
+
+## 核心功能完成 (2025-01-20) ✅
+
+### Embedding 基礎設施（Forge API + MySQL）
+- [x] 建立 Embedding 生成函數（使用 Manus Forge API）
+- [x] 新增 openerEmbeddings 資料表（儲存用戶開頭向量）
+- [x] 實作 Cosine Similarity 計算函數
+- [x] 實作向量儲存和查詢函數
+
+### Embedding 同質性檢測
+- [x] 實作 checkOpenerHomogeneity() 函數
+- [x] 比對用戶最近 10 篇開頭
+- [x] 比對爆款範例庫
+- [x] 多維度評分（用戶相似度、爆款相似度、新穎度、風格匹配度）
+- [x] 建議動作（accept/retry/show_alternatives）
+- [x] 整合到 generateDraft API
+
+### stylePolish 語意保真
+- [x] 新增 Embedding 語意距離檢測（checkSemanticFidelity）
+- [x] 設定閾值（距離 < 0.15 為保真）
+- [x] 整合到 stylePolish API
+
+### 前端候選展示整合
+- [x] 建立 CandidateSelector 組件
+- [x] 顯示 3 候選 + 解釋
+- [x] 一鍵採用按鈕
+- [ ] 整合到發文工作室（待補充）
