@@ -13,6 +13,7 @@ import {
 } from "../drizzle/schema";
 import { eq, desc, sql, inArray } from "drizzle-orm";
 import { generateEmbedding, cosineSimilarity } from "./embedding-service";
+import { expandSemanticKeywords } from "./semantic-expansion-service";
 
 // ============================================
 // 爆款 Embedding 生成與儲存
@@ -106,20 +107,20 @@ export async function batchGenerateViralEmbeddings(
  * @param inputText 輸入的文字（主題、素材等）
  * @param topK 返回前 K 個最相似的結果
  * @param contentType 可選的內容類型篩選
+ * @param useSemanticExpansion 是否使用語意擴展（預設 true）
  */
 export async function findSimilarViralExamples(
   inputText: string,
   topK: number = 5,
-  contentType?: string
+  contentType?: string,
+  useSemanticExpansion: boolean = true
 ): Promise<Array<{
   viralExample: ViralExample;
   similarity: number;
+  matchedKeyword?: string;
 }>> {
   const db = await getDb();
   if (!db) return [];
-
-  // 生成輸入文字的 Embedding
-  const inputEmbedding = await generateEmbedding(inputText);
 
   // 取得所有爆款的 Embedding
   let query = db
@@ -137,7 +138,53 @@ export async function findSimilarViralExamples(
 
   const results = await query;
 
-  // 計算相似度並排序
+  // 如果啟用語意擴展，用多個關鍵詞匹配
+  if (useSemanticExpansion) {
+    const expandedKeywords = await expandSemanticKeywords(inputText);
+    console.log(`[語意擴展] "${inputText}" → ${expandedKeywords.join(", ")}`);
+    
+    // 為每個關鍵詞生成 Embedding 並匹配
+    const allMatches: Array<{
+      viralExample: ViralExample;
+      similarity: number;
+      matchedKeyword: string;
+    }> = [];
+
+    for (const keyword of expandedKeywords) {
+      const keywordEmbedding = await generateEmbedding(keyword);
+      
+      for (const { embedding, viral } of results) {
+        const similarity = cosineSimilarity(
+          keywordEmbedding,
+          JSON.parse(embedding.embedding as string) as number[]
+        );
+        
+        allMatches.push({
+          viralExample: viral,
+          similarity,
+          matchedKeyword: keyword,
+        });
+      }
+    }
+
+    // 去重（同一個爆款可能被多個關鍵詞匹配到，保留最高相似度）
+    const uniqueMatches = new Map<number, typeof allMatches[0]>();
+    for (const match of allMatches) {
+      const existing = uniqueMatches.get(match.viralExample.id);
+      if (!existing || match.similarity > existing.similarity) {
+        uniqueMatches.set(match.viralExample.id, match);
+      }
+    }
+
+    // 排序並返回
+    return Array.from(uniqueMatches.values())
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, topK);
+  }
+
+  // 不使用語意擴展，直接匹配
+  const inputEmbedding = await generateEmbedding(inputText);
+  
   const withSimilarity = results.map(({ embedding, viral }) => ({
     viralExample: viral,
     similarity: cosineSimilarity(
@@ -146,7 +193,6 @@ export async function findSimilarViralExamples(
     ),
   }));
 
-  // 按相似度排序並取前 K 個
   return withSimilarity
     .sort((a, b) => b.similarity - a.similarity)
     .slice(0, topK);
@@ -541,4 +587,280 @@ export async function getEmbeddingStats(): Promise<{
     clusterCount,
     estimatedCost,
   };
+}
+
+
+// ============================================
+// 類型智能推薦
+// ============================================
+
+/**
+ * 根據主題分析相似爆款的類型分佈，推薦最適合的內容類型
+ * @param topic 輸入的主題
+ * @param topK 查詢的相似爆款數量
+ */
+export async function getContentTypeRecommendation(
+  topic: string,
+  topK: number = 20
+): Promise<{
+  recommendations: Array<{
+    contentType: string;
+    contentTypeName: string;
+    count: number;
+    percentage: number;
+    avgLikes: number;
+    isRecommended: boolean;
+    reason: string;
+  }>;
+  totalMatched: number;
+  topicRelevance: 'high' | 'medium' | 'low';
+}> {
+  // 先找出相似的爆款
+  const similarExamples = await findSimilarViralExamples(topic, topK, undefined, true);
+  
+  if (similarExamples.length === 0) {
+    return {
+      recommendations: [],
+      totalMatched: 0,
+      topicRelevance: 'low',
+    };
+  }
+  
+  // 計算最高相似度，判斷主題相關性
+  const maxSimilarity = Math.max(...similarExamples.map(ex => ex.similarity));
+  const topicRelevance = maxSimilarity >= 0.6 ? 'high' : maxSimilarity >= 0.4 ? 'medium' : 'low';
+  
+  // 統計各類型的數量和平均讚數
+  const typeStats = new Map<string, { count: number; totalLikes: number }>();
+  
+  for (const example of similarExamples) {
+    const contentType = example.viralExample.contentType || 'unknown';
+    const likes = example.viralExample.likes || 0;
+    
+    const existing = typeStats.get(contentType) || { count: 0, totalLikes: 0 };
+    typeStats.set(contentType, {
+      count: existing.count + 1,
+      totalLikes: existing.totalLikes + likes,
+    });
+  }
+  
+  // 類型名稱對照表
+  const typeNames: Record<string, string> = {
+    story: '故事型',
+    knowledge: '知識型',
+    opinion: '觀點型',
+    dialogue: '對話型',
+    list: '清單型',
+    question: '提問型',
+    unknown: '其他',
+  };
+  
+  // 轉換為推薦列表
+  const recommendations = Array.from(typeStats.entries())
+    .map(([contentType, stats]) => ({
+      contentType,
+      contentTypeName: typeNames[contentType] || contentType,
+      count: stats.count,
+      percentage: Math.round((stats.count / similarExamples.length) * 100),
+      avgLikes: Math.round(stats.totalLikes / stats.count),
+      isRecommended: false,
+      reason: '',
+    }))
+    .sort((a, b) => b.count - a.count);
+  
+  // 標記推薦項目（數量最多且平均讚數不低於平均值的類型）
+  if (recommendations.length > 0) {
+    const avgLikesOverall = recommendations.reduce((sum, r) => sum + r.avgLikes * r.count, 0) / similarExamples.length;
+    
+    // 找出數量最多的類型
+    const maxCount = recommendations[0].count;
+    
+    // 在數量最多的類型中，選擇平均讚數最高的
+    const topTypes = recommendations.filter(r => r.count === maxCount);
+    const bestType = topTypes.sort((a, b) => b.avgLikes - a.avgLikes)[0];
+    
+    if (bestType) {
+      bestType.isRecommended = true;
+      bestType.reason = `在 ${similarExamples.length} 篇相似爆款中，${bestType.contentTypeName}佔 ${bestType.percentage}%，平均 ${bestType.avgLikes.toLocaleString()} 讚`;
+    }
+  }
+  
+  return {
+    recommendations,
+    totalMatched: similarExamples.length,
+    topicRelevance,
+  };
+}
+
+/**
+ * 獲取特定類型的相似爆款範例
+ * @param topic 主題
+ * @param contentType 內容類型
+ * @param limit 返回數量
+ */
+export async function getSimilarViralsByType(
+  topic: string,
+  contentType: string,
+  limit: number = 3
+): Promise<Array<{
+  opener: string;
+  likes: number;
+  similarity: number;
+}>> {
+  const similarExamples = await findSimilarViralExamples(topic, 20, contentType, true);
+  
+  return similarExamples.slice(0, limit).map(ex => ({
+    opener: ex.viralExample.opener50 || (ex.viralExample.postText || '').substring(0, 50),
+    likes: ex.viralExample.likes || 0,
+    similarity: ex.similarity,
+  }));
+}
+
+
+// ============================================
+// 今日高潛力推薦
+// ============================================
+
+/**
+ * 根據用戶領域和近期爆款趨勢，推薦高潛力選題
+ * @param userDomain 用戶領域
+ * @param existingTopics 用戶已發過的主題（避免重複）
+ * @param count 推薦數量
+ */
+export async function getHighPotentialTopics(
+  userDomain: string,
+  existingTopics: string[] = [],
+  count: number = 5
+): Promise<Array<{
+  topic: string;
+  reason: string;
+  relatedVirals: Array<{
+    opener: string;
+    likes: number;
+  }>;
+  suggestedType: string;
+  suggestedTypeName: string;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  // 從爆款庫中找出與用戶領域相關的高讚爆款
+  const domainKeywords = getDomainKeywords(userDomain);
+  
+  // 用領域關鍵字搜尋相關爆款
+  const relatedVirals: Array<{
+    viralExample: ViralExample;
+    similarity: number;
+    matchedKeyword?: string;
+  }> = [];
+  
+  for (const keyword of domainKeywords.slice(0, 3)) {
+    const examples = await findSimilarViralExamples(keyword, 10, undefined, true);
+    relatedVirals.push(...examples);
+  }
+  
+  // 去重並按讚數排序
+  const uniqueVirals = new Map<number, typeof relatedVirals[0]>();
+  for (const viral of relatedVirals) {
+    const existing = uniqueVirals.get(viral.viralExample.id);
+    if (!existing || (viral.viralExample.likes || 0) > (existing.viralExample.likes || 0)) {
+      uniqueVirals.set(viral.viralExample.id, viral);
+    }
+  }
+  
+  const sortedVirals = Array.from(uniqueVirals.values())
+    .sort((a, b) => (b.viralExample.likes || 0) - (a.viralExample.likes || 0))
+    .slice(0, 30);
+  
+  // 從爆款中提取主題方向
+  const topicSuggestions: Array<{
+    topic: string;
+    reason: string;
+    relatedVirals: Array<{ opener: string; likes: number }>;
+    suggestedType: string;
+    suggestedTypeName: string;
+  }> = [];
+  
+  // 類型名稱對照表
+  const typeNames: Record<string, string> = {
+    story: '故事型',
+    knowledge: '知識型',
+    opinion: '觀點型',
+    dialogue: '對話型',
+    list: '清單型',
+    question: '提問型',
+  };
+  
+  // 根據爆款內容生成主題建議
+  const usedTopics = new Set(existingTopics.map(t => t.toLowerCase()));
+  
+  for (const viral of sortedVirals) {
+    if (topicSuggestions.length >= count) break;
+    
+    // 從爆款開頭提取主題方向
+    const opener = viral.viralExample.opener50 || (viral.viralExample.postText || '').substring(0, 50);
+    const contentType = viral.viralExample.contentType || 'story';
+    
+    // 生成主題建議（基於爆款的關鍵詞）
+    const topicHint = extractTopicFromOpener(opener, userDomain);
+    
+    // 避免重複主題
+    if (usedTopics.has(topicHint.toLowerCase())) continue;
+    usedTopics.add(topicHint.toLowerCase());
+    
+    topicSuggestions.push({
+      topic: topicHint,
+      reason: `相似爆款獲得 ${(viral.viralExample.likes || 0).toLocaleString()} 讚`,
+      relatedVirals: [{
+        opener: opener,
+        likes: viral.viralExample.likes || 0,
+      }],
+      suggestedType: contentType,
+      suggestedTypeName: typeNames[contentType] || contentType,
+    });
+  }
+  
+  return topicSuggestions;
+}
+
+/**
+ * 根據領域取得相關關鍵字
+ */
+function getDomainKeywords(domain: string): string[] {
+  const domainKeywordMap: Record<string, string[]> = {
+    '身心靈': ['冥想', '覺察', '療癒', '內在', '成長', '情緒', '放下', '接納'],
+    '商業創業': ['創業', '經營', '客戶', '營收', '品牌', '市場', '商業模式', '獲利'],
+    '職場發展': ['職場', '工作', '升遷', '主管', '同事', '離職', '轉職', '面試'],
+    '人際關係': ['關係', '溝通', '朋友', '家人', '伴侶', '社交', '人脈', '信任'],
+    '健康養生': ['健康', '運動', '飲食', '睡眠', '養生', '減重', '體態', '習慣'],
+    '教育學習': ['學習', '讀書', '技能', '知識', '成長', '進修', '考試', '教育'],
+    '理財投資': ['理財', '投資', '存錢', '財務', '被動收入', '資產', '股票', '基金'],
+    '生活風格': ['生活', '日常', '習慣', '效率', '時間', '整理', '極簡', '質感'],
+    '創作藝術': ['創作', '寫作', '設計', '藝術', '靈感', '作品', '表達', '美學'],
+  };
+  
+  return domainKeywordMap[domain] || ['成長', '學習', '分享', '經驗', '心得'];
+}
+
+/**
+ * 從開頭提取主題方向
+ */
+function extractTopicFromOpener(opener: string, domain: string): string {
+  // 簡單的主題提取邏輯
+  // 移除常見的開頭詞彙，保留核心主題
+  const cleanOpener = opener
+    .replace(/^(我發現|我覺得|很多人|有時候|其實|說真的|最近|昨天|今天)/g, '')
+    .replace(/[。，、！？\n]/g, ' ')
+    .trim();
+  
+  // 取前 15 個字作為主題方向
+  const topic = cleanOpener.substring(0, 15).trim();
+  
+  // 如果太短，補充領域關鍵字
+  if (topic.length < 5) {
+    const keywords = getDomainKeywords(domain);
+    return `${keywords[0]}的${topic || '心得'}`;
+  }
+  
+  return topic;
 }

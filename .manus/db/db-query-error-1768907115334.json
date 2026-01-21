@@ -1,0 +1,8 @@
+{
+  "query": "SELECT \n  a.id, a.accountName, a.followerCount,\n  COUNT(p.id) as postCount,\n  SUM(CASE WHEN p.isViral = 1 THEN 1 ELSE 0 END) as viralCount,\n  SUM(CASE WHEN p.isSuperViral = 1 THEN 1 ELSE 0 END) as superViralCount,\n  ROUND(AVG(p.likes), 0) as avgLikes,\n  ROUND(SUM(CASE WHEN p.isViral = 1 THEN 1 ELSE 0 END) / COUNT(p.id) * 100, 2) as viralRate\nFROM ip_accounts a\nLEFT JOIN ip_posts p ON a.id = p.accountId\nGROUP BY a.id, a.accountName, a.followerCount\nORDER BY viralCount DESC\nLIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute SELECT \n  a.id, a.accountName, a.followerCount,\n  COUNT(p.id) as postCount,\n  SUM(CASE WHEN p.isViral = 1 THEN 1 ELSE 0 END) as viralCount,\n  SUM(CASE WHEN p.isSuperViral = 1 THEN 1 ELSE 0 END) as superViralCount,\n  ROUND(AVG(p.likes), 0) as avgLikes,\n  ROUND(SUM(CASE WHEN p.isViral = 1 THEN 1 ELSE 0 END) / COUNT(p.id) * 100, 2) as viralRate\nFROM ip_accounts a\nLEFT JOIN ip_posts p ON a.id = p.accountId\nGROUP BY a.id, a.accountName, a.followerCount\nORDER BY viralCount DESC\nLIMIT 20;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'a.followercount' in 'group statement'"
+  ]
+}

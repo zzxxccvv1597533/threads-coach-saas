@@ -1,0 +1,18 @@
+{
+  "query": "\nSELECT \n  (SELECT COUNT(*) FROM viral_examples) as viral_examples_count,\n  (SELECT COUNT(*) FROM viral_example_embeddings) as embeddings_count,\n  (SELECT COUNT(*) FROM viral_clusters) as clusters_count,\n  (SELECT COUNT(*) FROM ip_accounts) as ip_accounts_count,\n  (SELECT COUNT(*) FROM ip_success_factors) as success_factors_count,\n  (SELECT COUNT(*) FROM ip_posts) as ip_posts_count;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute \nSELECT \n  (SELECT COUNT(*) FROM viral_examples) as viral_examples_count,\n  (SELECT COUNT(*) FROM viral_example_embeddings) as embeddings_count,\n  (SELECT COUNT(*) FROM viral_clusters) as clusters_count,\n  (SELECT COUNT(*) FROM ip_accounts) as ip_accounts_count,\n  (SELECT COUNT(*) FROM ip_success_factors) as success_factors_count,\n  (SELECT COUNT(*) FROM ip_posts) as ip_posts_count;\n",
+  "rows": [
+    {
+      "viral_examples_count": "1240",
+      "embeddings_count": "1240",
+      "clusters_count": "12",
+      "ip_accounts_count": "50",
+      "success_factors_count": "603",
+      "ip_posts_count": "29475"
+    }
+  ],
+  "messages": [],
+  "stdout": "viral_examples_count\tembeddings_count\tclusters_count\tip_accounts_count\tsuccess_factors_count\tip_posts_count\n1240\t1240\t12\t50\t603\t29475\n",
+  "stderr": "",
+  "execution_time_ms": 1529
+}

@@ -1,0 +1,42 @@
+{
+  "query": "\nSELECT \n  'viral_examples' as metric, COUNT(*) as value FROM viral_examples\nUNION ALL\nSELECT 'embeddings', COUNT(*) FROM viral_example_embeddings\nUNION ALL\nSELECT 'clusters', COUNT(*) FROM viral_clusters\nUNION ALL\nSELECT 'ip_accounts', COUNT(*) FROM ip_accounts\nUNION ALL\nSELECT 'success_factors', COUNT(*) FROM ip_success_factors\nUNION ALL\nSELECT 'ip_posts', COUNT(*) FROM ip_posts\nUNION ALL\nSELECT 'viral_with_1000_likes', COUNT(*) FROM ip_posts WHERE likes >= 1000\nUNION ALL\nSELECT 'viral_with_5000_likes', COUNT(*) FROM ip_posts WHERE likes >= 5000;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute \nSELECT \n  'viral_examples' as metric, COUNT(*) as value FROM viral_examples\nUNION ALL\nSELECT 'embeddings', COUNT(*) FROM viral_example_embeddings\nUNION ALL\nSELECT 'clusters', COUNT(*) FROM viral_clusters\nUNION ALL\nSELECT 'ip_accounts', COUNT(*) FROM ip_accounts\nUNION ALL\nSELECT 'success_factors', COUNT(*) FROM ip_success_factors\nUNION ALL\nSELECT 'ip_posts', COUNT(*) FROM ip_posts\nUNION ALL\nSELECT 'viral_with_1000_likes', COUNT(*) FROM ip_posts WHERE likes >= 1000\nUNION ALL\nSELECT 'viral_with_5000_likes', COUNT(*) FROM ip_posts WHERE likes >= 5000;\n",
+  "rows": [
+    {
+      "metric": "clusters",
+      "value": "12"
+    },
+    {
+      "metric": "ip_accounts",
+      "value": "50"
+    },
+    {
+      "metric": "success_factors",
+      "value": "603"
+    },
+    {
+      "metric": "viral_examples",
+      "value": "1240"
+    },
+    {
+      "metric": "embeddings",
+      "value": "1240"
+    },
+    {
+      "metric": "ip_posts",
+      "value": "29475"
+    },
+    {
+      "metric": "viral_with_5000_likes",
+      "value": "277"
+    },
+    {
+      "metric": "viral_with_1000_likes",
+      "value": "1780"
+    }
+  ],
+  "messages": [],
+  "stdout": "metric\tvalue\nclusters\t12\nip_accounts\t50\nsuccess_factors\t603\nviral_examples\t1240\nembeddings\t1240\nip_posts\t29475\nviral_with_5000_likes\t277\nviral_with_1000_likes\t1780\n",
+  "stderr": "",
+  "execution_time_ms": 1523
+}

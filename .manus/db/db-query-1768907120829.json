@@ -1,0 +1,64 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'ip_accounts';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'ip_accounts';",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "accountName"
+    },
+    {
+      "COLUMN_NAME": "accountHandle"
+    },
+    {
+      "COLUMN_NAME": "primaryCategory"
+    },
+    {
+      "COLUMN_NAME": "subCategory"
+    },
+    {
+      "COLUMN_NAME": "totalPosts"
+    },
+    {
+      "COLUMN_NAME": "viralPosts"
+    },
+    {
+      "COLUMN_NAME": "viralRate"
+    },
+    {
+      "COLUMN_NAME": "avgLikes"
+    },
+    {
+      "COLUMN_NAME": "avgCharLen"
+    },
+    {
+      "COLUMN_NAME": "styleType"
+    },
+    {
+      "COLUMN_NAME": "contentMix"
+    },
+    {
+      "COLUMN_NAME": "growthRate"
+    },
+    {
+      "COLUMN_NAME": "earlyAvgLikes"
+    },
+    {
+      "COLUMN_NAME": "recentAvgLikes"
+    },
+    {
+      "COLUMN_NAME": "sourceFile"
+    },
+    {
+      "COLUMN_NAME": "createdAt"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\naccountName\naccountHandle\nprimaryCategory\nsubCategory\ntotalPosts\nviralPosts\nviralRate\navgLikes\navgCharLen\nstyleType\ncontentMix\ngrowthRate\nearlyAvgLikes\nrecentAvgLikes\nsourceFile\ncreatedAt\nupdatedAt\n",
+  "stderr": "",
+  "execution_time_ms": 1537
+}

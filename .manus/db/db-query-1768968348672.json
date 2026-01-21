@@ -1,0 +1,34 @@
+{
+  "query": "\nSELECT 'viral_examples' as table_name, COUNT(*) as count FROM viral_examples\nUNION ALL\nSELECT 'viral_example_embeddings', COUNT(*) FROM viral_example_embeddings\nUNION ALL\nSELECT 'viral_clusters', COUNT(*) FROM viral_clusters\nUNION ALL\nSELECT 'ip_accounts', COUNT(*) FROM ip_accounts\nUNION ALL\nSELECT 'ip_success_factors', COUNT(*) FROM ip_success_factors\nUNION ALL\nSELECT 'ip_posts', COUNT(*) FROM ip_posts;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute \nSELECT 'viral_examples' as table_name, COUNT(*) as count FROM viral_examples\nUNION ALL\nSELECT 'viral_example_embeddings', COUNT(*) FROM viral_example_embeddings\nUNION ALL\nSELECT 'viral_clusters', COUNT(*) FROM viral_clusters\nUNION ALL\nSELECT 'ip_accounts', COUNT(*) FROM ip_accounts\nUNION ALL\nSELECT 'ip_success_factors', COUNT(*) FROM ip_success_factors\nUNION ALL\nSELECT 'ip_posts', COUNT(*) FROM ip_posts;\n",
+  "rows": [
+    {
+      "table_name": "ip_accounts",
+      "count": "50"
+    },
+    {
+      "table_name": "ip_success_factors",
+      "count": "603"
+    },
+    {
+      "table_name": "viral_examples",
+      "count": "1240"
+    },
+    {
+      "table_name": "viral_clusters",
+      "count": "12"
+    },
+    {
+      "table_name": "viral_example_embeddings",
+      "count": "1240"
+    },
+    {
+      "table_name": "ip_posts",
+      "count": "29475"
+    }
+  ],
+  "messages": [],
+  "stdout": "table_name\tcount\nip_accounts\t50\nip_success_factors\t603\nviral_examples\t1240\nviral_clusters\t12\nviral_example_embeddings\t1240\nip_posts\t29475\n",
+  "stderr": "",
+  "execution_time_ms": 1505
+}

@@ -1,0 +1,30 @@
+{
+  "query": "SELECT \n  analysisType, \n  COUNT(*) as factorCount,\n  ROUND(AVG(viralRate * 100), 2) as avgViralRate\nFROM ip_success_factors\nGROUP BY analysisType\nORDER BY factorCount DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute SELECT \n  analysisType, \n  COUNT(*) as factorCount,\n  ROUND(AVG(viralRate * 100), 2) as avgViralRate\nFROM ip_success_factors\nGROUP BY analysisType\nORDER BY factorCount DESC;",
+  "rows": [
+    {
+      "analysisType": "presentation",
+      "factorCount": "163",
+      "avgViralRate": "5.79"
+    },
+    {
+      "analysisType": "angle",
+      "factorCount": "147",
+      "avgViralRate": "0.00"
+    },
+    {
+      "analysisType": "topic",
+      "factorCount": "147",
+      "avgViralRate": "0.00"
+    },
+    {
+      "analysisType": "content_type",
+      "factorCount": "146",
+      "avgViralRate": "5.81"
+    }
+  ],
+  "messages": [],
+  "stdout": "analysisType\tfactorCount\tavgViralRate\npresentation\t163\t5.79\nangle\t147\t0.00\ntopic\t147\t0.00\ncontent_type\t146\t5.81\n",
+  "stderr": "",
+  "execution_time_ms": 1522
+}

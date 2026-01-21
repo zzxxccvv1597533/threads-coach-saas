@@ -1,0 +1,210 @@
+{
+  "query": "SELECT \n  a.id, a.accountName, a.totalPosts, a.viralPosts, a.viralRate, a.avgLikes,\n  COUNT(p.id) as actualPostCount,\n  SUM(CASE WHEN p.isViral = 1 THEN 1 ELSE 0 END) as actualViralCount\nFROM ip_accounts a\nLEFT JOIN ip_posts p ON a.id = p.accountId\nGROUP BY a.id, a.accountName, a.totalPosts, a.viralPosts, a.viralRate, a.avgLikes\nORDER BY a.viralPosts DESC\nLIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute SELECT \n  a.id, a.accountName, a.totalPosts, a.viralPosts, a.viralRate, a.avgLikes,\n  COUNT(p.id) as actualPostCount,\n  SUM(CASE WHEN p.isViral = 1 THEN 1 ELSE 0 END) as actualViralCount\nFROM ip_accounts a\nLEFT JOIN ip_posts p ON a.id = p.accountId\nGROUP BY a.id, a.accountName, a.totalPosts, a.viralPosts, a.viralRate, a.avgLikes\nORDER BY a.viralPosts DESC\nLIMIT 20;",
+  "rows": [
+    {
+      "id": "184",
+      "accountName": "葳老闆｜周品均",
+      "totalPosts": "1313",
+      "viralPosts": "526",
+      "viralRate": "0.4006",
+      "avgLikes": "1633",
+      "actualPostCount": "1313",
+      "actualViralCount": "526"
+    },
+    {
+      "id": "153",
+      "accountName": "Willy自媒體AI顧問",
+      "totalPosts": "980",
+      "viralPosts": "159",
+      "viralRate": "0.1622",
+      "avgLikes": "960",
+      "actualPostCount": "980",
+      "actualViralCount": "159"
+    },
+    {
+      "id": "183",
+      "accountName": "簡少年",
+      "totalPosts": "509",
+      "viralPosts": "155",
+      "viralRate": "0.3045",
+      "avgLikes": "1046",
+      "actualPostCount": "509",
+      "actualViralCount": "155"
+    },
+    {
+      "id": "159",
+      "accountName": "法律白話文運動",
+      "totalPosts": "777",
+      "viralPosts": "107",
+      "viralRate": "0.1377",
+      "avgLikes": "437",
+      "actualPostCount": "777",
+      "actualViralCount": "107"
+    },
+    {
+      "id": "199",
+      "accountName": "資訊學院techtip_s",
+      "totalPosts": "1258",
+      "viralPosts": "77",
+      "viralRate": "0.0612",
+      "avgLikes": "306",
+      "actualPostCount": "1258",
+      "actualViralCount": "77"
+    },
+    {
+      "id": "169",
+      "accountName": "PetsMurMur寵物溝通",
+      "totalPosts": "362",
+      "viralPosts": "58",
+      "viralRate": "0.1602",
+      "avgLikes": "763",
+      "actualPostCount": "362",
+      "actualViralCount": "58"
+    },
+    {
+      "id": "178",
+      "accountName": "有魚｜閱讀𝗑AI學習𝗑文字力",
+      "totalPosts": "479",
+      "viralPosts": "57",
+      "viralRate": "0.1190",
+      "avgLikes": "638",
+      "actualPostCount": "479",
+      "actualViralCount": "57"
+    },
+    {
+      "id": "152",
+      "accountName": "林育聖",
+      "totalPosts": "1192",
+      "viralPosts": "56",
+      "viralRate": "0.0470",
+      "avgLikes": "314",
+      "actualPostCount": "1192",
+      "actualViralCount": "56"
+    },
+    {
+      "id": "160",
+      "accountName": "蕾咪Rami🌍",
+      "totalPosts": "789",
+      "viralPosts": "51",
+      "viralRate": "0.0646",
+      "avgLikes": "386",
+      "actualPostCount": "789",
+      "actualViralCount": "51"
+    },
+    {
+      "id": "163",
+      "accountName": "尤魚學姐",
+      "totalPosts": "1350",
+      "viralPosts": "49",
+      "viralRate": "0.0363",
+      "avgLikes": "184",
+      "actualPostCount": "1350",
+      "actualViralCount": "49"
+    },
+    {
+      "id": "186",
+      "accountName": "推書手L",
+      "totalPosts": "584",
+      "viralPosts": "39",
+      "viralRate": "0.0668",
+      "avgLikes": "404",
+      "actualPostCount": "584",
+      "actualViralCount": "39"
+    },
+    {
+      "id": "200",
+      "accountName": "Willy",
+      "totalPosts": "344",
+      "viralPosts": "29",
+      "viralRate": "0.0843",
+      "avgLikes": "448",
+      "actualPostCount": "344",
+      "actualViralCount": "29"
+    },
+    {
+      "id": "197",
+      "accountName": "LeedsMayi里茲螞蟻",
+      "totalPosts": "687",
+      "viralPosts": "29",
+      "viralRate": "0.0422",
+      "avgLikes": "200",
+      "actualPostCount": "687",
+      "actualViralCount": "29"
+    },
+    {
+      "id": "166",
+      "accountName": "KaminaliHayako神成迅子",
+      "totalPosts": "1026",
+      "viralPosts": "28",
+      "viralRate": "0.0273",
+      "avgLikes": "194",
+      "actualPostCount": "1026",
+      "actualViralCount": "28"
+    },
+    {
+      "id": "194",
+      "accountName": "我媽叫我不要創業",
+      "totalPosts": "646",
+      "viralPosts": "26",
+      "viralRate": "0.0402",
+      "avgLikes": "372",
+      "actualPostCount": "646",
+      "actualViralCount": "26"
+    },
+    {
+      "id": "201",
+      "accountName": "BarbieChen",
+      "totalPosts": "313",
+      "viralPosts": "24",
+      "viralRate": "0.0767",
+      "avgLikes": "460",
+      "actualPostCount": "313",
+      "actualViralCount": "24"
+    },
+    {
+      "id": "162",
+      "accountName": "馬丁老師｜八字識人顧問",
+      "totalPosts": "1218",
+      "viralPosts": "24",
+      "viralRate": "0.0197",
+      "avgLikes": "114",
+      "actualPostCount": "1218",
+      "actualViralCount": "24"
+    },
+    {
+      "id": "171",
+      "accountName": "Jasmine佳穎",
+      "totalPosts": "343",
+      "viralPosts": "23",
+      "viralRate": "0.0671",
+      "avgLikes": "222",
+      "actualPostCount": "343",
+      "actualViralCount": "23"
+    },
+    {
+      "id": "156",
+      "accountName": "瓦基｜閱讀前哨站",
+      "totalPosts": "930",
+      "viralPosts": "22",
+      "viralRate": "0.0237",
+      "avgLikes": "202",
+      "actualPostCount": "930",
+      "actualViralCount": "22"
+    },
+    {
+      "id": "177",
+      "accountName": "朱弟JudyChu",
+      "totalPosts": "758",
+      "viralPosts": "18",
+      "viralRate": "0.0237",
+      "avgLikes": "182",
+      "actualPostCount": "758",
+      "actualViralCount": "18"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\taccountName\ttotalPosts\tviralPosts\tviralRate\tavgLikes\tactualPostCount\tactualViralCount\n184\t葳老闆｜周品均\t1313\t526\t0.4006\t1633\t1313\t526\n153\tWilly自媒體AI顧問\t980\t159\t0.1622\t960\t980\t159\n183\t簡少年\t509\t155\t0.3045\t1046\t509\t155\n159\t法律白話文運動\t777\t107\t0.1377\t437\t777\t107\n199\t資訊學院techtip_s\t1258\t77\t0.0612\t306\t1258\t77\n169\tPetsMurMur寵物溝通\t362\t58\t0.1602\t763\t362\t58\n178\t有魚｜閱讀𝗑AI學習𝗑文字力\t479\t57\t0.1190\t638\t479\t57\n152\t林育聖\t1192\t56\t0.0470\t314\t1192\t56\n160\t蕾咪Rami🌍\t789\t51\t0.0646\t386\t789\t51\n163\t尤魚學姐\t1350\t49\t0.0363\t184\t1350\t49\n186\t推書手L\t584\t39\t0.0668\t404\t584\t39\n200\tWilly\t344\t29\t0.0843\t448\t344\t29\n197\tLeedsMayi里茲螞蟻\t687\t29\t0.0422\t200\t687\t29\n166\tKaminaliHayako神成迅子\t1026\t28\t0.0273\t194\t1026\t28\n194\t我媽叫我不要創業\t646\t26\t0.0402\t372\t646\t26\n201\tBarbieChen\t313\t24\t0.0767\t460\t313\t24\n162\t馬丁老師｜八字識人顧問\t1218\t24\t0.0197\t114\t1218\t24\n171\tJasmine佳穎\t343\t23\t0.0671\t222\t343\t23\n156\t瓦基｜閱讀前哨站\t930\t22\t0.0237\t202\t930\t22\n177\t朱弟JudyChu\t758\t18\t0.0237\t182\t758\t18\n",
+  "stderr": "",
+  "execution_time_ms": 1545
+}

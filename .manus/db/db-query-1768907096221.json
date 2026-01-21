@@ -1,0 +1,19 @@
+{
+  "query": "SELECT \n  (SELECT COUNT(*) FROM ip_accounts) as total_accounts,\n  (SELECT COUNT(*) FROM ip_posts) as total_posts,\n  (SELECT COUNT(*) FROM ip_posts WHERE isViral = 1) as viral_posts,\n  (SELECT COUNT(*) FROM ip_posts WHERE isSuperViral = 1) as super_viral_posts,\n  (SELECT COUNT(*) FROM ip_success_factors) as total_success_factors,\n  (SELECT COUNT(*) FROM global_viral_rules) as total_global_rules,\n  (SELECT COUNT(*) FROM ip_post_embeddings) as total_embeddings;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute SELECT \n  (SELECT COUNT(*) FROM ip_accounts) as total_accounts,\n  (SELECT COUNT(*) FROM ip_posts) as total_posts,\n  (SELECT COUNT(*) FROM ip_posts WHERE isViral = 1) as viral_posts,\n  (SELECT COUNT(*) FROM ip_posts WHERE isSuperViral = 1) as super_viral_posts,\n  (SELECT COUNT(*) FROM ip_success_factors) as total_success_factors,\n  (SELECT COUNT(*) FROM global_viral_rules) as total_global_rules,\n  (SELECT COUNT(*) FROM ip_post_embeddings) as total_embeddings;",
+  "rows": [
+    {
+      "total_accounts": "50",
+      "total_posts": "29475",
+      "viral_posts": "1780",
+      "super_viral_posts": "277",
+      "total_success_factors": "603",
+      "total_global_rules": "0",
+      "total_embeddings": "2542"
+    }
+  ],
+  "messages": [],
+  "stdout": "total_accounts\ttotal_posts\tviral_posts\tsuper_viral_posts\ttotal_success_factors\ttotal_global_rules\ttotal_embeddings\n50\t29475\t1780\t277\t603\t0\t2542\n",
+  "stderr": "",
+  "execution_time_ms": 1619
+}

@@ -1,0 +1,38 @@
+{
+  "query": "SELECT \n  'ip_accounts' as table_name, COUNT(*) as count FROM ip_accounts\nUNION ALL\nSELECT 'ip_posts', COUNT(*) FROM ip_posts\nUNION ALL\nSELECT 'ip_posts_viral', COUNT(*) FROM ip_posts WHERE isViral = 1\nUNION ALL\nSELECT 'ip_posts_super_viral', COUNT(*) FROM ip_posts WHERE isSuperViral = 1\nUNION ALL\nSELECT 'ip_success_factors', COUNT(*) FROM ip_success_factors\nUNION ALL\nSELECT 'global_viral_rules', COUNT(*) FROM global_viral_rules\nUNION ALL\nSELECT 'ip_post_embeddings', COUNT(*) FROM ip_post_embeddings;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute SELECT \n  'ip_accounts' as table_name, COUNT(*) as count FROM ip_accounts\nUNION ALL\nSELECT 'ip_posts', COUNT(*) FROM ip_posts\nUNION ALL\nSELECT 'ip_posts_viral', COUNT(*) FROM ip_posts WHERE isViral = 1\nUNION ALL\nSELECT 'ip_posts_super_viral', COUNT(*) FROM ip_posts WHERE isSuperViral = 1\nUNION ALL\nSELECT 'ip_success_factors', COUNT(*) FROM ip_success_factors\nUNION ALL\nSELECT 'global_viral_rules', COUNT(*) FROM global_viral_rules\nUNION ALL\nSELECT 'ip_post_embeddings', COUNT(*) FROM ip_post_embeddings;",
+  "rows": [
+    {
+      "table_name": "ip_success_factors",
+      "count": "603"
+    },
+    {
+      "table_name": "ip_accounts",
+      "count": "50"
+    },
+    {
+      "table_name": "global_viral_rules",
+      "count": "0"
+    },
+    {
+      "table_name": "ip_posts",
+      "count": "29475"
+    },
+    {
+      "table_name": "ip_posts_viral",
+      "count": "1780"
+    },
+    {
+      "table_name": "ip_posts_super_viral",
+      "count": "277"
+    },
+    {
+      "table_name": "ip_post_embeddings",
+      "count": "2542"
+    }
+  ],
+  "messages": [],
+  "stdout": "table_name\tcount\nip_success_factors\t603\nip_accounts\t50\nglobal_viral_rules\t0\nip_posts\t29475\nip_posts_viral\t1780\nip_posts_super_viral\t277\nip_post_embeddings\t2542\n",
+  "stderr": "",
+  "execution_time_ms": 1534
+}
