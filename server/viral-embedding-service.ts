@@ -864,3 +864,114 @@ function extractTopicFromOpener(opener: string, domain: string): string {
   
   return topic;
 }
+
+
+/**
+ * 生成優化建議 - 根據相似爆款特徵分析，告訴學員如何調整主題更容易被看見
+ */
+export async function generateOptimizationSuggestions(
+  topic: string,
+  similarPosts: Array<{ content: string; likes: number; similarity: number }>
+): Promise<{
+  suggestions: string[];
+  features: {
+    hasQuestion: { count: number; percentage: number };
+    hasNumber: { count: number; percentage: number };
+    hasContrast: { count: number; percentage: number };
+    hasStory: { count: number; percentage: number };
+    avgLength: number;
+  };
+  topFeatures: string[];
+}> {
+  if (similarPosts.length === 0) {
+    return {
+      suggestions: ['目前沒有足夠的相似爆款可供分析，建議嘗試不同的主題方向'],
+      features: {
+        hasQuestion: { count: 0, percentage: 0 },
+        hasNumber: { count: 0, percentage: 0 },
+        hasContrast: { count: 0, percentage: 0 },
+        hasStory: { count: 0, percentage: 0 },
+        avgLength: 0,
+      },
+      topFeatures: [],
+    };
+  }
+
+  // 分析特徵
+  let questionCount = 0;
+  let numberCount = 0;
+  let contrastCount = 0;
+  let storyCount = 0;
+  let totalLength = 0;
+
+  const questionPatterns = /[？?]|為什麼|怎麼|如何|是不是|有沒有|嗎$/;
+  const numberPatterns = /\d+|一|二|三|四|五|六|七|八|九|十|百|千|萬/;
+  const contrastPatterns = /但是|然而|可是|不過|卻|vs|以前.*現在|過去.*現在|從.*到|原本.*後來/;
+  const storyPatterns = /那天|有一次|記得|當時|那時候|曾經|有個|故事|經歷/;
+
+  for (const post of similarPosts) {
+    const content = post.content;
+    totalLength += content.length;
+
+    if (questionPatterns.test(content)) questionCount++;
+    if (numberPatterns.test(content)) numberCount++;
+    if (contrastPatterns.test(content)) contrastCount++;
+    if (storyPatterns.test(content)) storyCount++;
+  }
+
+  const total = similarPosts.length;
+  const features = {
+    hasQuestion: { count: questionCount, percentage: Math.round((questionCount / total) * 100) },
+    hasNumber: { count: numberCount, percentage: Math.round((numberCount / total) * 100) },
+    hasContrast: { count: contrastCount, percentage: Math.round((contrastCount / total) * 100) },
+    hasStory: { count: storyCount, percentage: Math.round((storyCount / total) * 100) },
+    avgLength: Math.round(totalLength / total),
+  };
+
+  // 找出高於平均的特徵
+  const avgPercentage = 30; // 基準線
+  const topFeatures: string[] = [];
+  const suggestions: string[] = [];
+
+  if (features.hasQuestion.percentage > avgPercentage) {
+    topFeatures.push('問句');
+    suggestions.push(`相似爆款中有 ${features.hasQuestion.percentage}% 使用問句，建議在開頭或結尾加入引發思考的問題`);
+  }
+
+  if (features.hasNumber.percentage > avgPercentage) {
+    topFeatures.push('數字');
+    suggestions.push(`相似爆款中有 ${features.hasNumber.percentage}% 包含具體數字，建議加入數據或時間讓內容更有說服力`);
+  }
+
+  if (features.hasContrast.percentage > avgPercentage) {
+    topFeatures.push('對比');
+    suggestions.push(`相似爆款中有 ${features.hasContrast.percentage}% 使用對比手法，建議用「以前 vs 現在」或「大多數人 vs 我」的對比`);
+  }
+
+  if (features.hasStory.percentage > avgPercentage) {
+    topFeatures.push('故事');
+    suggestions.push(`相似爆款中有 ${features.hasStory.percentage}% 包含故事元素，建議加入你自己的真實經歷`);
+  }
+
+  // 長度建議
+  if (features.avgLength > 0) {
+    if (features.avgLength < 150) {
+      suggestions.push(`相似爆款平均長度約 ${features.avgLength} 字，建議保持簡潔有力`);
+    } else if (features.avgLength < 300) {
+      suggestions.push(`相似爆款平均長度約 ${features.avgLength} 字，這是最佳長度區間`);
+    } else {
+      suggestions.push(`相似爆款平均長度約 ${features.avgLength} 字，可以寫得更詳細深入`);
+    }
+  }
+
+  // 如果沒有明顯特徵，給出通用建議
+  if (suggestions.length === 0) {
+    suggestions.push('建議加入你自己的獨特觀點和真實經歷，讓內容更有個人特色');
+  }
+
+  return {
+    suggestions,
+    features,
+    topFeatures,
+  };
+}

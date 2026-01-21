@@ -330,7 +330,7 @@ export default function WritingStudio() {
     saveState("editMode", editMode);
   }, [mode, material, selectedContentType, selectedMonetizeType, selectedAngle, step, brainstormResult, anglesResult, draftResult, draftId, chatMessages, flexibleInputs, selectedHookStyle, hookOptions, selectedHook, typeInputs, editMode]);
 
-  // 處理 URL 參數（從痛點矩陣或其他頁面跳轉過來）
+  // 處理 URL 參數（從痛點矩陣、Dashboard 今日推薦或其他頁面跳轉過來）
   const searchString = useSearch();
   useEffect(() => {
     if (searchString) {
@@ -339,6 +339,19 @@ export default function WritingStudio() {
       const urlMode = params.get('mode');
       const urlAngle = params.get('angle');
       const urlTopic = params.get('topic');
+      const urlType = params.get('type');
+      
+      // 從 Dashboard 今日推薦點擊過來（只有 topic 和 type）
+      if (urlTopic && !urlMaterial) {
+        // 直接進入引導模式，帶入選題
+        setMode('brainstorm');
+        setSelectedAngle(decodeURIComponent(urlTopic));
+        toast.success(`已帶入選題「${decodeURIComponent(urlTopic)}」，開始創作！`);
+        
+        // 清除 URL 參數
+        window.history.replaceState({}, '', '/writing-studio');
+        return;
+      }
       
       if (urlMaterial) {
         setMaterial(decodeURIComponent(urlMaterial));

@@ -139,6 +139,9 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
     aiLevel?: string;
     candidateId?: number;
     templateCategory?: string;
+    isRecommended?: boolean;
+    viralSimilarity?: number;
+    similarViralExample?: string;
   }>>([]);
   const [selectedHook, setSelectedHook] = useState("");
   
@@ -179,6 +182,21 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
 
   // 查詢用戶的受眾設定
   const { data: audienceSegments } = trpc.audience.list.useQuery();
+  
+  // 查詢類型智能推薦
+  const [typeRecommendations, setTypeRecommendations] = useState<Array<{
+    typeId: string;
+    typeName: string;
+    count: number;
+    avgLikes: number;
+    isRecommended: boolean;
+  }>>([]);
+
+  // 類型智能推薦 - 當選擇主題後查詢
+  const { data: typeRecommendationData, refetch: refetchTypeRecommendation } = trpc.accountHealth.getContentTypeRecommendation.useQuery(
+    { topic: selectedTopic?.title || '' },
+    { enabled: !!selectedTopic?.title }
+  );
 
   // API mutations
   const brainstorm = trpc.ai.brainstorm.useMutation({
@@ -197,7 +215,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       console.log('[generateOpeners] API Response:', JSON.stringify(data, null, 2));
       // 轉換新的 API 回應格式到現有的 hookOptions 格式
       // 注意：API 返回的欄位是 openerText 不是 content，scoreLevel 不是 aiLevel
-      const transformedHooks = data.candidates.map((candidate: any) => ({
+      const transformedHooks = data.candidates.map((candidate: any, index: number) => ({
         style: String(candidate.templateId) || 'custom',
         styleName: candidate.templateCategory || '自訂風格',
         content: candidate.openerText || candidate.content || '', // 使用 openerText 欄位
@@ -206,6 +224,10 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         aiLevel: candidate.scoreLevel || candidate.aiLevel || 'natural', // 使用 scoreLevel 欄位
         candidateId: candidate.id,
         templateCategory: candidate.templateCategory,
+        // 新增：推薦標記和爆款相似度
+        isRecommended: candidate.isRecommended || index === 0, // 第一個預設為推薦
+        viralSimilarity: candidate.viralSimilarity,
+        similarViralExample: candidate.similarViralExample,
       }));
       console.log('[generateOpeners] Transformed hooks:', transformedHooks);
       setHookOptions(transformedHooks);
@@ -893,32 +915,63 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                   const goalOption = GOAL_OPTIONS.find(g => g.id === selectedGoal);
                   return goalOption ? goalOption.recommendedTypes.includes(type.id) : true;
                 })
-                .map((type) => (
-                <div
-                  key={type.id}
-                  className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                    selectedContentType === type.id
-                      ? "border-primary bg-primary/5"
-                      : "hover:border-primary/50"
-                  }`}
-                  onClick={() => setSelectedContentType(type.id)}
-                >
-                  <div className="flex items-start gap-3">
-                    <RadioGroupItem value={type.id} id={type.id} className="mt-1" />
-                    <div className="flex-1">
-                      <Label htmlFor={type.id} className="font-medium cursor-pointer">
-                        {type.name}
-                      </Label>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {type.description}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1 italic">
-                        例如：{type.example}
-                      </p>
+                .map((type) => {
+                  // 查找類型推薦數據
+                  const recommendation = typeRecommendationData?.recommendations?.find(
+                    r => r.contentType === type.id
+                  );
+                  const isRecommended = recommendation?.isRecommended || false;
+                  const matchCount = recommendation?.count || 0;
+                  
+                  return (
+                    <div
+                      key={type.id}
+                      className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                        selectedContentType === type.id
+                          ? "border-primary bg-primary/5"
+                          : isRecommended
+                            ? "border-amber-300 bg-amber-50/50 dark:bg-amber-900/10 hover:border-amber-400"
+                            : "hover:border-primary/50"
+                      }`}
+                      onClick={() => setSelectedContentType(type.id)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <RadioGroupItem value={type.id} id={type.id} className="mt-1" />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor={type.id} className="font-medium cursor-pointer">
+                              {type.name}
+                            </Label>
+                            {/* 推薦標記 */}
+                            {isRecommended && (
+                              <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-medium px-2 py-0.5">
+                                ⭐ 推薦
+                              </Badge>
+                            )}
+                            {/* 相似爆款數量 */}
+                            {matchCount > 0 && (
+                              <Badge variant="outline" className="text-xs">
+                                {matchCount} 篇相似爆款
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {type.description}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1 italic">
+                            例如：{type.example}
+                          </p>
+                          {/* 推薦原因 */}
+                          {recommendation?.reason && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                              💡 {recommendation.reason}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))}
+                  );
+                })}
             </RadioGroup>
 
             <div className="flex gap-3 pt-4">
@@ -1020,6 +1073,19 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* 多樣性提示 */}
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg p-3 text-sm border border-purple-100 dark:border-purple-800">
+              <div className="flex items-start gap-2">
+                <span className="text-lg">✨</span>
+                <div>
+                  <span className="font-medium text-purple-700 dark:text-purple-300">加入你自己的經歷</span>
+                  <p className="text-xs text-purple-600/80 dark:text-purple-400/80 mt-1">
+                    這些開頭只是參考，建議加入你的真實故事、具體數字或獨特觀點，讓內容更有你的個人風格
+                  </p>
+                </div>
+              </div>
+            </div>
+            
             {/* AI 痕跡分數說明 */}
             <div className="bg-muted/30 rounded-lg p-3 text-sm">
               <div className="flex items-center gap-2 mb-2">
@@ -1114,6 +1180,12 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                   {/* 頂部：風格標籤和自然度 */}
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
+                      {/* 推薦標記 */}
+                      {hook.isRecommended && (
+                        <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-medium px-2 py-0.5">
+                          ⭐ 推薦
+                        </Badge>
+                      )}
                       <Badge variant="outline" className="text-sm font-medium px-3 py-1 bg-background">
                         <span className="mr-1.5">{categoryDisplay.emoji}</span>
                         {categoryDisplay.label}
@@ -1153,6 +1225,14 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                         {hook.aiLevel === 'has_ai_traces' && '有一些 AI 痕跡，建議微調後使用'}
                         {hook.aiLevel === 'obvious_ai' && 'AI 感較重，建議選擇其他選項或進行修改'}
                       </span>
+                    </div>
+                  )}
+                  
+                  {/* 爆款參考提示 */}
+                  {hook.isRecommended && hook.similarViralExample && (
+                    <div className="mt-3 flex items-start gap-2 text-xs text-blue-600 bg-blue-50 rounded-md px-3 py-2">
+                      <span>💡</span>
+                      <span>參考爆款：「{hook.similarViralExample.slice(0, 50)}...」</span>
                     </div>
                   )}
                 </div>
@@ -1319,6 +1399,19 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                 )}
               </div>
             )}
+            
+            {/* 多樣性提示 - 避免內容同質化 */}
+            <div className="bg-gradient-to-r from-amber-500/5 to-amber-500/10 rounded-lg p-4 border border-amber-500/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <span className="font-medium text-amber-700 dark:text-amber-400">讓內容更像你</span>
+              </div>
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p>💡 加入你自己的經歷和故事，讓內容更真實</p>
+                <p>💡 使用你平時的口頭禅和說話方式</p>
+                <p>💡 AI 生成的內容是參考，你的獨特觀點才是精髓</p>
+              </div>
+            </div>
             
             {/* 草稿內容 */}
             <div className="bg-muted/30 rounded-lg p-4">
