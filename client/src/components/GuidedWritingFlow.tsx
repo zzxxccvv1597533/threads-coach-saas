@@ -35,6 +35,7 @@ import {
 import { ALL_CONTENT_TYPES_V2 } from "@shared/content-types-v2";
 import { InspirationStudio } from "./InspirationStudio";
 import { GuidedQuestionsFlow } from "./GuidedQuestionsFlow";
+import { InteractiveQA } from "./InteractiveQA";
 
 interface GuidedWritingFlowProps {
   ipProfile: {
@@ -116,6 +117,8 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
   // Step 0: 靈感狀態
   const [hasInspiration, setHasInspiration] = useState<boolean | null>(null);
   const [partialIdea, setPartialIdea] = useState(""); // 有一點想法時的輸入
+  const [inlineTopics, setInlineTopics] = useState<Array<{ id: number; text: string; source: string; reason: string }>>([]); // 直接在 Step 0 顯示的選題
+  const [showInlineTopics, setShowInlineTopics] = useState(false); // 是否顯示內嵌選題
   
   // Step 1: 選目標（目的導向）
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
@@ -140,6 +143,9 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
   // v4.0: 問答流程狀態
   const [useGuidedQuestions, setUseGuidedQuestions] = useState(false);
   const [writingSessionId, setWritingSessionId] = useState<number | null>(null);
+  
+  // v4.1: 互動式問答狀態
+  const [useInteractiveQA, setUseInteractiveQA] = useState(false);
   
   // Step 5: Hook 選項 - 整合新的 Opener Generator
   
@@ -213,6 +219,26 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
   );
 
   // API mutations
+  
+  // 內嵌選題生成（Step 0 直接顯示）
+  const generateInlineTopics = trpc.inspiration.generateTopics.useMutation({
+    onSuccess: (data) => {
+      if (data.topics && data.topics.length > 0) {
+        setInlineTopics(data.topics.map((t: { text: string; source: string; reason: string }, i: number) => ({
+          id: i + 1,
+          text: t.text,
+          source: t.source,
+          reason: t.reason,
+        })));
+        setShowInlineTopics(true);
+        toast.success("選題已生成！");
+      }
+    },
+    onError: () => {
+      toast.error("生成選題失敗，請稍後再試");
+    },
+  });
+  
   const brainstorm = trpc.ai.brainstorm.useMutation({
     onSuccess: (data) => {
       setTopicSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
@@ -698,27 +724,119 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
             </div>
 
             {/* 確認按鈕 */}
-            <Button 
-              className="w-full mt-4"
-              disabled={hasInspiration === null && !useInspirationStudio}
-              onClick={() => {
-                if (hasInspiration === true) {
-                  // 有靈感，直接進入選目標
-                  setCurrentStep(1);
-                } else if (hasInspiration === false && partialIdea) {
-                  // 有一點想法，帶入想法後進入靈感工作室
-                  setTopicHint(partialIdea);
-                  setUseInspirationStudio(true);
-                  setCurrentStep(2);
-                } else if (useInspirationStudio) {
-                  // 沒靈感，直接進入靈感工作室
-                  setCurrentStep(2);
-                }
-              }}
-            >
-              {hasInspiration === true ? "開始寫文" : hasInspiration === false ? "讓 AI 幫我延伸靈感" : "給我 5 個選題"}
-              <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
+            {!showInlineTopics && (
+              <Button 
+                className="w-full mt-4"
+                disabled={(hasInspiration === null && !useInspirationStudio) || generateInlineTopics.isPending}
+                onClick={() => {
+                  if (hasInspiration === true) {
+                    // 有靈感，直接進入選目標
+                    setCurrentStep(1);
+                  } else if (hasInspiration === false && partialIdea) {
+                    // 有一點想法，直接在同一頁生成選題
+                    generateInlineTopics.mutate({ userIdea: partialIdea });
+                  } else if (useInspirationStudio) {
+                    // 沒靈感，直接在同一頁生成選題
+                    generateInlineTopics.mutate({});
+                  }
+                }}
+              >
+                {generateInlineTopics.isPending ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                    AI 正在生成選題...
+                  </>
+                ) : (
+                  <>
+                    {hasInspiration === true ? "開始寫文" : hasInspiration === false ? "讓 AI 幫我延伸靈感" : "給我 5 個選題"}
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </>
+                )}
+              </Button>
+            )}
+            
+            {/* 內嵌選題顯示區域 */}
+            {showInlineTopics && inlineTopics.length > 0 && (
+              <div className="mt-6 space-y-4">
+                <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <Lightbulb className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-amber-800">
+                      <span className="font-medium">什麼是好選題？</span>
+                      <span className="text-amber-700 ml-1">一個具體的情境描述，讓人想知道「然後呢？」</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <p className="text-sm text-muted-foreground">
+                  根據你的想法，推薦以下選題：
+                </p>
+                
+                <div className="space-y-3">
+                  {inlineTopics.map((topic) => (
+                    <div
+                      key={topic.id}
+                      className="border rounded-xl p-4 cursor-pointer transition-all hover:bg-muted/30 hover:border-primary/50"
+                      onClick={() => {
+                        // 選擇選題後進入下一步
+                        setSelectedTopic({
+                          title: topic.text,
+                          audience: '',
+                          contentType: '',
+                          hook: '',
+                        });
+                        setTopicHint(topic.text);
+                        setCurrentStep(1); // 進入選目標
+                        toast.success("已選擇選題！");
+                      }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-sm font-medium text-primary">{topic.id}</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-foreground">{topic.text}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge variant="outline" className={
+                              topic.source === 'pain_point' ? 'bg-red-50 text-red-700 border-red-200' :
+                              topic.source === 'ip_profile' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                              'bg-amber-50 text-amber-700 border-amber-200'
+                            }>
+                              {topic.source === 'pain_point' ? '🎯 痛點矩陣' :
+                               topic.source === 'ip_profile' ? '👤 IP 人設' :
+                               '🔥 爆款參考'}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground truncate">{topic.reason}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* 換一批按鈕 */}
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    generateInlineTopics.mutate({ userIdea: partialIdea || undefined });
+                  }}
+                  disabled={generateInlineTopics.isPending}
+                >
+                  {generateInlineTopics.isPending ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                      生成中...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-1" />
+                      換一批選題
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -1194,8 +1312,23 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       {/* Step 5: 填寫專屬欄位 - v4.0 整合問答引導 */}
       {currentStep === 5 && (
         <>
-          {/* v4.0: 問答引導模式 */}
-          {useGuidedQuestions ? (
+          {/* v4.1: 互動式問答模式 */}
+          {useInteractiveQA ? (
+            <InteractiveQA
+              topic={selectedTopic?.title || topicHint || ''}
+              contentType={selectedContentType}
+              onComplete={(material) => {
+                // 將問答結果轉換為 typeInputs
+                setTypeInputs(prev => ({ ...prev, material }));
+                setUseInteractiveQA(false);
+                // 直接進入下一步生成 Hook
+                handleGenerateHooks();
+              }}
+              onSkip={() => {
+                setUseInteractiveQA(false);
+              }}
+            />
+          ) : useGuidedQuestions ? (
             <GuidedQuestionsFlow
               userIdea={selectedTopic?.title}
               contentType={selectedContentType}
@@ -1225,22 +1358,22 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* v4.0: 問答引導入口 */}
+                {/* v4.1: 互動式問答引導入口 */}
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                   <div className="flex items-start gap-3">
                     <MessageSquare className="w-5 h-5 text-blue-600 mt-0.5" />
                     <div className="flex-1">
                       <div className="font-medium text-blue-800 dark:text-blue-300">不知道怎麼填？</div>
                       <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
-                        讓 AI 問你幾個問題，幫你整理思緒
+                        讓 AI 像朋友一樣問你幾個問題，幫你整理寫文素材
                       </p>
                       <Button
                         variant="outline"
                         size="sm"
                         className="mt-2 border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900/30"
-                        onClick={() => setUseGuidedQuestions(true)}
+                        onClick={() => setUseInteractiveQA(true)}
                       >
-                        開始問答引導
+                        開始互動式問答
                         <ChevronRight className="w-4 h-4 ml-1" />
                       </Button>
                     </div>

@@ -6881,6 +6881,92 @@ ${usedTopicsContext}
         const questions = GUIDED_QUESTIONS[input.contentType] || GUIDED_QUESTIONS.story;
         return { questions };
       }),
+    
+    // AI 動態生成下一個問題（互動式問答）
+    generateNextQuestion: protectedProcedure
+      .input(z.object({
+        topic: z.string(),
+        contentType: z.string(),
+        previousQA: z.array(z.object({
+          question: z.string(),
+          answer: z.string(),
+        })).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { topic, contentType, previousQA = [] } = input;
+        
+        // 如果已經問了 3 個問題，建議結束
+        if (previousQA.length >= 3) {
+          return {
+            question: null,
+            suggestComplete: true,
+            message: '資訊已經足夠了，可以開始生成文案了！',
+          };
+        }
+        
+        // 建構對話歷史
+        const qaHistory = previousQA.map(qa => `問：${qa.question}\n答：${qa.answer}`).join('\n\n');
+        
+        // 根據貼文類型建構提示
+        const typeContext = {
+          story: '故事型貼文需要了解：事件經過、主角、情緒轉折、啟發',
+          knowledge: '知識型貼文需要了解：要解決的問題、重點概念、實際案例',
+          viewpoint: '觀點型貼文需要了解：核心立場、支持論據、反駁的聲音',
+          casual: '閒聊型貼文需要了解：今天發生什麼、你的感受、想分享的心情',
+          contrast: '反差型貼文需要了解：大家的誤解、你的觀點、轉折點',
+          dialogue: '對話型貼文需要了解：誰問的、問什麼、你怎麼回答',
+          diagnosis: '診斷型貼文需要了解：要診斷的症狀、背後原因、解決方案',
+          summary: '整理型貼文需要了解：要整理的主題、重點有哪些、實用性',
+          quote: '金句型貼文需要了解：要引用的句子、為什麼印象深刻、你的解讀',
+          question: '問答型貼文需要了解：要問讀者什麼、為什麼想問、期待的回應',
+          poll: '投票型貼文需要了解：讓讀者選什麼、選項有哪些、為什麼想投票',
+        };
+        
+        const prompt = `你是一個温暖的寫作教練，正在幫助用戶收集寫文素材。
+
+用戶的選題：${topic}
+貼文類型：${contentType}
+${typeContext[contentType as keyof typeof typeContext] || typeContext.story}
+
+${qaHistory ? `已經問過的問題：\n${qaHistory}\n\n` : ''}請根據以上資訊，生成下一個問題。
+
+要求：
+1. 問題要口語化，像朋友聊天一樣
+2. 問題要具體，讓用戶容易回答
+3. 問題要有助於寫出更好的文案
+4. 不要重複已經問過的內容
+5. 只輸出一個問題，不要其他內容`;
+        
+        try {
+          const response = await invokeLLM({
+            messages: [
+              { role: 'system', content: '你是一個温暖的寫作教練，請用口語化的方式提問。' },
+              { role: 'user', content: prompt },
+            ],
+          });
+          
+          const content = response.choices[0]?.message?.content;
+          const question = typeof content === 'string' ? content.trim() : null;
+          
+          return {
+            question,
+            suggestComplete: false,
+            questionNumber: previousQA.length + 1,
+          };
+        } catch (error) {
+          console.error('generateNextQuestion error:', error);
+          // 如果 AI 失敗，回傳預設問題
+          const fallbackQuestions = GUIDED_QUESTIONS[contentType] || GUIDED_QUESTIONS.story;
+          const nextIndex = previousQA.length;
+          const question = fallbackQuestions[nextIndex] || null;
+          
+          return {
+            question,
+            suggestComplete: !question,
+            questionNumber: previousQA.length + 1,
+          };
+        }
+      }),
   }),
 });
 
