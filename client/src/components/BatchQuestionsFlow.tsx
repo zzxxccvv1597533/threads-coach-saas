@@ -16,6 +16,7 @@ import { trpc } from "@/lib/trpc";
 interface BatchQuestionsFlowProps {
   topic: string;
   contentType: string;
+  creativeIntent?: 'pure_personal' | 'light_connection' | 'full_professional';
   onComplete: (answers: Record<string, string>) => void;
   onSkip: () => void;
 }
@@ -28,7 +29,7 @@ interface Question {
   example?: string;
 }
 
-export function BatchQuestionsFlow({ topic, contentType, onComplete, onSkip }: BatchQuestionsFlowProps) {
+export function BatchQuestionsFlow({ topic, contentType, creativeIntent = 'light_connection', onComplete, onSkip }: BatchQuestionsFlowProps) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -51,8 +52,8 @@ export function BatchQuestionsFlow({ topic, contentType, onComplete, onSkip }: B
 
   // 初始化時生成問題
   useEffect(() => {
-    generateQuestions.mutate({ topic, contentType });
-  }, [topic, contentType]);
+    generateQuestions.mutate({ topic, contentType, creativeIntent });
+  }, [topic, contentType, creativeIntent]);
 
   // 預設問題（根據貼文類型）
   const getDefaultQuestions = (type: string): Question[] => {

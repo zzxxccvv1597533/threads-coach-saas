@@ -3025,3 +3025,136 @@
 - [x] 簡化 AI 教練流程，改為一次性問答模式
 - [x] 調整 AI 教練口語風格為專業教練模式
 - [x] 測試並驗證優化效果
+
+
+## 系統優化 - 貼文生成專業導入控制 (2026-01-31)
+
+### 問題分析
+- [ ] 貼文生成過度注入工作相關內容：用戶輸入純粹的個人故事，系統卻硬轉成工作相關主題
+- [ ] 用戶輸入的資訊被忽略：系統沒有尊重用戶已輸入的故事細節
+- [ ] 缺乏可控選擇：用戶無法選擇是否要加入專業導入
+
+### 優化項目
+- [ ] 檢查現有提示詞邏輯，找出過度注入專業內容的原因
+- [ ] 設計「專業導入程度」選擇機制（純個人故事 / 輕度專業連結 / 完整專業導入）
+- [ ] 修改提示詞，讓用戶可以控制專業內容的注入程度
+- [ ] 確保用戶輸入的資訊被優先使用
+
+
+## 報告修訂 - 教練模式升級風險評估報告調整 (2026-01-31)
+
+### 需要移除的項目
+- [x] 移除 1.3 建議暗示性影響的緩解措施（保留建議機制，引導模式下學員需要）
+- [x] 移除 1.4 學習理論驗證的短期/長期措施（暫不放入計劃）
+- [x] 移除「讓 AI 幫我選」按鈕選項
+- [x] 移除「這是我自己寫的」誤判回饋按鈕
+
+### 需要新增的報告
+- [x] 重新撰寫風險評估報告（修訂版）
+- [x] 撰寫詳細的優化實作報告
+
+
+## 教練模式升級實作 (2026-01-31)
+
+### Phase 0：基礎架構
+- [x] 建立 CreativeIntent 類型定義 (shared/creative-intent.ts)
+- [x] 建立 prompt-builder.ts 模式開關函數
+- [x] 建立各模式的 prompt 配置
+
+### Phase 1-A1：創作意圖確認步驟
+- [x] 新增 CreativeIntentStep 組件
+- [x] 整合到 GuidedWritingFlow 流程中
+- [x] 傳遞 creativeIntent 到後續步驟
+
+### Phase 1-A2：合併靈感工作庫與選題
+- [x] 簡化 Step 0 和 Step 2 的重複邏輯
+- [x] 整合選題流程（已在之前的優化中完成）
+
+### Phase 1-A3：AI 教練問答優化
+- [x] 更新 generateBatchQuestions 提示詞為專業教練口語
+- [x] 優化 BatchQuestionsFlow UI 顯示教練開場白
+- [x] 顯示每個問題的「為什麼問」和「範例」
+- [x] 根據 creativeIntent 動態調整問題方向
+
+### Phase 1-A4：專業連結建議區塊
+- [x] 新增 generateProfessionalSuggestions API
+- [x] 新增 ProfessionalSuggestionsPanel 組件
+- [ ] 整合到內容生成後的流程
+
+### Phase 1-B：提示詞系統重構
+- [ ] 更新 generateDraft 使用 buildPromptByMode
+- [ ] 根據 creativeIntent 動態調整資料注入
+- [ ] 測試各模式的生成效果
+
+
+## 教練模式升級實作 (2026-01-31)
+
+### Phase 0：建立 prompt 模式開關與類型定義
+- [x] 建立 CreativeIntent 類型定義 (shared/creative-intent.ts)
+- [x] 建立 prompt-builder.ts 模式開關函數
+- [x] 建立各模式的 prompt 配置
+
+### Phase 1-A1：創作意圖確認步驟
+- [x] 新增 CreativeIntentStep 組件
+- [x] 整合到 GuidedWritingFlow 流程中
+- [x] 傳遞 creativeIntent 到後續步驟
+
+### Phase 1-A2：合併靈感工作庫與選題
+- [x] 簡化 Step 0 和 Step 2 的重複邏輯
+- [x] 整合選題流程
+
+### Phase 1-A3：AI 教練問答優化
+- [x] 更新 generateBatchQuestions 提示詞為專業教練口語
+- [x] 優化 BatchQuestionsFlow UI 顯示教練開場白
+- [x] 顯示每個問題的「為什麼問」和「範例」
+- [x] 根據 creativeIntent 動態調整問題方向
+
+### Phase 1-A4：專業連結建議區塊
+- [x] 新增 generateProfessionalSuggestions API
+- [x] 新增 ProfessionalSuggestionsPanel 組件
+
+### Phase 1-B：提示詞系統重構
+- [x] 更新 generateDraft 支援 creativeIntent 參數
+- [x] 根據 creativeIntent 動態控制 IP 地基注入
+- [x] 根據 creativeIntent 動態控制成功因素注入
+
+
+## 系統優化 Phase 13 - 教練模式升級 (2026-01-31) ✅
+
+### Phase 0：建立 prompt 模式開關與類型定義
+- [x] 建立 CreativeIntent 類型定義 (shared/creative-intent.ts)
+- [x] 建立 prompt-builder.ts 模式開關函數
+- [x] 建立各模式的 prompt 配置
+
+### Phase 1-A1：創作意圖確認步驟
+- [x] 新增 CreativeIntentStep 組件
+- [x] 整合到 GuidedWritingFlow 流程中
+- [x] 傳遞 creativeIntent 到後續步驟
+
+### Phase 1-A2：合併靈感工作庫與選題
+- [x] 簡化 Step 0 和 Step 2 的重複邏輯
+- [x] 整合選題流程
+
+### Phase 1-A3：AI 教練問答優化
+- [x] 更新 generateBatchQuestions 提示詞為專業教練口語
+- [x] 優化 BatchQuestionsFlow UI 顯示教練開場白
+- [x] 顯示每個問題的「為什麼問」和「範例」
+- [x] 根據 creativeIntent 動態調整問題方向
+
+### Phase 1-A4：專業連結建議區塊
+- [x] 新增 generateProfessionalSuggestions API
+- [x] 新增 ProfessionalSuggestionsPanel 組件
+
+### Phase 1-B：提示詞系統重構
+- [x] 更新 generateDraft 支援 creativeIntent 參數
+- [x] 根據 creativeIntent 動態控制 IP 地基注入
+- [x] 根據 creativeIntent 動態控制成功因素注入
+
+### 測試與驗證
+- [x] TypeScript 編譯測試
+- [x] 單元測試 (491 tests passed)
+- [x] 端到端流程測試
+  - [x] 創作意圖步驟顯示正常
+  - [x] AI 教練一次性問答正常
+  - [x] 純粹分享模式不注入 IP 地基
+  - [x] 貼文生成成功（預估 91 分）

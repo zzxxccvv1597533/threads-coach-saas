@@ -37,6 +37,8 @@ import { InspirationStudio } from "./InspirationStudio";
 import { GuidedQuestionsFlow } from "./GuidedQuestionsFlow";
 import { InteractiveQA } from "./InteractiveQA";
 import { BatchQuestionsFlow } from "./BatchQuestionsFlow";
+import { CreativeIntentStep } from "./CreativeIntentStep";
+import { type CreativeIntent } from "@shared/creative-intent";
 
 interface GuidedWritingFlowProps {
   ipProfile: {
@@ -100,15 +102,16 @@ const GOAL_OPTIONS = [
 // 流程步驟定義（新增靈感狀態選擇步驟）
 const FLOW_STEPS = [
   { id: 0, name: "靈感狀態", description: "你現在有靈感嗎？" },
-  { id: 1, name: "選目標", description: "你想達成什麼？" },
-  { id: 2, name: "選題", description: "AI 根據你的人設推薦主題" },
-  { id: 3, name: "選受眾", description: "選擇這篇文章要對誰說" },
-  { id: 4, name: "選類型", description: "選擇貼文呈現方式" },
-  { id: 5, name: "填資料", description: "填寫關鍵資訊" },
-  { id: 6, name: "選開頭", description: "選擇最吸引人的開頭" },
-  { id: 7, name: "生成全文", description: "AI 生成完整貼文" },
-  { id: 8, name: "對話修改", description: "與 AI 對話調整" },
-  { id: 9, name: "人味潤飾", description: "加入個人風格" },
+  { id: 1, name: "創作意圖", description: "這篇貼文你想..." },
+  { id: 2, name: "選目標", description: "你想達成什麼？" },
+  { id: 3, name: "選題", description: "AI 根據你的人設推薦主題" },
+  { id: 4, name: "選受眾", description: "選擇這篇文章要對誰說" },
+  { id: 5, name: "選類型", description: "選擇貼文呈現方式" },
+  { id: 6, name: "填資料", description: "填寫關鍵資訊" },
+  { id: 7, name: "選開頭", description: "選擇最吸引人的開頭" },
+  { id: 8, name: "生成全文", description: "AI 生成完整貼文" },
+  { id: 9, name: "對話修改", description: "與 AI 對話調整" },
+  { id: 10, name: "人味潤飾", description: "加入個人風格" },
 ];
 
 export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, onComplete, onNavigateToIp }: GuidedWritingFlowProps) {
@@ -117,6 +120,9 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
   
   // Step 0: 靈感狀態
   const [hasInspiration, setHasInspiration] = useState<boolean | null>(null);
+  
+  // Step 1: 創作意圖（新增）
+  const [creativeIntent, setCreativeIntent] = useState<CreativeIntent | null>(null);
   const [partialIdea, setPartialIdea] = useState(""); // 有一點想法時的輸入
   const [inlineTopics, setInlineTopics] = useState<Array<{ id: number; text: string; source: string; reason: string }>>([]); // 直接在 Step 0 顯示的選題
   const [showInlineTopics, setShowInlineTopics] = useState(false); // 是否顯示內嵌選題
@@ -272,7 +278,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       }));
       console.log('[generateOpeners] Transformed hooks:', transformedHooks);
       setHookOptions(transformedHooks);
-      setCurrentStep(6);
+      setCurrentStep(7); // Step 7: 選開頭
       toast.success(`已生成 ${data.candidates.length} 個開頭選項！`);
     },
     onError: (error) => {
@@ -305,7 +311,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         candidateId: undefined,
         templateCategory: undefined,
       })) : []);
-      setCurrentStep(6);
+      setCurrentStep(7); // Step 7: 選開頭
       toast.success("Hook 選項已生成！");
     },
     onError: () => {
@@ -325,7 +331,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       if (data.styleMatch) {
         setStyleMatch(data.styleMatch);
       }
-      setCurrentStep(7);
+      setCurrentStep(8); // Step 8: 生成結果
       toast.success("草稿已生成！");
     },
     onError: (error) => {
@@ -394,7 +400,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         }
       }
     }
-    setCurrentStep(3);
+    setCurrentStep(4); // 選題後進入選受眾
   };
 
   // 處理生成 Hook - 使用新的 Opener Generator
@@ -467,6 +473,8 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       flexibleInput: Object.keys(filledFlexibleInputs).length > 0 ? filledFlexibleInputs : undefined,
       // 傳遞目標受眾 ID
       targetAudienceId: selectedAudienceId || undefined,
+      // 傳遞創作意圖
+      creativeIntent: creativeIntent || undefined,
     });
   };
 
@@ -731,8 +739,8 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                 disabled={(hasInspiration === null && !useInspirationStudio) || generateInlineTopics.isPending}
                 onClick={() => {
                   if (hasInspiration === true) {
-                    // 有靈感，直接進入選類型（簡化流程）
-                    setCurrentStep(4);
+                    // 有靈感，進入創作意圖步驟
+                    setCurrentStep(1);
                   } else if (hasInspiration === false && partialIdea) {
                     // 有一點想法，直接在同一頁生成選題
                     generateInlineTopics.mutate({ userIdea: partialIdea });
@@ -779,7 +787,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                       key={topic.id}
                       className="border rounded-xl p-4 cursor-pointer transition-all hover:bg-muted/30 hover:border-primary/50"
                       onClick={() => {
-                        // 選擇選題後進入下一步
+                        // 選擇選題後進入創作意圖步驟
                         setSelectedTopic({
                           title: topic.text,
                           audience: '',
@@ -787,7 +795,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                           hook: '',
                         });
                         setTopicHint(topic.text);
-                        setCurrentStep(4); // 選題後直接跳到選類型（簡化流程）
+                        setCurrentStep(1); // 選題後進入創作意圖步驟
                         toast.success("已選擇選題！");
                       }}
                     >
@@ -842,8 +850,26 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         </Card>
       )}
 
-      {/* Step 1: 選目標（目的導向選擇器） */}
+      {/* Step 1: 創作意圖確認（新增） */}
       {currentStep === 1 && (
+        <CreativeIntentStep
+          selectedIntent={creativeIntent}
+          onSelectIntent={setCreativeIntent}
+          onConfirm={() => {
+            // 根據創作意圖決定下一步
+            if (creativeIntent === 'pure_personal') {
+              // 純粹分享：跳過選目標，直接進入選類型
+              setCurrentStep(5);
+            } else {
+              // 其他意圖：進入選目標步驟
+              setCurrentStep(2);
+            }
+          }}
+        />
+      )}
+
+      {/* Step 2: 選目標（目的導向選擇器） */}
+      {currentStep === 2 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -914,7 +940,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
             <Button 
               className="w-full mt-4"
               disabled={!selectedGoal}
-              onClick={() => setCurrentStep(2)}
+              onClick={() => setCurrentStep(3)}
             >
               確認目標
               <ChevronRight className="w-4 h-4 ml-1" />
@@ -926,7 +952,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => {
                   setSelectedGoal(null);
-                  setCurrentStep(2);
+                  setCurrentStep(3);
                 }}
               >
                 我只是想發文，跳過這步
@@ -936,8 +962,8 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         </Card>
       )}
 
-      {/* Step 2: 選題 - v4.0 整合靈感工作室 */}
-      {currentStep === 2 && (
+      {/* Step 3: 選題 - v4.0 整合靈感工作室 */}
+      {currentStep === 3 && (
         <>
           {/* 靈感工作室模式 */}
           {useInspirationStudio ? (
@@ -951,7 +977,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                   hook: topic.text,
                 });
                 setUseInspirationStudio(false);
-                setCurrentStep(3);
+                setCurrentStep(4); // 選題後進入選受眾
               }}
               onClose={() => setUseInspirationStudio(false)}
               initialIdea={partialIdea || topicHint || undefined} // 傳入用戶的想法
@@ -1074,8 +1100,8 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         </>
       )}
 
-      {/* Step 3: 選擇目標受眾 */}
-      {currentStep === 3 && (
+      {/* Step 4: 選擇目標受眾 */}
+      {currentStep === 4 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -1169,13 +1195,13 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
             )}
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(2)}>
+              <Button variant="outline" onClick={() => setCurrentStep(3)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 上一步
               </Button>
               <Button 
                 className="flex-1"
-                onClick={() => setCurrentStep(4)}
+                onClick={() => setCurrentStep(5)}
               >
                 下一步
                 <ChevronRight className="w-4 h-4 ml-1" />
@@ -1185,8 +1211,8 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         </Card>
       )}
 
-      {/* Step 4: 選擇文章類型（根據目標篩選） */}
-      {currentStep === 4 && (
+      {/* Step 5: 選擇文章類型（根據目標篩選） */}
+      {currentStep === 5 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -1293,14 +1319,14 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
             </RadioGroup>
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(3)}>
+              <Button variant="outline" onClick={() => setCurrentStep(4)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 上一步
               </Button>
               <Button 
                 className="flex-1"
                 disabled={!selectedContentType}
-                onClick={() => setCurrentStep(5)}
+                onClick={() => setCurrentStep(6)}
               >
                 下一步
                 <ChevronRight className="w-4 h-4 ml-1" />
@@ -1310,14 +1336,15 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         </Card>
       )}
 
-      {/* Step 5: 填寫專屬欄位 - v4.0 整合問答引導 */}
-      {currentStep === 5 && (
+      {/* Step 6: 填寫專屬欄位 - v4.0 整合問答引導 */}
+      {currentStep === 6 && (
         <>
           {/* v4.2: 一次性問答模式 */}
           {useInteractiveQA ? (
             <BatchQuestionsFlow
               topic={selectedTopic?.title || topicHint || ''}
               contentType={selectedContentType}
+              creativeIntent={creativeIntent || 'light_connection'}
               onComplete={(answers: Record<string, string>) => {
                 // 將問答結果組合成素材
                 const material = Object.entries(answers)
@@ -1410,7 +1437,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                 ))}
 
                 <div className="flex gap-3 pt-4">
-                  <Button variant="outline" onClick={() => setCurrentStep(4)}>
+                  <Button variant="outline" onClick={() => setCurrentStep(5)}>
                     <ChevronLeft className="w-4 h-4 mr-1" />
                     上一步
                   </Button>
@@ -1438,8 +1465,8 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         </>
       )}
 
-      {/* Step 6: Hook 選項（已優化：直接生成多種風格供選擇） */}
-      {currentStep === 6 && (
+      {/* Step 7: Hook 選項（已優化：直接生成多種風格供選擇） */}
+      {currentStep === 7 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -1620,7 +1647,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
             })}
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(5)}>
+              <Button variant="outline" onClick={() => setCurrentStep(6)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 上一步
               </Button>
@@ -1646,18 +1673,18 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         </Card>
       )}
 
-      {/* Step 7 & 8: 生成結果與對話修改 */}
-      {(currentStep === 7 || currentStep === 8) && draftContent && (
+      {/* Step 8 & 9: 生成結果與對話修改 */}
+      {(currentStep === 8 || currentStep === 9) && draftContent && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
                 {currentStep}
               </span>
-              {currentStep === 7 ? "生成結果" : "對話修改"}
+              {currentStep === 8 ? "生成結果" : "對話修改"}
             </CardTitle>
             <CardDescription>
-              {currentStep === 7 ? "這是 AI 生成的草稿，你可以進行對話修改" : "告訴 AI 你想怎麼調整"}
+              {currentStep === 8 ? "這是 AI 生成的草稿，你可以進行對話修改" : "告訴 AI 你想怎麼調整"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -1860,13 +1887,13 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(6)}>
+              <Button variant="outline" onClick={() => setCurrentStep(7)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 重新選開頭
               </Button>
               <Button 
                 className="flex-1"
-                onClick={() => setCurrentStep(9)}
+                onClick={() => setCurrentStep(10)}
               >
                 下一步：人味潤飾
                 <ChevronRight className="w-4 h-4 ml-1" />
@@ -1876,8 +1903,8 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         </Card>
       )}
 
-      {/* Step 9: 人味潤飾 */}
-      {currentStep === 9 && (
+      {/* Step 10: 人味潤飾 */}
+      {currentStep === 10 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -1922,7 +1949,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(8)}>
+              <Button variant="outline" onClick={() => setCurrentStep(9)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 繼續修改
               </Button>
