@@ -1186,7 +1186,8 @@ export const topicHistory = mysqlTable("topic_history", {
     "viral_db",       // 來自爆款資料庫
     "user_input",     // 用戶自己輸入
     "brainstorm",     // 來自腦力激盪
-    "general_traffic" // 泛流量選題（生活觀察、社會現象等）
+    "general_traffic", // 泛流量選題（生活觀察、社會現象等）
+    "user_idea"       // 用戶想法延伸（從用戶輸入的想法延伸而來）
   ]).default("pain_matrix"),
   // 關聯資訊
   audience: varchar("audience", { length: 128 }), // 目標受眾

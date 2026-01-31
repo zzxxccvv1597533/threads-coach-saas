@@ -1,0 +1,1 @@
+ALTER TABLE `topic_history` MODIFY COLUMN `topicSource` enum('pain_matrix','ip_data','viral_db','user_input','brainstorm','general_traffic','user_idea') DEFAULT 'pain_matrix';

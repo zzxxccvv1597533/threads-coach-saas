@@ -856,12 +856,15 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
           selectedIntent={creativeIntent}
           onSelectIntent={setCreativeIntent}
           onConfirm={() => {
-            // 根據創作意圖決定下一步
+            // 根據創作意圖和是否已選題決定下一步
             if (creativeIntent === 'pure_personal') {
-              // 純粹分享：跳過選目標，直接進入選類型
+              // 純粹分享：跳過選目標和選受眾，直接進入選類型
               setCurrentStep(5);
+            } else if (selectedTopic) {
+              // 已經有選題了（從 Step 0 選的）：跳過 Step 3 選題，直接進入 Step 4 選受眾
+              setCurrentStep(4);
             } else {
-              // 其他意圖：進入選目標步驟
+              // 沒有選題：進入選目標步驟
               setCurrentStep(2);
             }
           }}
@@ -1195,7 +1198,15 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
             )}
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(3)}>
+              <Button variant="outline" onClick={() => {
+                // 如果用戶是從 Step 0 選題後直接跳到這裡的，上一步應該回到 Step 1（創作意圖）
+                // 否則回到 Step 3（選題）
+                if (selectedTopic && hasInspiration !== true) {
+                  setCurrentStep(1);
+                } else {
+                  setCurrentStep(3);
+                }
+              }}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 上一步
               </Button>
@@ -1319,7 +1330,15 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
             </RadioGroup>
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(4)}>
+              <Button variant="outline" onClick={() => {
+                // 如果是純粹分享模式，上一步回到 Step 1（創作意圖）
+                // 否則回到 Step 4（選受眾）
+                if (creativeIntent === 'pure_personal') {
+                  setCurrentStep(1);
+                } else {
+                  setCurrentStep(4);
+                }
+              }}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 上一步
               </Button>
@@ -1337,9 +1356,10 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       )}
 
       {/* Step 6: 填寫專屬欄位 - v4.0 整合問答引導 */}
+      {/* 引導模式下預設進入 AI 教練問答，不顯示手動填寫表單 */}
       {currentStep === 6 && (
         <>
-          {/* v4.2: 一次性問答模式 */}
+          {/* v4.2: 一次性問答模式（引導模式下預設啟用） */}
           {useInteractiveQA ? (
             <BatchQuestionsFlow
               topic={selectedTopic?.title || topicHint || ''}
@@ -1357,7 +1377,9 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                 handleGenerateHooks();
               }}
               onSkip={() => {
+                // Issue #3 修復：跳過問答時直接生成開頭，而不是顯示手動填寫表單
                 setUseInteractiveQA(false);
+                handleGenerateHooks();
               }}
             />
           ) : useGuidedQuestions ? (
@@ -1373,7 +1395,9 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                 handleGenerateHooks();
               }}
               onSkip={() => {
+                // Issue #3 修復：跳過問答時直接生成開頭
                 setUseGuidedQuestions(false);
+                handleGenerateHooks();
               }}
             />
           ) : (

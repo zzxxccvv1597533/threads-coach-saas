@@ -6676,22 +6676,65 @@ ${enhancedUserContext}`.trim();
           : '';
         
         // 如果用戶有想法，加入提示
-        const userIdeaContext = userIdea 
-          ? `\n【用戶的想法（請延伸成具體選題）】\n${userIdea}\n`
+        const hasUserIdea = userIdea && userIdea.trim().length > 0;
+        const userIdeaContext = hasUserIdea 
+          ? `\n【⭐ 用戶的想法（最重要！必須基於這個想法延伸）】\n${userIdea}\n\n重要指示：用戶已經提供了具體的想法，請將所有 ${count} 個選題都基於這個想法延伸，而不是生成無關的選題。\n`
           : '';
         
         // 加入隨機性和時間戳以確保每次生成不同的選題
         const randomSeed = Math.random().toString(36).substring(7);
         const timestamp = new Date().toISOString();
         
-        const prompt = `${TOPIC_GENERATION_PROMPT}
+        // 根據是否有用戶想法，使用不同的提示詞策略
+        let prompt: string;
+        
+        if (hasUserIdea) {
+          // 用戶有想法：專注於延伸用戶的想法
+          prompt = `你是一位 Threads 選題專家，幫創作者將模糊的想法延伸成具體的選題。
+
+⭐⭐⭐ 最重要的任務 ⭐⭐⭐
+用戶已經提供了他的想法：
+「${userIdea}」
+
+請將這個想法延伸成 ${count} 個不同角度的具體選題。
+
+【延伸方向】
+1. 情感角度：從這個想法中的情緒、感受出發
+2. 故事角度：將這個想法變成一個具體的場景或對話
+3. 觀察角度：從這個想法延伸出更廣的社會觀察
+4. 反思角度：從這個想法中提取一個値得思考的問題
+5. 共鳴角度：從這個想法中找到大家都有過的經驗
+
+【重要限制】
+- 所有選題都必須與用戶的想法相關
+- 不要生成與用戶想法無關的內容
+- 不要硬套商業模式或專業內容
+- 專注於用戶想表達的核心情感或觀察
+
+【參考資料（可選用，但不要讓它蓋過用戶的想法）】
+創作者資料：${ipContext || '未設定'}
+目標受眾：${audienceContext || '未設定'}
+${usedTopicsContext}
+
+【隨機種子：${randomSeed}】
+【生成時間：${timestamp}】
+
+請用 JSON 格式回應：
+{
+  "topics": [
+    { "text": "選題內容（15-40 字）", "source": "user_idea", "reason": "延伸方向說明" }
+  ]
+}`;
+        } else {
+          // 用戶沒有想法：使用原本的提示詞
+          prompt = `${TOPIC_GENERATION_PROMPT}
 
 【創作者資料（參考用，不是每篇都要直接提及）】
 ${ipContext || '未設定'}
 
 【目標受眾（參考用）】
 ${audienceContext || '未設定'}
-${userIdeaContext}
+
 【爆款參考（學習這些選題的特徵）】
 ${viralContext || '無'}
 ${usedTopicsContext}
@@ -6735,6 +6778,7 @@ ${usedTopicsContext}
     { "text": "選題內容", "source": "pain_matrix" | "ip_data" | "viral_db" | "general_traffic", "reason": "推薦原因" }
   ]
 }`;
+        }
         
         try {
           const response = await invokeLLM({
@@ -6756,7 +6800,7 @@ ${usedTopicsContext}
                         type: 'object',
                         properties: {
                           text: { type: 'string', description: '選題內容（15-40 字）' },
-                          source: { type: 'string', enum: ['pain_matrix', 'ip_data', 'viral_db', 'general_traffic'] },
+                          source: { type: 'string', enum: ['pain_matrix', 'ip_data', 'viral_db', 'general_traffic', 'user_idea'] },
                           reason: { type: 'string', description: '推薦原因' },
                         },
                         required: ['text', 'source', 'reason'],

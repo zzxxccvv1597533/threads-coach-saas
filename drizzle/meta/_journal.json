@@ -225,6 +225,13 @@
       "when": 1769847484267,
       "tag": "0031_oval_hercules",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1769855934654,
+      "tag": "0032_sturdy_hannibal_king",
+      "breakpoints": true
     }
   ]
 }
