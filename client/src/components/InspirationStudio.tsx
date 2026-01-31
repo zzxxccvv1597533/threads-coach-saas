@@ -28,6 +28,7 @@ import {
 interface InspirationStudioProps {
   onSelectTopic: (topic: { id: number; text: string; source: string }) => void;
   onClose?: () => void;
+  initialIdea?: string; // 有一點想法時傳入，讓 AI 延伸成具體選題
 }
 
 // 選題來源標籤
@@ -37,7 +38,7 @@ const SOURCE_LABELS: Record<string, { label: string; color: string; emoji: strin
   viral_db: { label: "爆款參考", color: "bg-amber-100 text-amber-700 border-amber-200", emoji: "🔥" },
 };
 
-export function InspirationStudio({ onSelectTopic, onClose }: InspirationStudioProps) {
+export function InspirationStudio({ onSelectTopic, onClose, initialIdea }: InspirationStudioProps) {
   const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
   
   // 生成選題 API
@@ -59,7 +60,10 @@ export function InspirationStudio({ onSelectTopic, onClose }: InspirationStudioP
 
   // 處理生成選題
   const handleGenerateTopics = () => {
-    generateTopics.mutate({ count: 5 });
+    generateTopics.mutate({ 
+      count: 5,
+      userIdea: initialIdea || undefined, // 傳入用戶的想法，讓 AI 延伸
+    });
   };
 
   // 處理選擇選題
@@ -73,8 +77,8 @@ export function InspirationStudio({ onSelectTopic, onClose }: InspirationStudioP
   const domain = generateTopics.data?.domain || "";
 
   return (
-    <Card className="elegant-card border-2 border-primary/20">
-      <CardHeader className="pb-3">
+    <Card className="elegant-card border-2 border-primary/20 max-h-[85vh] flex flex-col">
+      <CardHeader className="pb-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
@@ -92,7 +96,7 @@ export function InspirationStudio({ onSelectTopic, onClose }: InspirationStudioP
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 overflow-y-auto flex-1">
         {/* 說明提示 */}
         <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-3">
           <div className="flex items-start gap-2">

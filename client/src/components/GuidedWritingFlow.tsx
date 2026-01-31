@@ -95,8 +95,9 @@ const GOAL_OPTIONS = [
   },
 ];
 
-// 流程步驟定義（新增目標選擇步驟）
+// 流程步驟定義（新增靈感狀態選擇步驟）
 const FLOW_STEPS = [
+  { id: 0, name: "靈感狀態", description: "你現在有靈感嗎？" },
   { id: 1, name: "選目標", description: "你想達成什麼？" },
   { id: 2, name: "選題", description: "AI 根據你的人設推薦主題" },
   { id: 3, name: "選受眾", description: "選擇這篇文章要對誰說" },
@@ -110,7 +111,11 @@ const FLOW_STEPS = [
 
 export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, onComplete, onNavigateToIp }: GuidedWritingFlowProps) {
   // 流程狀態
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0);
+  
+  // Step 0: 靈感狀態
+  const [hasInspiration, setHasInspiration] = useState<boolean | null>(null);
+  const [partialIdea, setPartialIdea] = useState(""); // 有一點想法時的輸入
   
   // Step 1: 選目標（目的導向）
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
@@ -565,6 +570,159 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         </div>
       </div>
 
+      {/* Step 0: 靈感狀態選擇 */}
+      {currentStep === 0 && (
+        <Card className="elegant-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lightbulb className="w-6 h-6 text-amber-500" />
+              你現在有靈感嗎？
+            </CardTitle>
+            <CardDescription>
+              選擇你目前的狀態，AI 會根據不同情況協助你
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* 三種靈感狀態選項 */}
+            <div className="grid gap-4">
+              {/* 選項 1: 有靈感 */}
+              <div
+                className={`relative border rounded-xl p-5 cursor-pointer transition-all ${
+                  hasInspiration === true
+                    ? "bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-300 border-2"
+                    : "hover:bg-muted/30 border-muted"
+                }`}
+                onClick={() => setHasInspiration(true)}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                    hasInspiration === true 
+                      ? "border-emerald-500 bg-emerald-500" 
+                      : "border-muted-foreground/30"
+                  }`}>
+                    {hasInspiration === true && (
+                      <Check className="w-4 h-4 text-white" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">✨</span>
+                      <span className="font-semibold text-lg">有靈感！我知道想寫什麼</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      已經有想法或素材，想直接開始寫文
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 選項 2: 有一點想法 */}
+              <div
+                className={`relative border rounded-xl p-5 cursor-pointer transition-all ${
+                  hasInspiration === false && partialIdea !== ""
+                    ? "bg-gradient-to-r from-amber-50 to-orange-50 border-amber-300 border-2"
+                    : hasInspiration === false
+                    ? "bg-gradient-to-r from-amber-50/50 to-orange-50/50 border-amber-200"
+                    : "hover:bg-muted/30 border-muted"
+                }`}
+                onClick={() => setHasInspiration(false)}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                    hasInspiration === false 
+                      ? "border-amber-500 bg-amber-500" 
+                      : "border-muted-foreground/30"
+                  }`}>
+                    {hasInspiration === false && (
+                      <Check className="w-4 h-4 text-white" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🤔</span>
+                      <span className="font-semibold text-lg">有一點想法，但需要更完整的靈感</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      有模糊的方向，想讓 AI 幫忙延伸成具體選題
+                    </p>
+                    
+                    {/* 輸入框 */}
+                    {hasInspiration === false && (
+                      <div className="mt-3">
+                        <Textarea
+                          placeholder="輸入你的想法，例如：想寫關於客戶成功案例、想分享最近的心得..."
+                          value={partialIdea}
+                          onChange={(e) => setPartialIdea(e.target.value)}
+                          className="min-h-[80px]"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 選項 3: 沒靈感 */}
+              <div
+                className={`relative border rounded-xl p-5 cursor-pointer transition-all ${
+                  hasInspiration === null && useInspirationStudio
+                    ? "bg-gradient-to-r from-purple-50 to-pink-50 border-purple-300 border-2"
+                    : "hover:bg-muted/30 border-muted"
+                }`}
+                onClick={() => {
+                  setHasInspiration(null);
+                  setUseInspirationStudio(true);
+                }}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                    hasInspiration === null && useInspirationStudio 
+                      ? "border-purple-500 bg-purple-500" 
+                      : "border-muted-foreground/30"
+                  }`}>
+                    {hasInspiration === null && useInspirationStudio && (
+                      <Check className="w-4 h-4 text-white" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">💡</span>
+                      <span className="font-semibold text-lg">沒靈感，讓 AI 給我選題</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      不知道要寫什麼，讓 AI 根據你的人設推薦選題
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 確認按鈕 */}
+            <Button 
+              className="w-full mt-4"
+              disabled={hasInspiration === null && !useInspirationStudio}
+              onClick={() => {
+                if (hasInspiration === true) {
+                  // 有靈感，直接進入選目標
+                  setCurrentStep(1);
+                } else if (hasInspiration === false && partialIdea) {
+                  // 有一點想法，帶入想法後進入靈感工作室
+                  setTopicHint(partialIdea);
+                  setUseInspirationStudio(true);
+                  setCurrentStep(2);
+                } else if (useInspirationStudio) {
+                  // 沒靈感，直接進入靈感工作室
+                  setCurrentStep(2);
+                }
+              }}
+            >
+              {hasInspiration === true ? "開始寫文" : hasInspiration === false ? "讓 AI 幫我延伸靈感" : "給我 5 個選題"}
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Step 1: 選目標（目的導向選擇器） */}
       {currentStep === 1 && (
         <Card className="elegant-card">
@@ -677,6 +835,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                 setCurrentStep(3);
               }}
               onClose={() => setUseInspirationStudio(false)}
+              initialIdea={partialIdea || topicHint || undefined} // 傳入用戶的想法
             />
           ) : (
             <Card className="elegant-card">

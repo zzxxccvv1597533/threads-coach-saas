@@ -1696,8 +1696,8 @@ export default function WritingStudio() {
       
       {/* v4.0: 靈感工作室彈窗（進階模式） */}
       {showInspirationStudio && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-2xl my-8">
             <InspirationStudio
               onSelectTopic={(topic) => {
                 // 將選題帶入素材欄位

@@ -6592,9 +6592,11 @@ ${enhancedUserContext}`.trim();
     generateTopics: protectedProcedure
       .input(z.object({
         count: z.number().min(1).max(10).default(5),
+        userIdea: z.string().optional(), // 用戶的想法，讓 AI 延伸成具體選題
       }).optional())
       .mutation(async ({ ctx, input }) => {
         const count = input?.count || 5;
+        const userIdea = input?.userIdea || '';
         
         // 取得用戶 IP 資料
         const profile = await db.getIpProfileByUserId(ctx.user.id);
@@ -6641,6 +6643,11 @@ ${enhancedUserContext}`.trim();
           ? `\n【禁止重複的選題（已生成過）】\n${usedTopics.slice(0, 20).map(t => `- ${t}`).join('\n')}`
           : '';
         
+        // 如果用戶有想法，加入提示
+        const userIdeaContext = userIdea 
+          ? `\n【用戶的想法（請延伸成具體選題）】\n${userIdea}\n`
+          : '';
+        
         const prompt = `${TOPIC_GENERATION_PROMPT}
 
 【創作者資料】
@@ -6648,7 +6655,7 @@ ${ipContext || '未設定'}
 
 【目標受眾】
 ${audienceContext || '未設定'}
-
+${userIdeaContext}
 【爆款參考（學習這些選題的特徵）】
 ${viralContext || '無'}
 ${usedTopicsContext}
@@ -6657,7 +6664,7 @@ ${usedTopicsContext}
 1. 是「具體情境」（15-40 字）
 2. 讓人想知道「然後呢？」
 3. 符合創作者的專業領域
-4. 不要與已生成過的選題重複
+4. 不要與已生成過的選題重複${userIdea ? '\n5. 延伸用戶的想法，讓它更具體、更有吸引力' : ''}
 
 請用 JSON 格式回應：
 {
