@@ -38,6 +38,7 @@ import { GuidedQuestionsFlow } from "./GuidedQuestionsFlow";
 import { InteractiveQA } from "./InteractiveQA";
 import { BatchQuestionsFlow } from "./BatchQuestionsFlow";
 import { CreativeIntentStep } from "./CreativeIntentStep";
+import { ProfessionalSuggestionsPanel } from "./ProfessionalSuggestionsPanel";
 import { type CreativeIntent } from "@shared/creative-intent";
 
 interface GuidedWritingFlowProps {
@@ -194,6 +195,9 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
     score: number;
   } | null>(null);
   
+  // 專業建議區塊狀態
+  const [showProfessionalSuggestions, setShowProfessionalSuggestions] = useState(false);
+  
   // 風格匹配度
   const [styleMatch, setStyleMatch] = useState<{
     score: number;
@@ -330,6 +334,10 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       // 設定風格匹配度
       if (data.styleMatch) {
         setStyleMatch(data.styleMatch);
+      }
+      // 如果是「順便帶點專業」模式，顯示專業建議區塊
+      if (creativeIntent === 'light_connection') {
+        setShowProfessionalSuggestions(true);
       }
       setCurrentStep(8); // Step 8: 生成結果
       toast.success("草稿已生成！");
@@ -1857,6 +1865,26 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                 {draftContent}
               </div>
             </div>
+            
+            {/* 專業建議區塊 - 僅在「順便帶點專業」模式下顯示 */}
+            {showProfessionalSuggestions && selectedTopic && selectedContentType && (
+              <ProfessionalSuggestionsPanel
+                topic={selectedTopic.title}
+                contentType={selectedContentType}
+                draftContent={draftContent}
+                creativeIntent={creativeIntent === 'light_connection' ? 'light_connect' : creativeIntent === 'pure_personal' ? 'pure_story' : 'full_professional'}
+                onApplySuggestion={(suggestion) => {
+                  // 將建議應用到草稿中
+                  const newContent = `${draftContent}\n\n${suggestion.example}`;
+                  setDraftContent(newContent);
+                  setShowProfessionalSuggestions(false);
+                  toast.success('已應用專業連結建議');
+                }}
+                onDismiss={() => {
+                  setShowProfessionalSuggestions(false);
+                }}
+              />
+            )}
 
             {/* 對話區域 - 只顯示用戶指令和 AI 簡短確認 */}
             {chatMessages.length > 0 && (
