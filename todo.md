@@ -3242,3 +3242,90 @@
 - [x] AI 教練問題的範例答案現在是通用格式，不是具體情節
 - [x] 生成的開頭選項只包含用戶提供的資訊（獨處、忙碌、情緒釋放）
 - [x] 沒有出現「路邊看到一朵小花」等虛構情節
+
+
+## 系統升級方案實施 (2026-02-01)
+
+### Phase 1: 向量資料庫基礎設施 ✅
+- [x] 建立 viral_embeddings 表（爆款範例向量）
+- [x] 建立 user_post_embeddings 表（用戶貼文向量）
+- [x] 實作 embedding 生成服務（使用 LLM API）
+- [x] 建立 user_interaction_events 表
+- [x] 建立 user_growth_stages 表
+- [x] 建立 strategy_weights 表
+
+### Phase 2: 語意檢索 API ✅
+- [x] 實作 semanticSearch(topic, k) API
+- [x] 實作 mmrSearch(seed, k, diversity) API - 多樣性重排
+- [x] 實作同質性檢查（checkUserPostSimilarity）
+- [x] 實作 cosineSimilarity 計算
+- [x] 設定閾值：cosine similarity > 0.88 觸發重寫
+
+### Phase 3: userInteractionEvents 表 ✅
+- [x] 建立 userInteractionEvents 資料表
+- [x] 實作記錄用戶採納/修改/發布行為的 API
+- [x] 實作 recordHookSelection, recordDraftModification, recordSuggestionAdoption, recordContentPublished
+- [x] 實作 suggestion_adoption_rate 計算
+
+### Phase 4: Prompt Builder 整合 ✅
+- [x] 將 recommendedHooks (top-3) 注入 buildPromptByMode
+- [x] 加入指令：「參考開頭風格，感受節奏與關鍵元素，但不要直接複製」
+- [x] 實作 stylePolish 語意保真檢查（checkStylePolish）
+- [x] 實作 preservedWords 覆蓋率檢查
+
+### Phase 5: 健康檢測嵌入生成流 ✅
+- [x] 實作 quickDetect (AI痕跡檢測)
+- [x] 實作 contentHealthCheck 完整內容健康檢查
+- [x] 實作 autoGuardrail 自動修正迴圈（最多 2 次）
+- [x] 實作 humanize 人味化潤飾
+- [x] 設定閾值：AI痕跡 > 30 觸發 LLM 深度檢測
+
+### Phase 6: buildPromptByMode 三種模式 ✅
+- [x] 實作 pure_story 模式（僅寫作規則 + userStyle，無 IP/爆款）
+- [x] 實作 light_connect 模式（IP 地基，無 few-shot viral examples）
+- [x] 實作 full_inject 模式（IP + viral data + success factors）
+- [x] 實作 MODE_CONFIGS 配置
+- [x] 實作 validatePureStoryOutput 驗證純故事輸出
+
+### Phase 7: 用戶偏好與個人化 ✅
+- [x] 實作用戶偏好算子計算（常刪除/偏好的句型）
+- [x] 實作 getUserPreferenceContext 獲取用戶偏好上下文
+- [x] 實作 buildUserPreferencePrompt 注入提示詞
+- [x] 在生成前注入：「此用戶常刪除...；偏好...」
+
+### Phase 8: userStage 動態 Humanizer ✅
+- [x] 定義 userStage（new/growing/mature）判定條件
+- [x] 實作 determineGrowthStage 計算（創作次數、自主修改率、採用率）
+- [x] 實作 getHumanizerConfig / getHumanizerConfigByStrictness 動態閾值調整
+- [x] new → 嚴格過濾；mature → 寬鬆但保留核心禁止項
+
+### Phase 9: postMetrics ETL 與策略權重 ✅
+- [x] 建立 strategy_weights 資料表
+- [x] 實作 getStrategyWeights 獲取策略權重
+- [x] 實作策略權重注入（hook ranking、opener 選擇權重）
+
+### tRPC API 端點 ✅
+- [x] system.semanticSearch - 語意檢索 API
+- [x] system.mmrSearch - MMR 多樣性檢索 API
+- [x] system.checkSimilarity - 同質性檢查 API
+- [x] system.recordInteraction - 記錄用戶互動 API
+- [x] system.getUserPreference - 獲取用戶偏好 API
+- [x] system.buildPrompt - 建構提示詞 API
+- [x] system.checkContentHealth - 內容健康檢查 API
+- [x] system.autoGuardrail - 自動修正 API
+
+### 單元測試 ✅
+- [x] cosineSimilarity 測試（相同向量、正交向量、相反向量、零向量）
+- [x] buildUserPreferencePrompt 測試
+- [x] determineGrowthStage 測試
+- [x] buildBaseWritingRules 測試
+- [x] quickDetect 測試（AI 痕跡檢測）
+- [x] getHumanizerConfigByStrictness 測試
+- [x] 整合測試（完整內容生成流程）
+- [x] 所有 13 個測試通過
+
+### 驗收指標
+- [ ] 初稿可直接接受比例 +20%
+- [ ] AI 痕跡數量 -30%
+- [ ] 個人採用率 +30%
+- [ ] opener DNA 多樣化指標 +20%

@@ -7351,6 +7351,192 @@ ${draftContent.substring(0, 500)}...
         }
       }),
   }),
+
+  // ==================== 系統升級：向量資料庫、內容健康檢測、用戶互動追蹤 ====================
+  contentIntelligence: router({
+    // AI 痕跡快速檢測
+    quickDetectAiTrace: protectedProcedure
+      .input(z.object({
+        content: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const { quickDetect: quickDetectAi } = await import('./contentHealth');
+        return quickDetectAi(input.content);
+      }),
+
+    // 完整內容健康檢查
+    contentHealthCheck: protectedProcedure
+      .input(z.object({
+        content: z.string(),
+        contentType: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { contentHealthCheck } = await import('./contentHealth');
+        return contentHealthCheck(input.content, {
+          userId: ctx.user.id,
+          contentType: input.contentType,
+        });
+      }),
+
+    // 自動修正迴圈
+    autoGuardrail: protectedProcedure
+      .input(z.object({
+        content: z.string(),
+        maxIterations: z.number().optional(),
+        targetScore: z.number().optional(),
+        preservedWords: z.array(z.string()).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { autoGuardrail } = await import('./contentHealth');
+        return autoGuardrail(input.content, {
+          userId: ctx.user.id,
+          maxIterations: input.maxIterations,
+          targetScore: input.targetScore,
+          preservedWords: input.preservedWords,
+        });
+      }),
+
+    // 獲取 Humanizer 配置
+    getHumanizerConfig: protectedProcedure
+      .query(async ({ ctx }) => {
+        const { getHumanizerConfig } = await import('./contentHealth');
+        return getHumanizerConfig(ctx.user.id);
+      }),
+
+    // 語意相似度搜尋
+    semanticSearch: protectedProcedure
+      .input(z.object({
+        query: z.string(),
+        topK: z.number().optional(),
+        contentType: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { semanticSearch } = await import('./embedding');
+        return semanticSearch(input.query, input.topK || 5, input.contentType);
+      }),
+
+    // MMR 多樣性搜尋
+    mmrSearch: protectedProcedure
+      .input(z.object({
+        query: z.string(),
+        topK: z.number().optional(),
+        lambda: z.number().optional(),
+        candidatePool: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { mmrSearch } = await import('./embedding');
+        return mmrSearch(input.query, input.topK || 5, input.lambda || 0.5, input.candidatePool || 20);
+      }),
+
+    // 同質性檢查
+    checkSimilarity: protectedProcedure
+      .input(z.object({
+        content: z.string(),
+        threshold: z.number().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { checkSimilarity } = await import('./embedding');
+        return checkSimilarity(input.content, input.threshold || 0.88, ctx.user.id);
+      }),
+
+    // 語意保真檢查
+    checkStylePolish: protectedProcedure
+      .input(z.object({
+        original: z.string(),
+        polished: z.string(),
+        preservedWords: z.array(z.string()).optional(),
+        semanticThreshold: z.number().optional(),
+        keywordThreshold: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { checkStylePolish } = await import('./embedding');
+        return checkStylePolish(
+          input.original,
+          input.polished,
+          input.preservedWords || [],
+          input.semanticThreshold,
+          input.keywordThreshold
+        );
+      }),
+  }),
+
+  // ==================== 用戶互動追蹤 ====================
+  userInteraction: router({
+    // 記錄互動事件
+    recordEvent: protectedProcedure
+      .input(z.object({
+        eventType: z.enum(['hook_selected', 'draft_modified', 'suggestion_adopted', 'content_published']),
+        hookId: z.number().optional(),
+        draftId: z.number().optional(),
+        suggestionId: z.number().optional(),
+        details: z.object({
+          originalContent: z.string().optional(),
+          modifiedContent: z.string().optional(),
+          suggestionType: z.string().optional(),
+        }).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { recordInteractionEvent } = await import('./userInteraction');
+        return recordInteractionEvent({
+          userId: ctx.user.id,
+          eventType: input.eventType,
+          hookId: input.hookId,
+          draftId: input.draftId,
+          suggestionId: input.suggestionId,
+          details: input.details,
+        });
+      }),
+
+    // 獲取用戶偏好上下文
+    getPreferenceContext: protectedProcedure
+      .query(async ({ ctx }) => {
+        const { getUserPreferenceContext } = await import('./userInteraction');
+        return getUserPreferenceContext(ctx.user.id);
+      }),
+
+    // 更新用戶成長階段
+    updateGrowthStage: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        const { updateUserGrowthStage } = await import('./userInteraction');
+        return updateUserGrowthStage(ctx.user.id);
+      }),
+  }),
+
+  // ==================== Prompt Builder ====================
+  promptBuilder: router({
+    // 建構完整提示詞
+    buildPrompt: protectedProcedure
+      .input(z.object({
+        mode: z.enum(['pure_story', 'light_connect', 'full_inject']),
+        topic: z.string(),
+        contentType: z.string(),
+        audience: z.string().optional(),
+        additionalContext: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { buildPromptByMode } = await import('./promptBuilder');
+        return buildPromptByMode({
+          userId: ctx.user.id,
+          mode: input.mode,
+          topic: input.topic,
+          contentType: input.contentType,
+          audience: input.audience,
+          additionalContext: input.additionalContext,
+        });
+      }),
+
+    // 獲取推薦開頭
+    getRecommendedHooks: protectedProcedure
+      .input(z.object({
+        topic: z.string(),
+        topK: z.number().optional(),
+        diversity: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { getRecommendedHooks } = await import('./embedding');
+        return getRecommendedHooks(input.topic, input.topK || 3, input.diversity || 0.5);
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

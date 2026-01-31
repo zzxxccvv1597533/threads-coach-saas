@@ -1243,3 +1243,176 @@ export const writingSessionQuestions = mysqlTable("writing_session_questions", {
 
 export type WritingSessionQuestion = typeof writingSessionQuestions.$inferSelect;
 export type InsertWritingSessionQuestion = typeof writingSessionQuestions.$inferInsert;
+
+
+// ============================================
+// 向量資料庫 - 爆款範例與用戶貼文向量
+// ============================================
+
+// 爆款範例向量表
+export const viralEmbeddings = mysqlTable("viral_embeddings", {
+  id: int("id").autoincrement().primaryKey(),
+  // 原始內容
+  content: text("content").notNull(), // 爆款貼文內容
+  hook: text("hook"), // 開頭 Hook
+  contentType: varchar("contentType", { length: 64 }), // 內容類型
+  // 向量（存為 JSON 陣列）
+  embedding: json("embedding").$type<number[]>(), // 1536 維向量
+  // 元數據
+  source: varchar("source", { length: 255 }), // 來源（例如 Threads 帳號）
+  metrics: json("metrics").$type<{
+    reach?: number;
+    likes?: number;
+    comments?: number;
+    shares?: number;
+  }>(), // 互動數據
+  tags: json("tags").$type<string[]>(), // 標籤（例如：情感、知識、故事）
+  // 多樣性控制
+  cluster: varchar("cluster", { length: 64 }), // 聚類標籤（用於 MMR 多樣性）
+  // 狀態
+  isActive: boolean("isActive").default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ViralEmbedding = typeof viralEmbeddings.$inferSelect;
+export type InsertViralEmbedding = typeof viralEmbeddings.$inferInsert;
+
+// 用戶貼文向量表
+export const userPostEmbeddings = mysqlTable("user_post_embeddings", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  draftId: int("draftId"), // 關聯草稿
+  // 原始內容
+  content: text("content").notNull(),
+  hook: text("hook"),
+  // 向量
+  embedding: json("embedding").$type<number[]>(),
+  // 元數據
+  contentType: varchar("contentType", { length: 64 }),
+  // 發布後的成效數據
+  postMetrics: json("postMetrics").$type<{
+    reach?: number;
+    likes?: number;
+    comments?: number;
+    shares?: number;
+    saves?: number;
+  }>(),
+  // 生成配置（用於策略權重學習）
+  generationConfig: json("generationConfig").$type<{
+    mode?: string; // pure_story | light_connect | full_inject
+    hookStyle?: string;
+    contentType?: string;
+    promptVersion?: string;
+  }>(),
+  // 狀態
+  isPublished: boolean("isPublished").default(false),
+  publishedAt: timestamp("publishedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserPostEmbedding = typeof userPostEmbeddings.$inferSelect;
+export type InsertUserPostEmbedding = typeof userPostEmbeddings.$inferInsert;
+
+// ============================================
+// 用戶互動事件表 - 追蹤採納/修改/發布行為
+// ============================================
+export const userInteractionEvents = mysqlTable("user_interaction_events", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  // 事件類型
+  eventType: mysqlEnum("eventType", [
+    "hook_selected",      // 選擇了某個 Hook
+    "hook_rejected",      // 拒絕了某個 Hook
+    "draft_accepted",     // 接受了草稿
+    "draft_modified",     // 修改了草稿
+    "draft_rejected",     // 拒絕了草稿
+    "suggestion_adopted", // 採納了建議
+    "suggestion_ignored", // 忽略了建議
+    "content_published",  // 發布了內容
+    "content_deleted",    // 刪除了內容
+    "style_preference",   // 風格偏好
+    "phrase_deleted",     // 刪除了某個句型
+    "phrase_kept"         // 保留了某個句型
+  ]).notNull(),
+  // 關聯資料
+  draftId: int("draftId"),
+  hookId: int("hookId"),
+  suggestionId: int("suggestionId"),
+  // 事件詳情
+  details: json("details").$type<{
+    originalContent?: string;
+    modifiedContent?: string;
+    deletedPhrases?: string[];
+    keptPhrases?: string[];
+    hookStyle?: string;
+    contentType?: string;
+    reason?: string;
+  }>(),
+  // 時間戳
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type UserInteractionEvent = typeof userInteractionEvents.$inferSelect;
+export type InsertUserInteractionEvent = typeof userInteractionEvents.$inferInsert;
+
+// ============================================
+// 用戶成長階段與偏好
+// ============================================
+export const userGrowthStages = mysqlTable("user_growth_stages", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  // 成長階段：new（新手）/ growing（成長中）/ mature（成熟）
+  stage: mysqlEnum("stage", ["new", "growing", "mature"]).default("new").notNull(),
+  // 成長指標
+  totalPosts: int("totalPosts").default(0), // 總發文數
+  totalDrafts: int("totalDrafts").default(0), // 總草稿數
+  adoptionRate: decimal("adoptionRate", { precision: 5, scale: 4 }), // 建議採納率
+  selfEditRate: decimal("selfEditRate", { precision: 5, scale: 4 }), // 自主修改率
+  avgAiScore: decimal("avgAiScore", { precision: 5, scale: 4 }), // 平均 AI 痕跡分數
+  // 偏好分析
+  preferredHookStyles: json("preferredHookStyles").$type<string[]>(), // 偏好的 Hook 風格
+  preferredContentTypes: json("preferredContentTypes").$type<string[]>(), // 偏好的內容類型
+  deletedPhrasePatterns: json("deletedPhrasePatterns").$type<string[]>(), // 常刪除的句型
+  keptPhrasePatterns: json("keptPhrasePatterns").$type<string[]>(), // 常保留的句型
+  // Humanizer 閾值
+  humanizerStrictness: mysqlEnum("humanizerStrictness", ["strict", "moderate", "relaxed"]).default("strict"),
+  // 最後更新
+  lastCalculatedAt: timestamp("lastCalculatedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserGrowthStage = typeof userGrowthStages.$inferSelect;
+export type InsertUserGrowthStage = typeof userGrowthStages.$inferInsert;
+
+// ============================================
+// 策略權重表 - 記錄哪種配置與高互動正相關
+// ============================================
+export const strategyWeights = mysqlTable("strategy_weights", {
+  id: int("id").autoincrement().primaryKey(),
+  // 策略維度
+  dimension: mysqlEnum("dimension", [
+    "hook_style",      // Hook 風格
+    "content_type",    // 內容類型
+    "prompt_mode",     // 提示詞模式
+    "opener_pattern"   // 開頭模式
+  ]).notNull(),
+  // 策略值
+  value: varchar("value", { length: 64 }).notNull(), // 例如：mirror, contrast, story
+  // 權重（基於歷史數據計算）
+  weight: decimal("weight", { precision: 5, scale: 4 }).default("1.0000"),
+  // 樣本數
+  sampleCount: int("sampleCount").default(0),
+  // 平均互動數據
+  avgReach: decimal("avgReach", { precision: 10, scale: 2 }),
+  avgEngagement: decimal("avgEngagement", { precision: 10, scale: 2 }),
+  // 最後更新
+  lastCalculatedAt: timestamp("lastCalculatedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type StrategyWeight = typeof strategyWeights.$inferSelect;
+export type InsertStrategyWeight = typeof strategyWeights.$inferInsert;
