@@ -218,6 +218,13 @@
       "when": 1769824726841,
       "tag": "0030_striped_shape",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1769847484267,
+      "tag": "0031_oval_hercules",
+      "breakpoints": true
     }
   ]
 }

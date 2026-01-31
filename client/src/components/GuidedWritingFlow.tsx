@@ -36,6 +36,7 @@ import { ALL_CONTENT_TYPES_V2 } from "@shared/content-types-v2";
 import { InspirationStudio } from "./InspirationStudio";
 import { GuidedQuestionsFlow } from "./GuidedQuestionsFlow";
 import { InteractiveQA } from "./InteractiveQA";
+import { BatchQuestionsFlow } from "./BatchQuestionsFlow";
 
 interface GuidedWritingFlowProps {
   ipProfile: {
@@ -144,8 +145,8 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
   const [useGuidedQuestions, setUseGuidedQuestions] = useState(false);
   const [writingSessionId, setWritingSessionId] = useState<number | null>(null);
   
-  // v4.1: 互動式問答狀態
-  const [useInteractiveQA, setUseInteractiveQA] = useState(false);
+  // v4.1: 互動式問答狀態（v4.2 預設為 true，讓一次性問答成為預設模式）
+  const [useInteractiveQA, setUseInteractiveQA] = useState(true);
   
   // Step 5: Hook 選項 - 整合新的 Opener Generator
   
@@ -730,8 +731,8 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                 disabled={(hasInspiration === null && !useInspirationStudio) || generateInlineTopics.isPending}
                 onClick={() => {
                   if (hasInspiration === true) {
-                    // 有靈感，直接進入選目標
-                    setCurrentStep(1);
+                    // 有靈感，直接進入選類型（簡化流程）
+                    setCurrentStep(4);
                   } else if (hasInspiration === false && partialIdea) {
                     // 有一點想法，直接在同一頁生成選題
                     generateInlineTopics.mutate({ userIdea: partialIdea });
@@ -786,7 +787,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                           hook: '',
                         });
                         setTopicHint(topic.text);
-                        setCurrentStep(1); // 進入選目標
+                        setCurrentStep(4); // 選題後直接跳到選類型（簡化流程）
                         toast.success("已選擇選題！");
                       }}
                     >
@@ -1312,13 +1313,17 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       {/* Step 5: 填寫專屬欄位 - v4.0 整合問答引導 */}
       {currentStep === 5 && (
         <>
-          {/* v4.1: 互動式問答模式 */}
+          {/* v4.2: 一次性問答模式 */}
           {useInteractiveQA ? (
-            <InteractiveQA
+            <BatchQuestionsFlow
               topic={selectedTopic?.title || topicHint || ''}
               contentType={selectedContentType}
-              onComplete={(material) => {
-                // 將問答結果轉換為 typeInputs
+              onComplete={(answers: Record<string, string>) => {
+                // 將問答結果組合成素材
+                const material = Object.entries(answers)
+                  .filter(([_, v]) => v && v.trim())
+                  .map(([k, v]) => `${k}: ${v}`)
+                  .join('\n\n');
                 setTypeInputs(prev => ({ ...prev, material }));
                 setUseInteractiveQA(false);
                 // 直接進入下一步生成 Hook
@@ -1358,14 +1363,14 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* v4.1: 互動式問答引導入口 */}
+                {/* v4.2: 一次性問答引導入口 */}
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                   <div className="flex items-start gap-3">
                     <MessageSquare className="w-5 h-5 text-blue-600 mt-0.5" />
                     <div className="flex-1">
-                      <div className="font-medium text-blue-800 dark:text-blue-300">不知道怎麼填？</div>
+                      <div className="font-medium text-blue-800 dark:text-blue-300">不知道怎麼填？讓 AI 教練引導你</div>
                       <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
-                        讓 AI 像朋友一樣問你幾個問題，幫你整理寫文素材
+                        AI 教練會一次列出所有問題，你可以一次性填寫完成
                       </p>
                       <Button
                         variant="outline"
@@ -1373,7 +1378,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                         className="mt-2 border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900/30"
                         onClick={() => setUseInteractiveQA(true)}
                       >
-                        開始互動式問答
+                        開始 AI 教練引導
                         <ChevronRight className="w-4 h-4 ml-1" />
                       </Button>
                     </div>

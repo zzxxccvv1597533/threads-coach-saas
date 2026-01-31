@@ -4277,7 +4277,7 @@ export async function recordGeneratedTopics(
   userId: number,
   topics: Array<{
     topicText: string;
-    topicSource: 'pain_matrix' | 'ip_data' | 'viral_db' | 'user_input' | 'brainstorm';
+    topicSource: 'pain_matrix' | 'ip_data' | 'viral_db' | 'user_input' | 'brainstorm' | 'general_traffic';
     audience?: string;
     subTopic?: string;
     painPoint?: string;
