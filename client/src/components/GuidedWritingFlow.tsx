@@ -33,6 +33,8 @@ import {
   Target,
 } from "lucide-react";
 import { ALL_CONTENT_TYPES_V2 } from "@shared/content-types-v2";
+import { InspirationStudio } from "./InspirationStudio";
+import { GuidedQuestionsFlow } from "./GuidedQuestionsFlow";
 
 interface GuidedWritingFlowProps {
   ipProfile: {
@@ -116,7 +118,10 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
   // Step 2: 選題
   const [topicHint, setTopicHint] = useState(initialTopic || "");
   const [selectedTopic, setSelectedTopic] = useState<{ title: string; audience: string; contentType: string; hook: string } | null>(null);
-  const [topicSuggestions, setTopicSuggestions] = useState<Array<{ title: string; audience: string; contentType: string; hook: string }>>([]);
+  const [topicSuggestions, setTopicSuggestions] = useState<Array<{ title: string; audience: string; contentType: string; hook: string }>>([]); 
+  
+  // v4.0: 靈感工作室狀態
+  const [useInspirationStudio, setUseInspirationStudio] = useState(false);
   
   // Step 2: 選受眾
   const [selectedAudienceId, setSelectedAudienceId] = useState<number | null>(null);
@@ -126,6 +131,10 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
   
   // Step 4: 填寫專屬欄位
   const [typeInputs, setTypeInputs] = useState<Record<string, string | string[]>>({});
+  
+  // v4.0: 問答流程狀態
+  const [useGuidedQuestions, setUseGuidedQuestions] = useState(false);
+  const [writingSessionId, setWritingSessionId] = useState<number | null>(null);
   
   // Step 5: Hook 選項 - 整合新的 Opener Generator
   
@@ -650,110 +659,141 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         </Card>
       )}
 
-      {/* Step 2: 選題 */}
+      {/* Step 2: 選題 - v4.0 整合靈感工作室 */}
       {currentStep === 2 && (
-        <Card className="elegant-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
-                2
-              </span>
-              選擇主題
-            </CardTitle>
-            <CardDescription>
-              AI 會根據你的人設、受眾痛點、專業領域，給你今天可以發的主題
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* IP 地基提示 */}
-            {ipProfile && (
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-3">
-                <div className="flex items-start gap-2">
-                  <Info className="w-4 h-4 text-amber-600 mt-0.5" />
-                  <div className="text-sm">
-                    <span className="text-amber-800">AI 將參考：</span>
-                    <span className="text-amber-700">
-                      {ipProfile.occupation || '未設定職業'}
-                      {ipProfile.personaExpertise && ` · ${ipProfile.personaExpertise.slice(0, 15)}...`}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label>參考方向（選填）</Label>
-              <Textarea
-                placeholder="例如：最近想聊聊關於自我懷疑的話題..."
-                value={topicHint}
-                onChange={(e) => setTopicHint(e.target.value)}
-                rows={2}
-              />
-            </div>
-
-            <Button 
-              onClick={handleGenerateTopics}
-              disabled={brainstorm.isPending}
-              className="w-full"
-            >
-              {brainstorm.isPending ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  根據你的人設思考中...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  給我主題建議
-                </>
-              )}
-            </Button>
-
-            {/* 主題建議列表 */}
-            {topicSuggestions.length > 0 && (
-              <div className="space-y-3 mt-4">
-                <Label>選擇一個主題</Label>
-                {topicSuggestions.map((topic, index) => (
-                  <div
-                    key={index}
-                    className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                      selectedTopic?.title === topic.title
-                        ? "border-primary bg-primary/5"
-                        : "hover:border-primary/50 hover:bg-primary/5"
-                    }`}
-                    onClick={() => handleSelectTopic(topic)}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 space-y-2">
-                        <div className="font-medium">{topic.title}</div>
-                        <div className="text-sm text-muted-foreground flex items-center gap-2">
-                          <Users className="w-3 h-3" />
-                          {topic.audience}
-                          <Badge variant="secondary" className="text-xs">
-                            {ALL_CONTENT_TYPES_V2.find(t => t.id === topic.contentType)?.name || topic.contentType}
-                          </Badge>
-                        </div>
-                        <div className="text-sm italic text-muted-foreground">
-                          「{topic.hook}」
-                        </div>
+        <>
+          {/* 靈感工作室模式 */}
+          {useInspirationStudio ? (
+            <InspirationStudio
+              onSelectTopic={(topic) => {
+                // 將靈感工作室的選題轉換為現有格式
+                setSelectedTopic({
+                  title: topic.text,
+                  audience: '',
+                  contentType: 'story',
+                  hook: topic.text,
+                });
+                setUseInspirationStudio(false);
+                setCurrentStep(3);
+              }}
+              onClose={() => setUseInspirationStudio(false)}
+            />
+          ) : (
+            <Card className="elegant-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
+                    2
+                  </span>
+                  選擇主題
+                </CardTitle>
+                <CardDescription>
+                  AI 會根據你的人設、受眾痛點、專業領域，給你今天可以發的主題
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* IP 地基提示 */}
+                {ipProfile && (
+                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                      <Info className="w-4 h-4 text-amber-600 mt-0.5" />
+                      <div className="text-sm">
+                        <span className="text-amber-800">AI 將參考：</span>
+                        <span className="text-amber-700">
+                          {ipProfile.occupation || '未設定職業'}
+                          {ipProfile.personaExpertise && ` · ${ipProfile.personaExpertise.slice(0, 15)}...`}
+                        </span>
                       </div>
-                      <Button 
-                        size="sm" 
-                        variant={selectedTopic?.title === topic.title ? "default" : "outline"}
-                      >
-                        {selectedTopic?.title === topic.title ? (
-                          <><Check className="w-4 h-4 mr-1" /> 已選</>
-                        ) : (
-                          <>選擇</>
-                        )}
-                      </Button>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                )}
+
+                <div className="space-y-2">
+                  <Label>參考方向（選填）</Label>
+                  <Textarea
+                    placeholder="例如：最近想聊聊關於自我懷疑的話題..."
+                    value={topicHint}
+                    onChange={(e) => setTopicHint(e.target.value)}
+                    rows={2}
+                  />
+                </div>
+
+                {/* 兩個按鈕：給我主題建議 + 沒靈感？ */}
+                <div className="flex gap-3">
+                  <Button 
+                    onClick={handleGenerateTopics}
+                    disabled={brainstorm.isPending}
+                    className="flex-1"
+                  >
+                    {brainstorm.isPending ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        思考中...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        給我主題建議
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setUseInspirationStudio(true)}
+                    className="flex-shrink-0"
+                  >
+                    <Lightbulb className="w-4 h-4 mr-2" />
+                    沒靈感？
+                  </Button>
+                </div>
+
+                {/* 主題建議列表 */}
+                {topicSuggestions.length > 0 && (
+                  <div className="space-y-3 mt-4">
+                    <Label>選擇一個主題</Label>
+                    {topicSuggestions.map((topic, index) => (
+                      <div
+                        key={index}
+                        className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                          selectedTopic?.title === topic.title
+                            ? "border-primary bg-primary/5"
+                            : "hover:border-primary/50 hover:bg-primary/5"
+                        }`}
+                        onClick={() => handleSelectTopic(topic)}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 space-y-2">
+                            <div className="font-medium">{topic.title}</div>
+                            <div className="text-sm text-muted-foreground flex items-center gap-2">
+                              <Users className="w-3 h-3" />
+                              {topic.audience}
+                              <Badge variant="secondary" className="text-xs">
+                                {ALL_CONTENT_TYPES_V2.find(t => t.id === topic.contentType)?.name || topic.contentType}
+                              </Badge>
+                            </div>
+                            <div className="text-sm italic text-muted-foreground">
+                              「{topic.hook}」
+                            </div>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            variant={selectedTopic?.title === topic.title ? "default" : "outline"}
+                          >
+                            {selectedTopic?.title === topic.title ? (
+                              <><Check className="w-4 h-4 mr-1" /> 已選</>
+                            ) : (
+                              <>選擇</>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
 
       {/* Step 3: 選擇目標受眾 */}
@@ -992,70 +1032,113 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         </Card>
       )}
 
-      {/* Step 5: 填寫專屬欄位 */}
+      {/* Step 5: 填寫專屬欄位 - v4.0 整合問答引導 */}
       {currentStep === 5 && (
-        <Card className="elegant-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
-                5
-              </span>
-              填寫關鍵資訊
-            </CardTitle>
-            <CardDescription>
-              {ALL_CONTENT_TYPES_V2.find(t => t.id === selectedContentType)?.name}需要以下資訊
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {currentTypeInputFields.map((field) => (
-              <div key={field.key} className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  {field.label}
-                  {field.required && <span className="text-red-500 text-xs">*必填</span>}
-                </Label>
-                {field.type === 'textarea' ? (
-                  <Textarea
-                    placeholder={field.placeholder}
-                    value={typeInputs[field.key] || ''}
-                    onChange={(e) => setTypeInputs(prev => ({ ...prev, [field.key]: e.target.value }))}
-                    rows={3}
-                  />
-                ) : (
-                  <Input
-                    placeholder={field.placeholder}
-                    value={typeInputs[field.key] || ''}
-                    onChange={(e) => setTypeInputs(prev => ({ ...prev, [field.key]: e.target.value }))}
-                  />
-                )}
-                <p className="text-xs text-muted-foreground">{field.description}</p>
-              </div>
-            ))}
+        <>
+          {/* v4.0: 問答引導模式 */}
+          {useGuidedQuestions ? (
+            <GuidedQuestionsFlow
+              userIdea={selectedTopic?.title}
+              contentType={selectedContentType}
+              onComplete={(material, contentType, sessionId) => {
+                // 將問答結果轉換為 typeInputs
+                setTypeInputs(prev => ({ ...prev, material }));
+                setWritingSessionId(sessionId);
+                setUseGuidedQuestions(false);
+                // 直接進入下一步生成 Hook
+                handleGenerateHooks();
+              }}
+              onSkip={() => {
+                setUseGuidedQuestions(false);
+              }}
+            />
+          ) : (
+            <Card className="elegant-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
+                    5
+                  </span>
+                  填寫關鍵資訊
+                </CardTitle>
+                <CardDescription>
+                  {ALL_CONTENT_TYPES_V2.find(t => t.id === selectedContentType)?.name}需要以下資訊
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* v4.0: 問答引導入口 */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <MessageSquare className="w-5 h-5 text-blue-600 mt-0.5" />
+                    <div className="flex-1">
+                      <div className="font-medium text-blue-800 dark:text-blue-300">不知道怎麼填？</div>
+                      <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
+                        讓 AI 問你幾個問題，幫你整理思緒
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900/30"
+                        onClick={() => setUseGuidedQuestions(true)}
+                      >
+                        開始問答引導
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
 
-            <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(4)}>
-                <ChevronLeft className="w-4 h-4 mr-1" />
-                上一步
-              </Button>
-              <Button 
-                className="flex-1"
-                disabled={generateOpeners.isPending}
-                onClick={handleGenerateHooks}
-              >
-                {generateOpeners.isPending ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    AI 正在生成開頭選項...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    生成開頭選項
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+                {currentTypeInputFields.map((field) => (
+                  <div key={field.key} className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      {field.label}
+                      {field.required && <span className="text-red-500 text-xs">*必填</span>}
+                    </Label>
+                    {field.type === 'textarea' ? (
+                      <Textarea
+                        placeholder={field.placeholder}
+                        value={typeInputs[field.key] || ''}
+                        onChange={(e) => setTypeInputs(prev => ({ ...prev, [field.key]: e.target.value }))}
+                        rows={3}
+                      />
+                    ) : (
+                      <Input
+                        placeholder={field.placeholder}
+                        value={typeInputs[field.key] || ''}
+                        onChange={(e) => setTypeInputs(prev => ({ ...prev, [field.key]: e.target.value }))}
+                      />
+                    )}
+                    <p className="text-xs text-muted-foreground">{field.description}</p>
+                  </div>
+                ))}
+
+                <div className="flex gap-3 pt-4">
+                  <Button variant="outline" onClick={() => setCurrentStep(4)}>
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    上一步
+                  </Button>
+                  <Button 
+                    className="flex-1"
+                    disabled={generateOpeners.isPending}
+                    onClick={handleGenerateHooks}
+                  >
+                    {generateOpeners.isPending ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        AI 正在生成開頭選項...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        生成開頭選項
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
 
       {/* Step 6: Hook 選項（已優化：直接生成多種風格供選擇） */}

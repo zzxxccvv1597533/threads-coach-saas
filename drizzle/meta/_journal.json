@@ -211,6 +211,13 @@
       "when": 1768897427914,
       "tag": "0029_foamy_johnny_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1769824726841,
+      "tag": "0030_striped_shape",
+      "breakpoints": true
     }
   ]
 }

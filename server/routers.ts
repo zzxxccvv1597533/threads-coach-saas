@@ -23,6 +23,7 @@ import { buildStylePolishSystemPrompt, buildStylePolishUserPrompt, validateSeman
 import { checkOpenerHomogeneityV2, saveOpenerEmbedding, checkSemanticFidelity, rankCandidatesByDiversity } from "./embedding-service";
 import { findSimilarViralExamples, getSmartFewShotExamples, getClusteringSummary, getEmbeddingStats, getContentTypeRecommendation, getSimilarViralsByType, getHighPotentialTopics } from "./viral-embedding-service";
 import { getSpiritualSuccessFactors, getContentTypeRecommendations, getPresentationRecommendations, findSimilarViralPosts } from "./ip-data-service";
+import { OPTIMIZED_SYSTEM_PROMPT, POST_TYPE_STRUCTURES, CTA_TYPES, replaceAIWords, selectCTA, buildOptimizedPrompt, TOPIC_GENERATION_PROMPT, GUIDED_QUESTIONS } from "../shared/optimized-prompts";
 
 // Admin procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -3090,9 +3091,12 @@ ${audienceLines.join('\n\n')}`;
 ❗❗❗❗❗ 字數限制結束 ❗❗❗❗❗
 `;
 
+        // ✅ v4.0 優化：使用精簡版提示詞系統
+        const optimizedBasePrompt = buildOptimizedPrompt(input.contentType, ipContext, audienceContext);
+        
         const systemPrompt = `${hardWordLimitPrompt}
 
-${SYSTEM_PROMPTS.contentGeneration}
+${optimizedBasePrompt}
 
 === 創作者 IP 地基（必須在內容中展現） ===
 ${ipContext || '未設定 IP 地基，請用通用風格寫作。'}
@@ -3394,6 +3398,14 @@ ${userPrompt}`;
           enableEmotionFilter: true,
           enableSimplify: false, // 暴力降維預設關閉
         });
+        
+        // ✅ v4.0 優化：應用 AI 詞彙替換後處理
+        const aiWordReplacement = replaceAIWords(generatedContent);
+        generatedContent = aiWordReplacement.result;
+        if (aiWordReplacement.replacements.length > 0) {
+          console.log('[AI詞彙替換] 替換了', aiWordReplacement.replacements.length, '個詞彙:', 
+            aiWordReplacement.replacements.slice(0, 5).map(r => `${r.original}→${r.replacement}`).join(', '));
+        }
         
         // ✅ 方案 B 強化版：字數檢查和自動精簡（使用 Claude Sonnet 4 + 多次精簡）
         let actualWordCount = generatedContent.length;
@@ -6572,6 +6584,296 @@ ${enhancedUserContext}`.trim();
         todaySuggestions: suggestions.topics,
       };
     }),
+  }),
+
+  // ==================== 靈感工作室（v4.0 新增） ====================
+  inspiration: router({
+    // 生成選題推薦（結合痛點矩陣 + IP 資料 + 爆款資料庫）
+    generateTopics: protectedProcedure
+      .input(z.object({
+        count: z.number().min(1).max(10).default(5),
+      }).optional())
+      .mutation(async ({ ctx, input }) => {
+        const count = input?.count || 5;
+        
+        // 取得用戶 IP 資料
+        const profile = await db.getIpProfileByUserId(ctx.user.id);
+        const audiences = await db.getAudienceSegmentsByUserId(ctx.user.id);
+        const domain = await db.identifyUserDomain(ctx.user.id);
+        
+        // 取得已使用的選題（避免重複）
+        const usedTopics = await db.getUsedTopicTexts(ctx.user.id, 30);
+        
+        // 建構 IP 資料字串
+        let ipContext = '';
+        if (profile?.occupation) ipContext += `職業：${profile.occupation}\n`;
+        if (profile?.personaExpertise) ipContext += `專業：${profile.personaExpertise}\n`;
+        if (profile?.personaEmotion) ipContext += `情感共鳴：${profile.personaEmotion}\n`;
+        if (profile?.personaViewpoint) ipContext += `獨特觀點：${profile.personaViewpoint}\n`;
+        
+        // 建構受眾資料字串
+        let audienceContext = '';
+        if (audiences && audiences.length > 0) {
+          audienceContext = audiences.map(a => {
+            let line = `- ${a.segmentName}`;
+            if (a.painPoint) line += `（痛點：${a.painPoint.substring(0, 50)}）`;
+            return line;
+          }).join('\n');
+        }
+        
+        // 取得爆款資料庫參考
+        const viralExamples = await db.getTieredViralExamples({
+          keyword: domain.primaryDomain,
+          tier: 'S',
+          limit: 10,
+        });
+        
+        let viralContext = '';
+        if (viralExamples.length > 0) {
+          viralContext = viralExamples.slice(0, 5).map(e => {
+            const opener = e.opener50 || e.postText.substring(0, 50);
+            return `- ${opener}...`;
+          }).join('\n');
+        }
+        
+        // 建構已使用選題字串（避免重複）
+        const usedTopicsContext = usedTopics.length > 0 
+          ? `\n【禁止重複的選題（已生成過）】\n${usedTopics.slice(0, 20).map(t => `- ${t}`).join('\n')}`
+          : '';
+        
+        const prompt = `${TOPIC_GENERATION_PROMPT}
+
+【創作者資料】
+${ipContext || '未設定'}
+
+【目標受眾】
+${audienceContext || '未設定'}
+
+【爆款參考（學習這些選題的特徵）】
+${viralContext || '無'}
+${usedTopicsContext}
+
+請生成 ${count} 個選題，每個選題都要：
+1. 是「具體情境」（15-40 字）
+2. 讓人想知道「然後呢？」
+3. 符合創作者的專業領域
+4. 不要與已生成過的選題重複
+
+請用 JSON 格式回應：
+{
+  "topics": [
+    { "text": "選題內容", "source": "pain_matrix" | "ip_data" | "viral_db", "reason": "推薦原因" }
+  ]
+}`;
+        
+        try {
+          const response = await invokeLLM({
+            messages: [
+              { role: 'system', content: '你是一位 Threads 選題專家，幫創作者找到好的選題。' },
+              { role: 'user', content: prompt },
+            ],
+            response_format: {
+              type: 'json_schema',
+              json_schema: {
+                name: 'topic_suggestions',
+                strict: true,
+                schema: {
+                  type: 'object',
+                  properties: {
+                    topics: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          text: { type: 'string', description: '選題內容（15-40 字）' },
+                          source: { type: 'string', enum: ['pain_matrix', 'ip_data', 'viral_db'] },
+                          reason: { type: 'string', description: '推薦原因' },
+                        },
+                        required: ['text', 'source', 'reason'],
+                        additionalProperties: false,
+                      },
+                    },
+                  },
+                  required: ['topics'],
+                  additionalProperties: false,
+                },
+              },
+            },
+          });
+          
+          const content = response.choices[0]?.message?.content;
+          const parsed = JSON.parse(typeof content === 'string' ? content : '{}');
+          
+          // 記錄生成的選題
+          if (parsed.topics && parsed.topics.length > 0) {
+            const topicsToRecord = parsed.topics.map((t: any) => ({
+              topicText: t.text,
+              topicSource: t.source as 'pain_matrix' | 'ip_data' | 'viral_db',
+            }));
+            const recordedIds = await db.recordGeneratedTopics(ctx.user.id, topicsToRecord);
+            
+            // 將 ID 加入回傳結果
+            parsed.topics = parsed.topics.map((t: any, i: number) => ({
+              ...t,
+              id: recordedIds[i],
+            }));
+          }
+          
+          await db.logApiUsage(ctx.user.id, 'generateInspirationTopics', 'llm', 300, 400);
+          
+          return {
+            topics: parsed.topics || [],
+            domain: domain.primaryDomain,
+          };
+        } catch (error) {
+          console.error('[Inspiration] 選題生成失敗:', error);
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: '選題生成失敗，請稍後再試',
+          });
+        }
+      }),
+    
+    // 選擇選題（更新狀態）
+    selectTopic: protectedProcedure
+      .input(z.object({
+        topicId: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.updateTopicStatus(input.topicId, 'selected');
+        return { success: true };
+      }),
+    
+    // 取得選題歷史
+    getHistory: protectedProcedure
+      .input(z.object({
+        limit: z.number().min(1).max(100).default(20),
+        status: z.enum(['generated', 'selected', 'used', 'skipped']).optional(),
+      }).optional())
+      .query(async ({ ctx, input }) => {
+        const history = await db.getUserTopicHistory(ctx.user.id, {
+          limit: input?.limit || 20,
+          status: input?.status,
+        });
+        return history;
+      }),
+  }),
+
+  // ==================== 發文工作室問答流程（v4.0 新增） ====================
+  writingSession: router({
+    // 開始問答會話
+    start: protectedProcedure
+      .input(z.object({
+        userIdea: z.string().optional(),
+        topicHistoryId: z.number().optional(),
+        contentType: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // 根據內容類型取得引導問題
+        const contentType = input.contentType || 'story';
+        const questions = GUIDED_QUESTIONS[contentType] || GUIDED_QUESTIONS.story;
+        
+        // 創建會話
+        const sessionId = await db.createWritingSession(ctx.user.id, {
+          userIdea: input.userIdea,
+          topicHistoryId: input.topicHistoryId,
+          selectedContentType: contentType,
+          questions: questions.map(q => ({ question: q, answer: null, skipped: false })),
+        });
+        
+        // 如果有選題 ID，更新選題狀態
+        if (input.topicHistoryId) {
+          await db.updateTopicStatus(input.topicHistoryId, 'selected');
+        }
+        
+        return {
+          sessionId,
+          questions: questions.map((q, i) => ({
+            index: i,
+            question: q,
+            answer: null,
+            skipped: false,
+          })),
+          contentType,
+        };
+      }),
+    
+    // 更新問答答案
+    updateAnswer: protectedProcedure
+      .input(z.object({
+        sessionId: z.number(),
+        questionIndex: z.number(),
+        answer: z.string().optional(),
+        skipped: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const session = await db.getWritingSession(input.sessionId);
+        if (!session) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: '會話不存在' });
+        }
+        
+        const questions = session.questions as Array<{ question: string; answer: string | null; skipped: boolean }>;
+        if (input.questionIndex >= 0 && input.questionIndex < questions.length) {
+          questions[input.questionIndex].answer = input.answer || null;
+          questions[input.questionIndex].skipped = input.skipped || false;
+        }
+        
+        await db.updateWritingSession(input.sessionId, { questions });
+        
+        return { success: true };
+      }),
+    
+    // 完成問答並生成內容
+    complete: protectedProcedure
+      .input(z.object({
+        sessionId: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const session = await db.getWritingSession(input.sessionId);
+        if (!session) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: '會話不存在' });
+        }
+        
+        // 組合問答答案成為素材
+        const questions = session.questions as Array<{ question: string; answer: string | null; skipped: boolean }>;
+        const answeredQuestions = questions.filter(q => q.answer && !q.skipped);
+        
+        let material = session.userIdea || '';
+        if (answeredQuestions.length > 0) {
+          material += '\n\n問答補充：\n';
+          material += answeredQuestions.map(q => `${q.question}\n${q.answer}`).join('\n\n');
+        }
+        
+        // 更新會話狀態
+        await db.updateWritingSession(input.sessionId, { status: 'completed' });
+        
+        // 如果有選題 ID，更新選題狀態為已使用
+        if (session.topicHistoryId) {
+          await db.updateTopicStatus(session.topicHistoryId, 'used');
+        }
+        
+        return {
+          material,
+          contentType: session.selectedContentType || 'story',
+          sessionId: input.sessionId,
+        };
+      }),
+    
+    // 取得會話詳情
+    get: protectedProcedure
+      .input(z.object({ sessionId: z.number() }))
+      .query(async ({ input }) => {
+        const session = await db.getWritingSession(input.sessionId);
+        return session;
+      }),
+    
+    // 取得引導問題（根據內容類型）
+    getQuestions: protectedProcedure
+      .input(z.object({ contentType: z.string() }))
+      .query(async ({ input }) => {
+        const questions = GUIDED_QUESTIONS[input.contentType] || GUIDED_QUESTIONS.story;
+        return { questions };
+      }),
   }),
 });
 

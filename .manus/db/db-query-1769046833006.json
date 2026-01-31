@@ -1,0 +1,14 @@
+{
+  "query": "\nSELECT \n  (SELECT COUNT(*) FROM viral_examples) as viral_examples_count,\n  (SELECT COUNT(*) FROM viral_example_embeddings) as embeddings_count;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute \nSELECT \n  (SELECT COUNT(*) FROM viral_examples) as viral_examples_count,\n  (SELECT COUNT(*) FROM viral_example_embeddings) as embeddings_count;\n",
+  "rows": [
+    {
+      "viral_examples_count": "1240",
+      "embeddings_count": "1240"
+    }
+  ],
+  "messages": [],
+  "stdout": "viral_examples_count\tembeddings_count\n1240\t1240\n",
+  "stderr": "",
+  "execution_time_ms": 1494
+}

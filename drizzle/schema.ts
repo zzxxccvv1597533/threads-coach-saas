@@ -1170,3 +1170,74 @@ export const globalViralRules = mysqlTable("global_viral_rules", {
 
 export type GlobalViralRule = typeof globalViralRules.$inferSelect;
 export type InsertGlobalViralRule = typeof globalViralRules.$inferInsert;
+
+
+// ============================================
+// 選題歷史記錄（靈感工作室）
+// ============================================
+export const topicHistory = mysqlTable("topic_history", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(), // 用戶 ID
+  // 選題內容
+  topicText: text("topicText").notNull(), // 選題文字（15-40 字的具體情境）
+  topicSource: mysqlEnum("topicSource", [
+    "pain_matrix",    // 來自痛點矩陣
+    "ip_data",        // 來自 IP 資料推薦
+    "viral_db",       // 來自爆款資料庫
+    "user_input",     // 用戶自己輸入
+    "brainstorm"      // 來自腦力激盪
+  ]).default("pain_matrix"),
+  // 關聯資訊
+  audience: varchar("audience", { length: 128 }), // 目標受眾
+  subTopic: varchar("subTopic", { length: 128 }), // 子主題
+  painPoint: varchar("painPoint", { length: 256 }), // 痛點
+  // 狀態
+  status: mysqlEnum("topicStatus", [
+    "generated",  // 已生成（用戶看過）
+    "selected",   // 已選擇（用戶點選）
+    "used",       // 已使用（生成了草稿）
+    "skipped"     // 已跳過
+  ]).default("generated"),
+  // 關聯草稿
+  draftId: int("draftId"), // 如果使用了這個選題，關聯的草稿 ID
+  // 時間戳
+  selectedAt: timestamp("selectedAt"),
+  usedAt: timestamp("usedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TopicHistory = typeof topicHistory.$inferSelect;
+export type InsertTopicHistory = typeof topicHistory.$inferInsert;
+
+// ============================================
+// 發文工作室問答記錄
+// ============================================
+export const writingSessionQuestions = mysqlTable("writing_session_questions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  draftId: int("draftId"), // 關聯的草稿 ID
+  // 問答內容
+  questionType: varchar("questionType", { length: 64 }), // 問題類型（story, knowledge, viewpoint 等）
+  questions: json("questions").$type<Array<{
+    question: string;
+    answer: string | null;
+    skipped: boolean;
+  }>>(),
+  // 用戶輸入的 Idea
+  userIdea: text("userIdea"),
+  // 選擇的選題（如果從靈感工作室進入）
+  topicHistoryId: int("topicHistoryId"),
+  // 選擇的貼文類型
+  selectedContentType: varchar("selectedContentType", { length: 64 }),
+  // 狀態
+  status: mysqlEnum("sessionStatus", [
+    "in_progress",  // 進行中
+    "completed",    // 已完成
+    "abandoned"     // 已放棄
+  ]).default("in_progress"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type WritingSessionQuestion = typeof writingSessionQuestions.$inferSelect;
+export type InsertWritingSessionQuestion = typeof writingSessionQuestions.$inferInsert;

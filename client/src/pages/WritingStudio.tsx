@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GuidedWritingFlow } from "@/components/GuidedWritingFlow";
+import { InspirationStudio } from "@/components/InspirationStudio";
 
 import { FLEXIBLE_INPUT_FIELDS, CONTENT_TYPES_WITH_VIRAL_ELEMENTS } from "@shared/knowledge-base";
 import { CONTENT_TYPES_V2, ALL_CONTENT_TYPES_V2, HOOK_STYLES_V2 } from "@shared/content-types-v2";
@@ -285,6 +286,9 @@ export default function WritingStudio() {
   
   // 快速風格標籤（進階模式）
   const [selectedHookStyleTag, setSelectedHookStyleTag] = useState<string | null>(null);
+  
+  // v4.0: 靈感工作室狀態（進階模式）
+  const [showInspirationStudio, setShowInspirationStudio] = useState(false);
   
   // 風格標籤定義
   const HOOK_STYLE_TAGS = [
@@ -924,6 +928,17 @@ export default function WritingStudio() {
                       </>
                     )}
                   </Button>
+                </div>
+                
+                {/* v4.0: 沒靈感？按鈕 */}
+                <div className="text-center pt-2">
+                  <button
+                    className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 mx-auto"
+                    onClick={() => setShowInspirationStudio(true)}
+                  >
+                    <Lightbulb className="w-4 h-4" />
+                    沒靈感？讓 AI 給你選題
+                  </button>
                 </div>
               </CardContent>
             </Card>
@@ -1678,6 +1693,23 @@ export default function WritingStudio() {
           )}
         </div>
       </div>
+      
+      {/* v4.0: 靈感工作室彈窗（進階模式） */}
+      {showInspirationStudio && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl">
+            <InspirationStudio
+              onSelectTopic={(topic) => {
+                // 將選題帶入素材欄位
+                setMaterial(topic.text);
+                setShowInspirationStudio(false);
+                toast.success(`已帶入選題「${topic.text}」`);
+              }}
+              onClose={() => setShowInspirationStudio(false)}
+            />
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

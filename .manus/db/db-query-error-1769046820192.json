@@ -1,0 +1,8 @@
+{
+  "query": "\n-- 查詢向量資料庫的統計\nSELECT \n  (SELECT COUNT(*) FROM ip_viral_embeddings) as embedding_count,\n  (SELECT COUNT(DISTINCT post_id) FROM ip_viral_embeddings) as unique_posts_with_embedding;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute \n-- 查詢向量資料庫的統計\nSELECT \n  (SELECT COUNT(*) FROM ip_viral_embeddings) as embedding_count,\n  (SELECT COUNT(DISTINCT post_id) FROM ip_viral_embeddings) as unique_posts_with_embedding;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 3: Table 'zwxgmk4u6xh72xjksdxepb.ip_viral_embeddings' doesn't exist"
+  ]
+}

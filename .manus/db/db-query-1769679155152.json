@@ -1,0 +1,9 @@
+{
+  "query": "SELECT \n  ip.occupation, \n  ip.voiceTone, \n  ip.viewpointStatement,\n  ip.personaExpertise,\n  ip.personaEmotion,\n  ip.personaViewpoint,\n  ip.heroJourneyOrigin,\n  ip.heroJourneyProcess,\n  ip.heroJourneyHero,\n  ip.heroJourneyMission,\n  ip.identityTags,\n  ip.contentMatrixAudiences,\n  ip.contentMatrixThemes\nFROM ip_profiles ip\nJOIN users u ON ip.userId = u.id\nWHERE u.openId = (SELECT openId FROM users WHERE id = (SELECT userId FROM ip_profiles ORDER BY updatedAt DESC LIMIT 1))\nLIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute SELECT \n  ip.occupation, \n  ip.voiceTone, \n  ip.viewpointStatement,\n  ip.personaExpertise,\n  ip.personaEmotion,\n  ip.personaViewpoint,\n  ip.heroJourneyOrigin,\n  ip.heroJourneyProcess,\n  ip.heroJourneyHero,\n  ip.heroJourneyMission,\n  ip.identityTags,\n  ip.contentMatrixAudiences,\n  ip.contentMatrixThemes\nFROM ip_profiles ip\nJOIN users u ON ip.userId = u.id\nWHERE u.openId = (SELECT openId FROM users WHERE id = (SELECT userId FROM ip_profiles ORDER BY updatedAt DESC LIMIT 1))\nLIMIT 1;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1806
+}

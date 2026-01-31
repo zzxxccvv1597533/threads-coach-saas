@@ -1,0 +1,26 @@
+{
+  "query": "\nSELECT \n  'ip_accounts' as table_name, COUNT(*) as count FROM ip_accounts\nUNION ALL\nSELECT \n  'ip_posts' as table_name, COUNT(*) as count FROM ip_posts\nUNION ALL\nSELECT \n  'ip_post_embeddings' as table_name, COUNT(*) as count FROM ip_post_embeddings\nUNION ALL\nSELECT \n  'ip_success_factors' as table_name, COUNT(*) as count FROM ip_success_factors;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute \nSELECT \n  'ip_accounts' as table_name, COUNT(*) as count FROM ip_accounts\nUNION ALL\nSELECT \n  'ip_posts' as table_name, COUNT(*) as count FROM ip_posts\nUNION ALL\nSELECT \n  'ip_post_embeddings' as table_name, COUNT(*) as count FROM ip_post_embeddings\nUNION ALL\nSELECT \n  'ip_success_factors' as table_name, COUNT(*) as count FROM ip_success_factors;\n",
+  "rows": [
+    {
+      "table_name": "ip_accounts",
+      "count": "50"
+    },
+    {
+      "table_name": "ip_success_factors",
+      "count": "603"
+    },
+    {
+      "table_name": "ip_post_embeddings",
+      "count": "2542"
+    },
+    {
+      "table_name": "ip_posts",
+      "count": "29475"
+    }
+  ],
+  "messages": [],
+  "stdout": "table_name\tcount\nip_accounts\t50\nip_success_factors\t603\nip_post_embeddings\t2542\nip_posts\t29475\n",
+  "stderr": "",
+  "execution_time_ms": 1540
+}

@@ -1,0 +1,15 @@
+{
+  "query": "\n-- 查詢 IP 貼文中的爆款數量\nSELECT \n  COUNT(*) as total_posts,\n  SUM(CASE WHEN likes >= 1000 THEN 1 ELSE 0 END) as viral_posts,\n  SUM(CASE WHEN likes >= 5000 THEN 1 ELSE 0 END) as super_viral_posts\nFROM ip_posts;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3kBbSiy1U7nUuYR.eb235af310e4 --database ZwXGmk4u6xh72xjKSDXePb --execute \n-- 查詢 IP 貼文中的爆款數量\nSELECT \n  COUNT(*) as total_posts,\n  SUM(CASE WHEN likes >= 1000 THEN 1 ELSE 0 END) as viral_posts,\n  SUM(CASE WHEN likes >= 5000 THEN 1 ELSE 0 END) as super_viral_posts\nFROM ip_posts;\n",
+  "rows": [
+    {
+      "total_posts": "29475",
+      "viral_posts": "1780",
+      "super_viral_posts": "277"
+    }
+  ],
+  "messages": [],
+  "stdout": "total_posts\tviral_posts\tsuper_viral_posts\n29475\t1780\t277\n",
+  "stderr": "",
+  "execution_time_ms": 2141
+}

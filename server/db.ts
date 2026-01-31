@@ -34,6 +34,8 @@ import {
   promptAvoidList, InsertPromptAvoidList, PromptAvoidList,
   templateStats, InsertTemplateStats, TemplateStats,
   userTemplatePreferences, InsertUserTemplatePreference, UserTemplatePreference,
+  topicHistory, InsertTopicHistory, TopicHistory,
+  writingSessionQuestions, InsertWritingSessionQuestion, WritingSessionQuestion,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -4265,4 +4267,187 @@ export async function getPersonalizedTopicSuggestions(userId: number, count: num
       recentTypes,
     },
   };
+}
+
+
+// ==================== 選題歷史記錄（靈感工作室） ====================
+
+// 記錄生成的選題
+export async function recordGeneratedTopics(
+  userId: number,
+  topics: Array<{
+    topicText: string;
+    topicSource: 'pain_matrix' | 'ip_data' | 'viral_db' | 'user_input' | 'brainstorm';
+    audience?: string;
+    subTopic?: string;
+    painPoint?: string;
+  }>
+): Promise<number[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const insertedIds: number[] = [];
+  
+  for (const topic of topics) {
+    const result = await db.insert(topicHistory).values({
+      userId,
+      topicText: topic.topicText,
+      topicSource: topic.topicSource,
+      audience: topic.audience || null,
+      subTopic: topic.subTopic || null,
+      painPoint: topic.painPoint || null,
+      status: 'generated',
+    });
+    
+    const insertId = Number((result[0] as any).insertId);
+    insertedIds.push(insertId);
+  }
+  
+  return insertedIds;
+}
+
+// 取得用戶已生成的選題（用於避免重複）
+export async function getUserTopicHistory(
+  userId: number,
+  options?: {
+    limit?: number;
+    status?: 'generated' | 'selected' | 'used' | 'skipped';
+    days?: number;
+  }
+): Promise<TopicHistory[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [eq(topicHistory.userId, userId)];
+  
+  if (options?.status) {
+    conditions.push(eq(topicHistory.status, options.status));
+  }
+  
+  if (options?.days) {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - options.days);
+    conditions.push(gte(topicHistory.createdAt, startDate));
+  }
+  
+  let query = db.select().from(topicHistory)
+    .where(and(...conditions))
+    .orderBy(desc(topicHistory.createdAt));
+  
+  if (options?.limit) {
+    query = query.limit(options.limit) as any;
+  }
+  
+  return query;
+}
+
+// 更新選題狀態
+export async function updateTopicStatus(
+  topicId: number,
+  status: 'generated' | 'selected' | 'used' | 'skipped',
+  draftId?: number
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  const updateData: any = { status };
+  
+  if (status === 'selected') {
+    updateData.selectedAt = new Date();
+  } else if (status === 'used' && draftId) {
+    updateData.usedAt = new Date();
+    updateData.draftId = draftId;
+  }
+  
+  await db.update(topicHistory)
+    .set(updateData)
+    .where(eq(topicHistory.id, topicId));
+  
+  return true;
+}
+
+// 取得已使用的選題文字（用於避免重複生成）
+export async function getUsedTopicTexts(userId: number, days: number = 30): Promise<string[]> {
+  const history = await getUserTopicHistory(userId, { days, limit: 200 });
+  return history.map(h => h.topicText);
+}
+
+// ==================== 發文工作室問答流程 ====================
+
+// 創建問答會話
+export async function createWritingSession(
+  userId: number,
+  data: {
+    userIdea?: string;
+    topicHistoryId?: number;
+    selectedContentType?: string;
+    questions?: Array<{ question: string; answer: string | null; skipped: boolean }>;
+  }
+): Promise<number | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.insert(writingSessionQuestions).values({
+    userId,
+    userIdea: data.userIdea || null,
+    topicHistoryId: data.topicHistoryId || null,
+    selectedContentType: data.selectedContentType || null,
+    questions: data.questions || [],
+    status: 'in_progress',
+  });
+  
+  return Number((result[0] as any).insertId);
+}
+
+// 更新問答會話
+export async function updateWritingSession(
+  sessionId: number,
+  data: {
+    questions?: Array<{ question: string; answer: string | null; skipped: boolean }>;
+    selectedContentType?: string;
+    draftId?: number;
+    status?: 'in_progress' | 'completed' | 'abandoned';
+  }
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  const updateData: any = { updatedAt: new Date() };
+  
+  if (data.questions !== undefined) updateData.questions = data.questions;
+  if (data.selectedContentType) updateData.selectedContentType = data.selectedContentType;
+  if (data.draftId) updateData.draftId = data.draftId;
+  if (data.status) updateData.status = data.status;
+  
+  await db.update(writingSessionQuestions)
+    .set(updateData)
+    .where(eq(writingSessionQuestions.id, sessionId));
+  
+  return true;
+}
+
+// 取得問答會話
+export async function getWritingSession(sessionId: number): Promise<WritingSessionQuestion | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(writingSessionQuestions)
+    .where(eq(writingSessionQuestions.id, sessionId))
+    .limit(1);
+  
+  return result[0] || null;
+}
+
+// 取得用戶最近的問答會話
+export async function getUserRecentWritingSessions(
+  userId: number,
+  limit: number = 10
+): Promise<WritingSessionQuestion[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(writingSessionQuestions)
+    .where(eq(writingSessionQuestions.userId, userId))
+    .orderBy(desc(writingSessionQuestions.createdAt))
+    .limit(limit);
 }
