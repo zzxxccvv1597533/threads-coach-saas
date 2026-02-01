@@ -38,6 +38,10 @@ export interface OpenerCandidate {
   qualityResult?: QualityCheckResult;
   wasAutoFixed?: boolean;
   originalText?: string; // 自動修復前的原始文字
+  // 新增：Hook 知識庫欄位
+  principle?: string;  // 心理學原理（鏡像原理/衝突原理/解法原理）
+  templateType?: string;  // 句型結構（引言式/提問式/感受式/發現式/反差式）
+  materialSource?: string;  // 素材來源
 }
 
 export interface GenerateOpenersInput {
@@ -294,6 +298,9 @@ async function generateSingleOpener(params: {
       );
     }
 
+    // 根據模板類別推斷心理學原理和句型結構
+    const { principle, templateType } = inferPrincipleAndTemplateType(template.category || 'other', template.name);
+    
     return {
       templateId: template.id,
       templateName: template.name,
@@ -306,6 +313,10 @@ async function generateSingleOpener(params: {
       qualityResult,
       wasAutoFixed,
       originalText,
+      // 新增：Hook 知識庫欄位
+      principle,
+      templateType,
+      materialSource: `來自用戶素材：${topic}`,
     };
   } catch (error) {
     console.error(`[OpenerGenerator] Failed to generate opener:`, error);
@@ -430,6 +441,82 @@ function getScoreLevel(score: number): string {
   if (score < 0.4) return "good";
   if (score < 0.6) return "fair";
   return "poor";
+}
+
+/**
+ * 根據模板類別推斷心理學原理和句型結構
+ * 
+ * 三大心理學原理：
+ * - 鏡像原理：讓讀者看到自己（「你是不是也...」「有沒有一種感覺...」）
+ * - 衝突原理：製造反差和好奇（「很多人以為...但其實...」「我曾經也...」）
+ * - 解法原理：點出痛點暗示解法（「教你一個方法...」「這個技巧讓我...」）
+ * 
+ * 五種句型結構：
+ * - 引言式：用名人名言或金句開場
+ * - 提問式：用問題引發思考
+ * - 感受式：用情緒和感受帶入
+ * - 發現式：用「我發現...」「原來...」開場
+ * - 反差式：用對比和反差製造衝擊
+ */
+function inferPrincipleAndTemplateType(
+  category: string,
+  templateName: string
+): { principle: string; templateType: string } {
+  // 根據模板類別推斷心理學原理
+  let principle = '鏡像原理'; // 預設
+  let templateType = '感受式'; // 預設
+  
+  const categoryLower = category.toLowerCase();
+  const nameLower = templateName.toLowerCase();
+  
+  // 根據類別推斷心理學原理
+  if (categoryLower.includes('mirror') || categoryLower.includes('鏡像') || 
+      nameLower.includes('你是不是') || nameLower.includes('有沒有')) {
+    principle = '鏡像原理';
+  } else if (categoryLower.includes('contrast') || categoryLower.includes('反差') || 
+             categoryLower.includes('對比') || nameLower.includes('但其實') || 
+             nameLower.includes('沒想到')) {
+    principle = '衝突原理';
+  } else if (categoryLower.includes('solution') || categoryLower.includes('解法') || 
+             categoryLower.includes('method') || nameLower.includes('教你') || 
+             nameLower.includes('技巧')) {
+    principle = '解法原理';
+  } else if (categoryLower.includes('question') || categoryLower.includes('提問')) {
+    principle = '鏡像原理'; // 提問通常是讓讀者看到自己
+  } else if (categoryLower.includes('scene') || categoryLower.includes('情境') || 
+             categoryLower.includes('場景')) {
+    principle = '鏡像原理'; // 場景帶入通常是讓讀者代入
+  } else if (categoryLower.includes('data') || categoryLower.includes('數據')) {
+    principle = '衝突原理'; // 數據通常用來製造反差
+  } else if (categoryLower.includes('feeling') || categoryLower.includes('感受') || 
+             categoryLower.includes('情緒')) {
+    principle = '鏡像原理'; // 情緒帶入是讓讀者共鳴
+  }
+  
+  // 根據類別推斷句型結構
+  if (categoryLower.includes('question') || categoryLower.includes('提問') || 
+      nameLower.includes('問') || nameLower.includes('?') || nameLower.includes('？')) {
+    templateType = '提問式';
+  } else if (categoryLower.includes('contrast') || categoryLower.includes('反差') || 
+             categoryLower.includes('對比')) {
+    templateType = '反差式';
+  } else if (categoryLower.includes('quote') || categoryLower.includes('引言') || 
+             nameLower.includes('名言') || nameLower.includes('金句')) {
+    templateType = '引言式';
+  } else if (categoryLower.includes('discovery') || categoryLower.includes('發現') || 
+             nameLower.includes('發現') || nameLower.includes('原來')) {
+    templateType = '發現式';
+  } else if (categoryLower.includes('feeling') || categoryLower.includes('感受') || 
+             categoryLower.includes('情緒') || categoryLower.includes('scene') || 
+             categoryLower.includes('情境')) {
+    templateType = '感受式';
+  } else if (categoryLower.includes('mirror') || categoryLower.includes('鏡像')) {
+    templateType = '提問式'; // 鏡像通常用提問式
+  } else if (categoryLower.includes('data') || categoryLower.includes('數據')) {
+    templateType = '發現式'; // 數據通常用發現式
+  }
+  
+  return { principle, templateType };
 }
 
 // ============================================

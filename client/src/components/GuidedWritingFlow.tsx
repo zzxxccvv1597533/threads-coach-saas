@@ -284,6 +284,10 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         isRecommended: candidate.isRecommended || index === 0, // 第一個預設為推薦
         viralSimilarity: candidate.viralSimilarity,
         similarViralExample: candidate.similarViralExample,
+        // 新增：Hook 知識庫欄位
+        principle: candidate.principle,
+        templateType: candidate.templateType,
+        materialSource: candidate.materialSource,
       }));
       console.log('[generateOpeners] Transformed hooks:', transformedHooks);
       setHookOptions(transformedHooks);
