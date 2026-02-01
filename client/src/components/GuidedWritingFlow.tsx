@@ -418,14 +418,17 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
 
   // 處理生成 Hook - 使用新的 Opener Generator
   const handleGenerateHooks = () => {
-    if (!selectedTopic || !selectedContentType) {
+    // 修復：「有靈感」流程中，selectedTopic 可能為 null，此時使用 topicHint
+    const topicTitle = selectedTopic?.title || topicHint;
+    
+    if (!topicTitle || !selectedContentType) {
       toast.error("請先完成前面的步驟");
       return;
     }
 
     // 使用新的 Opener Generator API
     generateOpeners.mutate({
-      topic: selectedTopic.title,
+      topic: topicTitle,
       contentType: selectedContentType,
       // hookStyle 已移除，讓 AI 自動生成多種風格
       userContext: Object.entries(typeInputs)
@@ -1385,14 +1388,47 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                   .map(([k, v]) => `${k}: ${v}`)
                   .join('\n\n');
                 setTypeInputs(prev => ({ ...prev, material }));
-                setUseInteractiveQA(false);
-                // 直接進入下一步生成 Hook
-                handleGenerateHooks();
+                
+                // 修復：「有靈感」流程中，selectedTopic 和 topicHint 可能都是空的
+                // 此時從用戶的回答中提取主題（取第一個非空答案的前 50 個字作為主題）
+                let topicTitle = selectedTopic?.title || topicHint;
+                if (!topicTitle) {
+                  const firstAnswer = Object.values(answers).find(v => v && v.trim());
+                  if (firstAnswer) {
+                    topicTitle = firstAnswer.slice(0, 50) + (firstAnswer.length > 50 ? '...' : '');
+                    // 同時更新 topicHint 以便後續步驟使用
+                    setTopicHint(topicTitle);
+                  }
+                }
+                
+                if (topicTitle && selectedContentType) {
+                  generateOpeners.mutate({
+                    topic: topicTitle,
+                    contentType: selectedContentType,
+                    userContext: `material: ${material}`,
+                    count: 5,
+                    targetAudienceId: selectedAudienceId || undefined,
+                  });
+                } else {
+                  // 如果還是沒有主題，顯示錯誤提示
+                  toast.error("請至少填寫一個問題的答案");
+                }
               }}
               onSkip={() => {
-                // Issue #3 修復：跳過問答時直接生成開頭，而不是顯示手動填寫表單
-                setUseInteractiveQA(false);
-                handleGenerateHooks();
+                // Issue #3 修復：跳過問答時直接生成開頭
+                const topicTitle = selectedTopic?.title || topicHint;
+                if (topicTitle && selectedContentType) {
+                  generateOpeners.mutate({
+                    topic: topicTitle,
+                    contentType: selectedContentType,
+                    userContext: '',
+                    count: 5,
+                    targetAudienceId: selectedAudienceId || undefined,
+                  });
+                } else {
+                  // 「有靈感」流程中沒有主題時，不能跳過問答
+                  toast.error("請至少填寫一個問題的答案，讓 AI 了解你想寫什麼");
+                }
               }}
             />
           ) : useGuidedQuestions ? (
