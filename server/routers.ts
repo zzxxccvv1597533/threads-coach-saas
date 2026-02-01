@@ -2098,13 +2098,61 @@ ${targetAudience.painPoint || '未設定'}
         }
         
         // Hook 風格說明
+        // ========== Hook 知識庫 V17.0 ==========
+        // 核心前提：Threads 用戶處於「快速略讀模式」，Hook 的唯一功能是讓人在 0.5 秒內停下來
+        
+        // 三大心理學原理
+        const hookPsychologyPrinciples = `
+【Hook 設計的三大心理學原理】
+
+1. 鏡像原理（讓他看到自己）
+   - 人類天生最關心自己
+   - 當內容說中他的處境或心聲，會產生「欸，這是在說我」的感覺
+   - 常見句式：「你是不是也...」「有沒有人也會這樣...」「如果你正在...，這篇你要看」
+
+2. 衝突原理（讓他看到反差）
+   - 大腦喜歡反差、顛覆和未解之謎
+   - 充滿矛盾或引發好奇的開頭，會迫使他想知道「接下來發生什麼」
+   - 常見句式：「我以為...但其實...」「我做錯了一堆事，結果卻...」「我不是...但我還是...」
+
+3. 解法原理（讓他看到價值）
+   - 大腦天生尋求解決方案以節省能量
+   - 當你點出痛點並暗示有解法，他會為了獲得價值而停下
+   - 常見句式：「...有問題？這幾點先看懂」「...踩雷的人，通常忽略了這幾件事」
+`;
+
+        // 五種即插即用的 Hook 句型
+        const hookTemplates = `
+【五種 Hook 句型結構（參考節奏，不要照抄）】
+
+1. 引言式（Quote Hook）
+   - 引用一句話或轉貼，自然地打開話題
+   - 範例：「我最近看到一句話：『慢慢來，比較快。』覺得好有感。」
+
+2. 提問式（Question Hook）
+   - 拋出一個引發思考或共鳴的問題，像聊天一樣開場
+   - 範例：「你也有這種時候嗎？排了很多計畫，最後只想躺著？」
+
+3. 感受式（Feeling Hook）
+   - 從個人真實的情緒或狀態出發，平淡但有力
+   - 範例：「最近有點累，但還是想記錄一下今天的小開心。」
+
+4. 發現式（Discovery Hook）
+   - 分享一個日常中的小領悟或靈感，不高調但有共鳴
+   - 範例：「我發現，每天出門散步10分鐘，心情真的會變好一點。」
+
+5. 反差式（Contrast Hook）
+   - 講述一個「無心插柳」的時刻，充滿真誠感
+   - 範例：「原本只是想記錄今天吃了什麼，沒想到一堆人問哪裡買的。」
+`;
+
+        // Hook 風格指南（保留原有的，但調整描述）
         const hookStyleGuide: Record<string, string> = {
-          mirror: '鏡像開頭：直接說出受眾的心聲，讓他們覺得「這就是在說我」。例：「你是不是也常常...」',
-          contrast: '反差開頭：打破預期的陳述，製造認知衝突。例：「很多人以為...但其實...」',
-          scene: '場景開頭：描繪具體畫面，讓讀者身歷其境。例：「昨天晚上，我坐在電腦前...」',
-          question: '提問開頭：直接拋出問題，引發讀者思考。例：「你有沒有想過...」',
-          data: '數據開頭：用數字吸引注意，建立權威感。例：「90%的人都不知道...」',
-          dialogue: '對話開頭：用真實對話開場，增加真實感。例：「「你怎麼知道...」朋友問我。」',
+          mirror: '鏡像式：運用「鏡像原理」，讓讀者看到自己，產生「這是在說我」的感覺',
+          contrast: '反差式：運用「衝突原理」，製造認知反差，讓讀者想知道接下來發生什麼',
+          question: '提問式：拋出引發思考的問題，像聊天一樣開場',
+          feeling: '感受式：從真實情緒出發，平淡但有力',
+          discovery: '發現式：分享日常小領悟，不高調但有共鳴',
         };
         
         const selectedStyle = input.hookStyle ? hookStyleGuide[input.hookStyle] : '請給出多種不同風格的 Hook';
@@ -2144,6 +2192,16 @@ ${targetAudience.painPoint || '未設定'}
           viralOpenersContext += `\n請參考以上開頭的結構和語氣，但要結合創作者的風格來調整。\n`;
         }
         
+        // 提取用戶明確提供的素材清單
+        const userProvidedMaterials = {
+          topic: input.topic,
+          inputs: input.inputs || {},
+        };
+        const materialsList = Object.entries(userProvidedMaterials.inputs)
+          .filter(([_, v]) => v && String(v).trim())
+          .map(([k, v]) => `- ${k}: ${v}`)
+          .join('\n');
+        
         const systemPrompt = `${SYSTEM_PROMPTS.contentGeneration}
 
 === 創作者 IP 地基 ===
@@ -2152,30 +2210,46 @@ ${ipContext || '未設定'}
 === 目標受眾 ===
 ${audienceContext || '未設定'}
 
+${hookPsychologyPrinciples}
+${hookTemplates}
+
 === Hook 風格指南 ===
 ${selectedStyle}
 ${viralOpenersContext}${semanticHooksPrompt}
-=== 重要指示 ===
-1. 每個 Hook 不超過 15 字（理想 10 字）
-2. Hook 要能讓人停下來想繼續看
-3. 符合創作者的語氣風格
-4. 針對受眾的痛點
-5. 用短句抓注意力，像真人說話
 
-=== ❗❗❗ 極度重要 - 禁止捏造情節 ❗❗❗ ===
-生成 Hook 時，只能使用用戶明確提供的資訊，絕對禁止捏造任何具體情節！
+=== ❗❗❗ 素材邊界檢查 - 最高優先級 ❗❗❗ ===
 
-禁止的行為：
-- ❌ 捏造具體場景（如「在路邊看到一朵小花」「在咖啡廳崩潰」）
-- ❌ 捏造具體物件（如「編了一朵花」「收到一封信」）
-- ❌ 捏造具體對話（如「朋友問我『你還好嗎』」）
-- ❌ 添加用戶沒有提到的細節
+【用戶明確提供的素材清單】
+主題：${input.topic}
+${materialsList || '（用戶未提供額外素材）'}
 
-正確的做法：
-- ✅ 只使用用戶提供的主題和關鍵字
-- ✅ 用通用的情緒詞彙（如「崩潰」「難過」）
-- ✅ 用時間概念（如「三個月後」）而不是具體場景
-- ✅ 保持模糊，讓用戶自己填入細節`;
+【絕對禁止的行為】
+1. ❌ 禁止捏造用戶沒有提到的具體場景（如「在路邊看到一朵小花」「在咖啡廳崩潰」）
+2. ❌ 禁止捏造用戶沒有提到的具體物件（如「編了一朵花」「收到一封信」）
+3. ❌ 禁止捏造用戶沒有提到的具體對話（如「朋友問我『你還好嗎』」）
+4. ❌ 禁止推測或延伸用戶的故事（如：朋友過世 ≠ 關係結束）
+5. ❌ 禁止添加任何用戶沒有明確提到的細節
+
+【正確的做法】
+1. ✅ 只使用上方「素材清單」中的內容
+2. ✅ 可以用通用的情緒詞彙（如「崩潰」「難過」「感動」）
+3. ✅ 可以用時間概念（如「三個月後」「那一天」）
+4. ✅ 保持適度模糊，讓讀者自己代入
+5. ✅ 每個 Hook 中的具體細節，都必須能在素材清單中找到來源
+
+=== Hook 設計指南 ===
+1. 每個 Hook 不超過 50 字（理想 30 字以內）
+2. Hook 的唯一功能是「讓人在 0.5 秒內停下來」
+3. 選擇一個心理學原理作為設計基礎（鏡像/衝突/解法）
+4. 參考五種句型結構，但不要照抄
+5. 符合創作者的語氣風格
+6. 避免套路感：每種句型最多使用一次
+
+=== 黃金法則 ===
+在生成每個 Hook 前，問自己：
+1. 「這句話是對誰說的？」
+2. 「他看到這句話，真的會有感覺嗎？」
+3. 「這個 Hook 中的每個細節，都能在用戶素材中找到來源嗎？」`;
 
         const response = await invokeLLM({
           messages: [
@@ -2193,11 +2267,20 @@ ${viralOpenersContext}${semanticHooksPrompt}
     {
       "style": "mirror",
       "styleName": "鏡像式",
+      "principle": "鏡像原理",
+      "templateType": "提問式",
       "content": "你是不是也常常...",
-      "reason": "這個開頭能讓受眾立刻產生共鳴"
+      "reason": "這個開頭能讓受眾立刻產生共鳴",
+      "materialSource": "來自用戶素材：xxx"
     }
   ]
-}` }
+}
+
+【重要】每個 Hook 必須：
+1. 標註使用的心理學原理（principle）：鏡像原理/衝突原理/解法原理
+2. 標註使用的句型結構（templateType）：引言式/提問式/感受式/發現式/反差式
+3. 標註素材來源（materialSource）：說明這個 Hook 的內容來自用戶的哪個素材
+4. 確保 5 個 Hook 使用不同的原理和句型組合，避免重複` }
           ],
           response_format: {
             type: "json_schema",
@@ -2212,12 +2295,15 @@ ${viralOpenersContext}${semanticHooksPrompt}
                     items: {
                       type: "object",
                       properties: {
-                        style: { type: "string", description: "Hook 風格 ID" },
-                        styleName: { type: "string", description: "Hook 風格名稱" },
+                        style: { type: "string", description: "Hook 風格 ID（mirror/contrast/question/feeling/discovery）" },
+                        styleName: { type: "string", description: "Hook 風格名稱（鏡像式/反差式/提問式/感受式/發現式）" },
+                        principle: { type: "string", description: "使用的心理學原理（鏡像原理/衝突原理/解法原理）" },
+                        templateType: { type: "string", description: "使用的句型結構（引言式/提問式/感受式/發現式/反差式）" },
                         content: { type: "string", description: "Hook 內容" },
-                        reason: { type: "string", description: "為什麼這個 Hook 有效" }
+                        reason: { type: "string", description: "為什麼這個 Hook 有效" },
+                        materialSource: { type: "string", description: "素材來源：說明這個 Hook 的內容來自用戶的哪個素材" }
                       },
-                      required: ["style", "styleName", "content", "reason"],
+                      required: ["style", "styleName", "principle", "templateType", "content", "reason", "materialSource"],
                       additionalProperties: false
                     }
                   }
@@ -2231,7 +2317,7 @@ ${viralOpenersContext}${semanticHooksPrompt}
 
         await db.logApiUsage(ctx.user.id, 'generateHooks', 'llm', 300, 400);
         
-        let hooksData: { hooks: Array<{ style: string; styleName: string; content: string; reason: string }> } = { hooks: [] };
+        let hooksData: { hooks: Array<{ style: string; styleName: string; principle: string; templateType: string; content: string; reason: string; materialSource: string }> } = { hooks: [] };
         try {
           const rawContent = response.choices[0]?.message?.content;
           const content = typeof rawContent === 'string' ? rawContent : '{}';

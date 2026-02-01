@@ -264,7 +264,16 @@ export default function WritingStudio() {
   
   // Hook 選擇相關 state
   const [selectedHookStyle, setSelectedHookStyle] = useState(() => getStoredState("selectedHookStyle", ""));
-  const [hookOptions, setHookOptions] = useState<Array<{ style: string; styleName: string; content: string; reason: string }>>(() => {
+  const [hookOptions, setHookOptions] = useState<Array<{ 
+    style: string; 
+    styleName: string; 
+    content: string; 
+    reason: string;
+    // 新增：Hook 知識庫欄位
+    principle?: string;  // 心理學原理
+    templateType?: string;  // 句型結構
+    materialSource?: string;  // 素材來源
+  }>>(() => {
     const stored = getStoredState("hookOptions", []);
     return Array.isArray(stored) ? stored : [];
   });

@@ -163,6 +163,11 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
     styleName: string; 
     content: string; 
     reason: string;
+    // 新增：Hook 知識庫欄位
+    principle?: string;  // 心理學原理（鏡像原理/衝突原理/解法原理）
+    templateType?: string;  // 句型結構（引言式/提問式/感受式/發現式/反差式）
+    materialSource?: string;  // 素材來源
+    // 原有欄位
     aiScore?: number;
     aiLevel?: string;
     candidateId?: number;
@@ -1655,6 +1660,24 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                       </div>
                     )}
                   </div>
+                  
+                  {/* 心理學原理和句型結構提示 - 新增 */}
+                  {(hook.principle || hook.templateType) && (
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                      {hook.principle && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 rounded-md">
+                          <span>🧠</span>
+                          {hook.principle}
+                        </span>
+                      )}
+                      {hook.templateType && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-md">
+                          <span>📝</span>
+                          {hook.templateType}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   
                   {/* AI 痕跡提示 */}
                   {hook.aiLevel && naturalScore !== null && naturalScore < 60 && (
