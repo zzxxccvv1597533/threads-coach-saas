@@ -19,6 +19,7 @@ interface BatchQuestionsFlowProps {
   creativeIntent?: 'pure_personal' | 'light_connection' | 'full_professional';
   onComplete: (answers: Record<string, string>) => void;
   onSkip: () => void;
+  isSubmitting?: boolean; // 新增：提交中狀態
 }
 
 interface Question {
@@ -29,7 +30,7 @@ interface Question {
   example?: string;
 }
 
-export function BatchQuestionsFlow({ topic, contentType, creativeIntent = 'light_connection', onComplete, onSkip }: BatchQuestionsFlowProps) {
+export function BatchQuestionsFlow({ topic, contentType, creativeIntent = 'light_connection', onComplete, onSkip, isSubmitting = false }: BatchQuestionsFlowProps) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -183,16 +184,26 @@ export function BatchQuestionsFlow({ topic, contentType, creativeIntent = 'light
             variant="outline"
             onClick={onSkip}
             className="flex-1"
+            disabled={isSubmitting}
           >
             跳過，直接生成
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!allRequiredFilled}
+            disabled={!allRequiredFilled || isSubmitting}
             className="flex-1"
           >
-            <CheckCircle className="w-4 h-4 mr-1" />
-            完成，開始生成
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                AI 正在生成 Hook...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-4 h-4 mr-1" />
+                完成，開始生成
+              </>
+            )}
           </Button>
         </div>
         

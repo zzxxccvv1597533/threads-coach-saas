@@ -3431,3 +3431,35 @@
 - [x] 測試 Hook 生成效果（使用朋友過世素材）
   - 成功生成 5 個 Hook 選項
   - 所有 Hook 都基於用戶提供的真實素材，沒有虛構內容
+
+
+## Bug 修復 - UX 問題 (2026-02-01)
+
+### 問題描述
+1. AI 教練問答完成後點擊按鈕缺少 loading 反饋，用戶不知道系統正在處理
+2. 選擇了 Hook 後，系統仍然顯示「請選擇 Hook」的提示
+
+### 修復項目
+- [ ] 在 BatchQuestionsFlow 完成按鈕加入 loading 狀態
+- [ ] 修復 Hook 選擇狀態判斷邏輯
+
+
+
+## Bug 修復 - UX 問題 (2026-02-01) ✅
+
+### 問題描述
+1. AI 教練問答完成後點擊按鈕缺少 loading 反饋，用戶不知道系統正在處理
+2. 選擇了 Hook 後，系統仍然顯示「請選擇 Hook」的提示
+
+### 修復項目
+- [x] 在 BatchQuestionsFlow 完成按鈕加入 loading 狀態
+  - 新增 isSubmitting prop
+  - 按鈕顯示「AI 正在生成 Hook...」的 loading 狀態
+- [x] 修復 Hook 選擇狀態判斷邏輯
+  - 問題根源：handleGenerateFullDraft 檢查 selectedTopic 而非 topicHint
+  - 解決方案：改為檢查 selectedTopic?.title || topicHint
+
+### 測試結果
+- 點擊「完成，開始生成」後顯示 loading 狀態 ✅
+- 選擇 Hook 後能正常進入「生成完整貼文」步驟 ✅
+- 完整貼文生成成功，預估分數 88 分 ✅

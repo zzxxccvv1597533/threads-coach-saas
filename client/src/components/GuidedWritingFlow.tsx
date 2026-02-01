@@ -449,7 +449,9 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
     console.log('[handleGenerateFullDraft] typeInputs:', typeInputs);
     console.log('[handleGenerateFullDraft] selectedContentType:', selectedContentType);
     
-    if (!selectedTopic || !selectedHook) {
+    // 修復：「有靈感」流程中 selectedTopic 可能是 null，但 topicHint 有值
+    const topicTitle = selectedTopic?.title || topicHint;
+    if (!topicTitle || !selectedHook) {
       toast.error("請先選擇 Hook");
       return;
     }
@@ -457,7 +459,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
     // 組合素材 - 安全處理 typeInputs
     const safeTypeInputs = typeInputs || {};
     const materialParts = [
-      `主題：${selectedTopic.title}`,
+      `主題：${topicTitle}`,
       `開頭 Hook：${selectedHook}`,
       ...Object.entries(safeTypeInputs).map(([key, value]) => {
         const field = ALL_CONTENT_TYPES_V2.find(t => t.id === selectedContentType)?.inputFields?.find(f => f.key === key);
@@ -1385,6 +1387,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
               topic={selectedTopic?.title || topicHint || ''}
               contentType={selectedContentType}
               creativeIntent={creativeIntent || 'light_connection'}
+              isSubmitting={generateOpeners.isPending}
               onComplete={(answers: Record<string, string>) => {
                 // 將問答結果組合成素材
                 const material = Object.entries(answers)
