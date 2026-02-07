@@ -27,7 +27,7 @@ export interface ModelConfig {
   costMultiplier: number;  // 相對於 Gemini 2.5 Flash 的成本倍數
 }
 
-// 方案 A：品質優先（推薦）- 測試版：正文使用 GPT-4o
+// 方案 A：品質優先（推薦）- 升級版：教練/Hook/正文使用 Claude Sonnet 4
 export const QUALITY_FIRST_CONFIG: Record<LLMFeature, ModelConfig> = {
   brainstorm: {
     model: 'gemini-2.5-flash',
@@ -35,14 +35,14 @@ export const QUALITY_FIRST_CONFIG: Record<LLMFeature, ModelConfig> = {
     costMultiplier: 1,
   },
   opener: {
-    model: 'gemini-2.5-flash',
-    description: '生成多個候選，用戶選擇',
-    costMultiplier: 1,
+    model: 'claude-sonnet-4',  // 升級：Hook 品質直接影響用戶體驗，需要更強的創意和理解力
+    description: 'Hook 品質關鍵，需要深度理解素材和心理學原理',
+    costMultiplier: 6,
   },
   content: {
-    model: 'gpt-4o',  // 測試：從 Claude Sonnet 4 改為 GPT-4o，測試字數遵守能力
-    description: '品質關鍵，字數遵守最佳',
-    costMultiplier: 5,
+    model: 'claude-sonnet-4',  // 升級：正文生成改回 Claude，中文創意寫作更自然
+    description: '品質關鍵，中文創意寫作最佳，風格一致性',
+    costMultiplier: 6,
   },
   quality_check: {
     model: 'gemini-2.5-flash',

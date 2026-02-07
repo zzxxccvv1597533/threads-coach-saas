@@ -3463,3 +3463,29 @@
 - 點擊「完成，開始生成」後顯示 loading 狀態 ✅
 - 選擇 Hook 後能正常進入「生成完整貼文」步驟 ✅
 - 完整貼文生成成功，預估分數 88 分 ✅
+
+
+## 系統優化 - AI 模型升級 + Skill 知識庫整合 (2026-02-07) ✅
+
+### AI 模型配置調整
+- [x] AI 教練問答（opener）升級到 Claude Sonnet 4
+- [x] Hook 生成（opener）升級到 Claude Sonnet 4
+- [x] 正文生成（content）升級到 Claude Sonnet 4
+- [x] 其他功能維持 Gemini 2.5 Flash（節省成本）
+
+### 知識庫新增內容（來自 Skill 數據分析）
+- [x] 數據驗證的 6 種 Hook 類型（含 Top 200 佔比和真實範例）
+- [x] Hook 組合模式（數字+否定、震撼+個人經驗等）
+- [x] 互動機制設計（分享引擎/留言引擎/讚數引擎）
+- [x] 數據驗證的寫作規則（字數/emoji/結構/呼吸感）
+- [x] AI 感禁止詞彙補充（不是…而是、記住！、一起撐、溫柔地等）
+
+### 提示詞注入
+- [x] Hook 生成提示詞（routers.ts generateHooks）注入數據驗證 Hook 類型和組合模式
+- [x] 正文生成提示詞（routers.ts generateDraft）注入互動引擎和寫作規則
+- [x] 模板生成提示詞（openerGenerator.ts）注入數據驗證 Hook 類型
+- [x] AI 感禁止詞彙清單（optimized-prompts.ts）補充 Skill 分析的詞彙
+
+### 測試結果
+- [x] TypeScript 編譯通過
+- [x] 504 個單元測試全部通過

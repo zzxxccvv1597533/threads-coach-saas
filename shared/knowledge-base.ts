@@ -952,6 +952,474 @@ export const SYSTEM_PROMPTS = {
 - 建立長期互動關係`
 };
 
+// ==================== 數據驗證的 Hook 類型（基於 50 帳號 29,475 篇分析） ====================
+export const DATA_DRIVEN_HOOK_TYPES = [
+  {
+    id: 'number_data',
+    name: '數字/數據開頭',
+    shareOfTop200: 34,
+    bestFor: '清單、工具、教學',
+    template: '[N] 個 [某領域的工具/技巧/方法]，[具體好處/省下的時間/解決的痛點]',
+    realExamples: [
+      '15 個好用的 ChatGPT 提示詞，每週為您節省 20 小時',
+      '5 個我最常用的文案指令，讓你直接複製貼上就能用',
+      '11 門真的「免費＋拿得到證書」的 AI 課程',
+    ],
+    adaptationFormula: '[N] 個 [你的專業領域的工具/技巧/方法]，[具體好處/省下的時間/解決的痛點]',
+  },
+  {
+    id: 'extreme_adjective',
+    name: '極端形容詞/震撼',
+    shareOfTop200: 17,
+    bestFor: '情緒型、驚喜揭露',
+    template: '我真的 [極端反應]。[簡短原因]...',
+    realExamples: [
+      '我真的嚇到。用 ChatGPT 幫我分析職涯，本來只是想玩玩看，結果它講的每一點…都像在翻我內心劇本。',
+      '這真的太狂了 🎮🔥 用 AI 來 Vibe coding 完全改寫了遊戲開發的玩法！',
+      '我覺得好諷刺！眾量級 Andy 失去頻道的事跟我當年失去東京著衣超級類似！',
+    ],
+    adaptationFormula: '我真的[嚇到/傻眼/沒想到]。[用你的專業做了某件事]，[出乎意料的結果]...',
+  },
+  {
+    id: 'personal_experience',
+    name: '個人經驗/故事',
+    shareOfTop200: 8,
+    bestFor: '個人品牌、信任建立',
+    template: '[時間標記或場景]，[個人時刻]，[意外轉折]...',
+    realExamples: [
+      '我把婚顧退掉了，用 ChatGPT 規劃出完美婚禮（還免費）',
+      '朋友用 ChatGPT 改 LinkedIn，沒買工具、沒請別人寫履歷，結果一堆獵頭主動加他好友。',
+      '我經營餐飲已經十年了，領悟到一種最強的賺錢方式，但我學不來...',
+    ],
+    adaptationFormula: '[我/我朋友/某人] + [做了某件事] + [意外的好結果或壞結果]...',
+  },
+  {
+    id: 'negation_warning',
+    name: '否定/警告開頭',
+    shareOfTop200: 4,
+    bestFor: '糾正型、反向權威',
+    template: '不要再 [常見錯誤]。[為什麼是錯的]。[更好的替代方案]:',
+    realExamples: [
+      '不要再叫 ChatGPT「幫我摘要」因為那只會得到機械、沒靈魂的筆記。',
+      '不要再丟「幫我寫履歷」給 ChatGPT 了。結果都寬寬鬆鬆、沒重點，HR 一看就滑掉。',
+      '別再亂買 AI 課啦！我幫你整理了 11 門真的「免費＋拿得到證書」的 AI 課程',
+    ],
+    adaptationFormula: '不要再[你的受眾常犯的錯誤]。[為什麼這是錯的]。[你提供的更好方法]:',
+  },
+  {
+    id: 'question_hook',
+    name: '疑問句/提問',
+    shareOfTop200: 4,
+    bestFor: '互動、社群建設',
+    template: '[共鳴情境/兩難]？[2-3 個選項或開放問題]',
+    realExamples: [
+      '有沒有2000年後生的朋友？？如果動動已經是老人拍的了，那你各位都拍什麼啊？？',
+      '同樣30歲 A：環遊世界，存款10萬 B：穩定工作，存款500萬。你會選哪一個？',
+      '你覺得禁菸，是在限制吸菸者的權利、還是保護人民的健康？',
+    ],
+    adaptationFormula: '[你的受眾會遇到的兩難情境]？[A選項 vs B選項]，你會怎麼選？',
+  },
+  {
+    id: 'scene_dialogue',
+    name: '場景式對話開頭',
+    shareOfTop200: 0, // 無明確佔比，但在命理/寵物/情感領域極高
+    bestFor: '故事型領域、高沉浸',
+    template: '[某人說]: "..." → [另一人反應] → [轉折或笑點]',
+    realExamples: [
+      '媽：寶寶你下禮拜要生日了耶！想要什麼禮物？ 🐱：我想要把媽媽化妝桌上的東西全部打到地板上',
+      '她看了我一眼，輕聲說：「我知道啊，你是例外。可是人有時候，是會被整個世界消耗掉的。」',
+      '有人問：「考上正式老師還辭職，會不會很可惜？」',
+    ],
+    adaptationFormula: '[某人問/說]：「[你的受眾常被問到的問題]」→ [你的/主角的反應] → [出乎意料的回答或轉折]',
+  },
+];
+
+// ==================== Hook 組合模式（最高互動） ====================
+export const HOOK_COMBINATION_PATTERNS = [
+  {
+    id: 'number_negation',
+    name: '數字+否定',
+    avgEngagement: 1500,
+    template: '不要再X了。這N個方法才是正解',
+    example: '不要再叫 ChatGPT「幫我摘要」了。這 5 個指令才是正確用法：',
+  },
+  {
+    id: 'shock_personal',
+    name: '震撼+個人經驗',
+    avgEngagement: 1200,
+    template: '我真的嚇到。我用X做了Y...',
+    example: '我真的嚇到。用 ChatGPT 幫我分析職涯，結果它講的每一點都像在翻我內心劇本。',
+  },
+  {
+    id: 'number_personal',
+    name: '數字+個人經驗',
+    avgEngagement: 1100,
+    template: '我朋友用X做了Y，N天就看到效果',
+    example: '朋友用 ChatGPT 改 LinkedIn，3 天就收到 5 個獵頭邀請。',
+  },
+  {
+    id: 'question_scene',
+    name: '疑問+場景',
+    avgEngagement: 1000,
+    template: '如果你手上N萬，你會怎麼規劃？',
+    example: '如果你手上500萬，你會選擇買房還是投資？',
+  },
+];
+
+// ==================== 互動機制設計（三大引擎） ====================
+export const ENGAGEMENT_ENGINES = {
+  share: {
+    name: '分享引擎',
+    goal: '最大化分享/轉發',
+    strategies: [
+      '提供「可直接複製」的內容（提示詞、模板、檢查清單）',
+      '創造「懶人包」或「整理」型內容，有收藏價值',
+      '使用情感共鳴（「不要曬你...」「藏在...」）',
+    ],
+    ctaExamples: [
+      '直接複製就能用 👆',
+      '存起來，之後一定用得到',
+      '分享給需要的朋友',
+    ],
+  },
+  comment: {
+    name: '留言引擎',
+    goal: '最大化留言互動',
+    strategies: [
+      '問開放式問題（「你會選哪個？」「你怎麼回？」）',
+      '創造爭議或辯論場景',
+      '使用 CTA：「留言『XX』就可以獲得...」',
+    ],
+    ctaExamples: [
+      '你會選 A 還是 B？留言告訴我',
+      '你有過類似的經驗嗎？',
+      '留言「+1」我私訊你完整版',
+    ],
+  },
+  like: {
+    name: '讚數引擎',
+    goal: '最大化按讚數',
+    strategies: [
+      '用簡短形式傳遞清晰價值',
+      '使用共鳴觀察（讀者心想「對！就是這樣」）',
+      '強烈情感共鳴，不需要讀者採取行動',
+    ],
+    ctaExamples: [
+      '（不需要明確 CTA，讓內容自然引發共鳴）',
+    ],
+  },
+};
+
+// ==================== 數據驗證的寫作規則 ====================
+export const DATA_DRIVEN_WRITING_RULES = {
+  lengthSweetSpot: {
+    optimal: '100-200 字',
+    avgEngagement: 141,
+    note: '教學型可延伸到 300 字',
+  },
+  carouselMarker: {
+    usage: '在文末加上 1/2 標記',
+    topPostRate: 62.6,
+    overallRate: 53.5,
+    note: '表示有圖片輪播，提高互動率',
+  },
+  emojiUsage: {
+    optimal: '2-5 個',
+    topPostRate: 34,
+    bottomPostRate: 17.2,
+    note: '不要過度使用，也不要完全不用',
+  },
+  numberedLists: {
+    topPostRate: 59.4,
+    bottomPostRate: 39.8,
+    differencePercent: 19.6,
+    note: '#1 差異化因素，條列型內容表現最好',
+  },
+  spokenMandarin: {
+    particles: ['的', '了', '啊', '耶', '欸', '嘛', '吧', '呢'],
+    note: '口語化，像朋友聊天，不像品牌廣告',
+  },
+  specificNumbers: {
+    rule: '在 Hook 中使用具體數字',
+    good: '5 個指令',
+    bad: '幾個指令',
+    note: '具體數字比模糊描述更有吸引力',
+  },
+};
+
+// ==================== 13 個領域個性化公式 ====================
+export const DOMAIN_FORMULAS: Array<{
+  id: string;
+  name: string;
+  avgEngagement: number;
+  primaryDriver: string;
+  bestFormula: string;
+  exampleHooks: string[];
+  contentRules: string[];
+}> = [
+  {
+    id: 'ai_tech',
+    name: 'AI/科技/數位',
+    avgEngagement: 107,
+    primaryDriver: '工具指令+可複製',
+    bestFormula: '[痛點開頭] + [N個指令/工具整理] + [直接複製就能用] + [1/2 輪播]',
+    exampleHooks: [
+      '不要再叫 ChatGPT「幫我摘要」因為那只會得到機械、沒靈魂的筆記。',
+      '是一個超強大的工具，但前提是要寫出好的提示詞。以下👇 15 個好用的 ChatGPT 提示詞',
+    ],
+    contentRules: [
+      '一定要包含讀者可以直接複製的指令或提示詞',
+      '使用「直接複製就能用」或「直接複製貼上」作為 CTA',
+      '搭配圖片輪播展示工具或提示詞',
+      '將 AI 工具連結到真實生活場景（求職、投資、婚禮、學習）',
+    ],
+  },
+  {
+    id: 'psychology',
+    name: '心理/諮商/情感',
+    avgEngagement: 136,
+    primaryDriver: '共鳴+被理解感',
+    bestFormula: '[日常場景] + [心理學概念解讀] + [反思提問] + [溫暖收尾]',
+    exampleHooks: [
+      '我曾有這樣的經驗：在我轉行念心理諮商後，度過一段很不容易的時光...',
+      '孩子最大的痛苦，家長把自己未竟的人生強加在自己身上。',
+    ],
+    contentRules: [
+      '使用第一人稱敘事（「我曾...」「我發現...」）',
+      '每篇引入一個心理學概念，用白話解釋',
+      '結尾用溫柔的反思提問，不要硬性 CTA',
+      '避免說教，分享脆弱來建立信任',
+    ],
+  },
+  {
+    id: 'divination',
+    name: '命理/塔羅/靈性',
+    avgEngagement: 156,
+    primaryDriver: '互動機制+神秘感',
+    bestFormula: '[神秘鉤子] + [簡化命理知識] + [「你也來試試」互動] + [1/2 圖片]',
+    exampleHooks: [
+      '如何看出一個人童年過得好不好，你可以看看他的耳朵。',
+      '問一個很玄的問題，要是答得出來那代表你真的悟透了自己',
+    ],
+    contentRules: [
+      '設計低門檻互動（「看看你的手相」「查查你的農曆生日」）',
+      '使用「大眾占卜」或「選一張牌」格式提高互動',
+      '語言保持神秘但易懂',
+      '包含讀者可以立即檢查的具體特徵（耳朵/眉毛/手相）',
+    ],
+  },
+  {
+    id: 'career_business',
+    name: '職涯/創業/商業',
+    avgEngagement: 163,
+    primaryDriver: '個人故事+具體數字',
+    bestFormula: '[個人血淚故事] + [具體數字/結果] + [可行建議] + [討論問題]',
+    exampleHooks: [
+      '我覺得好諷刺！眾量級 Andy 失去頻道的事跟我當年失去東京著衣超級類似！',
+      '全遠距工作＋年薪可達100萬＋不少出國機會',
+      '同樣30歲 A：環遊世界...存款10萬 B：穩定工作...存款500萬。你會選哪一個？',
+    ],
+    contentRules: [
+      '用具體數字開頭（年薪、營收、存款金額）',
+      '分享真實失敗，不只是成功',
+      '使用「A vs B」比較格式提高留言互動',
+      '結尾用引發觀點的問題',
+    ],
+  },
+  {
+    id: 'reading_knowledge',
+    name: '閱讀/知識/學習',
+    avgEngagement: 171,
+    primaryDriver: '收藏價值+金句',
+    bestFormula: '[書/內容金句] + [個人解讀] + [懶人包摘要] + [書單]',
+    exampleHooks: [
+      '判斷一個人的時候，別只看他「說」了什麼，而是觀察他到底「做」了什麼。',
+      '如何將事業規模拓展至千萬美元的 5 個方法',
+    ],
+    contentRules: [
+      '每篇提取一個強力洞見，不是完整摘要',
+      '一定要加個人解讀（「我讀完的感受是...」）',
+      '書展優惠/攻略型貼文表現極好',
+      '使用數字框架（3個方法、5個步驟）',
+    ],
+  },
+  {
+    id: 'law_society',
+    name: '法律/社會',
+    avgEngagement: 294,
+    primaryDriver: '議題性+大眾切身',
+    bestFormula: '[挑釁社會議題鉤子] + [法律/事實知識+數字] + [引發觀點的問題]',
+    exampleHooks: [
+      '水瓶座 O 型都是 G8 人，所以公司要拒絕錄取你！',
+      '你覺得禁菸，是在限制吸菸者的權利、還是保護人民的健康？',
+    ],
+    contentRules: [
+      '用「白話文」解釋複雜法律概念',
+      '包含具體法條編號或數據增加可信度',
+      '一定要以辯論性問題結尾',
+      '爭議性框架是關鍵，但要保持事實基礎',
+    ],
+  },
+  {
+    id: 'copywriting_marketing',
+    name: '文案/行銷/自媒體',
+    avgEngagement: 120,
+    primaryDriver: '實戰技巧+數據',
+    bestFormula: '[共鳴觀察] + [專業洞見/框架] + [可行建議] + [追蹤 CTA]',
+    exampleHooks: [
+      '當有人說自己沒醉，有很大機率他已經醉了。當有人說自己很渣...',
+      '這週末兩天漲了快 2,000 追蹤',
+    ],
+    contentRules: [
+      '分享真實成長數據和案例',
+      '提供逐步「起號攻略」或「經營技巧」',
+      '用日常觀察幽默作為 Hook',
+      '關於 Threads 本身的 Meta 內容在 Threads 上表現很好',
+    ],
+  },
+  {
+    id: 'lifestyle_personal',
+    name: '生活風格/個人品牌',
+    avgEngagement: 105,
+    primaryDriver: '真實感+個人觀點',
+    bestFormula: '[真實生活時刻] + [個人觀點/洞見] + [共鳴結論]',
+    exampleHooks: [
+      '在蒙古國拍到人生照片🥹',
+      '大概是現在太多人曬「漲粉超快」的戰績...漲粉慢才是絕大多數人的常態',
+    ],
+    contentRules: [
+      '真實感勝過精緻感——不完美的真實時刻更勝',
+      '旅行/生活照片搭配簡短反思文字',
+      '對流行趨勢的反向觀點表現好',
+      '搭配強力圖片時文字保持簡短（50-100字）',
+    ],
+  },
+  {
+    id: 'language_teaching',
+    name: '語言教學',
+    avgEngagement: 106,
+    primaryDriver: '圖解+實用',
+    bestFormula: '[常見混淆點] + [視覺/圖表解釋] + [範例+比較]',
+    exampleHooks: [
+      '看到「て形」是不是很容易腦袋一片空白？',
+    ],
+    contentRules: [
+      '每篇一個文法點或詞彙，不是整堂課',
+      '使用比較圖表在輪播圖片中',
+      '突出「常見錯誤」格式',
+      '文化冷知識混合語言學習提高互動',
+    ],
+  },
+  {
+    id: 'pets',
+    name: '寵物',
+    avgEngagement: 220,
+    primaryDriver: '情感共鳴+可愛',
+    bestFormula: '[寵物對話/對話格式] + [意外的寵物回應] + [人類反應]',
+    exampleHooks: [
+      '媽：寶寶你下禮拜要生日了耶！想要什麼禮物？ 🐱：我想要把媽媽化妝桌上的東西全部打到地板上',
+    ],
+    contentRules: [
+      '寵物「對話」格式是最佳公式',
+      '來自寵物意外邏輯的幽默',
+      '使用 🐱🐶 emoji 和可愛語言',
+      '分享率極高——讀者會標記有寵物的朋友',
+    ],
+  },
+  {
+    id: 'voice_expression',
+    name: '聲音/表達',
+    avgEngagement: 94,
+    primaryDriver: '專業冷知識+反差',
+    bestFormula: '[關於聲音/說話的驚人事實] + [常見錯誤揭露] + [簡單修正]',
+    exampleHooks: [],
+    contentRules: [
+      '專業「冷知識」Hook 表現最好',
+      '輪播中加入影片/音頻示範',
+      '將聲音訓練連結到日常場景（開會、看診、教學）',
+    ],
+  },
+  {
+    id: 'anime_subculture',
+    name: '動漫/次文化',
+    avgEngagement: 99,
+    primaryDriver: '社群歸屬+梗',
+    bestFormula: '[共鳴日常場景] + [次文化引用] + [社會評論+情感]',
+    exampleHooks: [],
+    contentRules: [
+      '將日常生活困境與動漫/次文化視角混合',
+      '使用關於人際關係和社會動態的故事敘述',
+      '社群建設語言（「你們有沒有過這種經驗」）',
+    ],
+  },
+  {
+    id: 'food_baking',
+    name: '美食/烘焙',
+    avgEngagement: 76,
+    primaryDriver: '視覺+專業深度',
+    bestFormula: '[食物歷史/文化故事] + [專業深度] + [意外角度]',
+    exampleHooks: [],
+    contentRules: [
+      '深度文化/歷史背景與一般美食貼文區分',
+      '專業內部知識建立權威',
+      '搭配高品質美食攝影在輪播中',
+    ],
+  },
+];
+
+// ==================== AI 感禁止詞彙（Skill 補充） ====================
+export const AI_SOUNDING_PHRASES = [
+  '不是…而是…',
+  '記住！',
+  '一起撐',
+  '溫柔地',
+  '值得被愛',
+  '你值得',
+  '擁抱自己',
+  '療癒',
+  '賦能',
+  '共創',
+];
+
+// ==================== 內容結構模板（數據驗證佔比） ====================
+export const CONTENT_STRUCTURES = [
+  {
+    id: 'list_summary',
+    name: '條列整理型',
+    shareOfTopPosts: 52.8,
+    bestFor: '知識分享、工具清單、技巧',
+    template: '[Hook: 1-2 句痛點或數字] → [3-7 個要點核心內容] → [CTA 或結尾問題] → [1/2 輪播標記]',
+  },
+  {
+    id: 'tutorial_list',
+    name: '教學列表型',
+    shareOfTopPosts: 14.4,
+    bestFor: '步驟教學、How-to 內容',
+    template: '[Hook: 「不要再...」或「用X做Y」] → [編號步驟 1-5] → [結果承諾] → [直接複製就能用 / 存起來] → [1/2]',
+  },
+  {
+    id: 'question_interaction',
+    name: '提問互動型',
+    shareOfTopPosts: 9.6,
+    bestFor: '提高留言、社群建設',
+    template: '[情境或兩難設定] → [開放問題 + 2-3 選項] → [可選：簡短分享自己立場]',
+  },
+  {
+    id: 'story_narrative',
+    name: '故事敘事型',
+    shareOfTopPosts: 1.2,
+    bestFor: '建立信任、個人品牌（情感衝擊最高）',
+    template: '[個人時刻或對話開頭] → [張力或轉折點] → [洞見或教訓] → [反思提問]',
+  },
+  {
+    id: 'opinion_output',
+    name: '觀點輸出型',
+    shareOfTopPosts: 0, // 無明確佔比
+    bestFor: '思想領導、建立權威',
+    template: '[反直覺或驚人陳述] → [2-3 個支持論點] → [可行的結論]',
+  },
+];
+
 // ==================== 導出所有常量 ====================
 export const KNOWLEDGE_BASE = {
   personaThreePillars: PERSONA_THREE_PILLARS,
@@ -967,4 +1435,12 @@ export const KNOWLEDGE_BASE = {
   productMatrix: PRODUCT_MATRIX,
   businessGoals: BUSINESS_GOALS,
   systemPrompts: SYSTEM_PROMPTS,
+  // 新增 - 基於 Skill 數據分析
+  dataDrivenHookTypes: DATA_DRIVEN_HOOK_TYPES,
+  hookCombinationPatterns: HOOK_COMBINATION_PATTERNS,
+  engagementEngines: ENGAGEMENT_ENGINES,
+  dataDrivenWritingRules: DATA_DRIVEN_WRITING_RULES,
+  domainFormulas: DOMAIN_FORMULAS,
+  aiSoundingPhrases: AI_SOUNDING_PHRASES,
+  contentStructures: CONTENT_STRUCTURES,
 };
