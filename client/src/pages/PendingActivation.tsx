@@ -10,7 +10,7 @@ import { toast } from "sonner";
 export default function PendingActivation() {
   const { user, logout } = useAuth();
   const [invitationCode, setInvitationCode] = useState("");
-  const [showCodeInput, setShowCodeInput] = useState(false);
+  const [showCodeInput, setShowCodeInput] = useState(true);
 
   const applyCodeMutation = trpc.auth.applyInvitationCode.useMutation({
     onSuccess: () => {
@@ -55,17 +55,29 @@ export default function PendingActivation() {
               帳號等待開通中
             </h1>
             
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 mb-2">
               您好，{user?.name || '學員'}！您的帳號已成功註冊，目前正在等待管理員開通。
             </p>
 
+            <p className="text-sm text-gray-500 mb-6">
+              通常 2-4 小時內開通，急需使用請聯繫客服
+            </p>
+
             {/* 邀請碼輸入區塊 */}
-            {showCodeInput ? (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
-                <div className="flex items-center gap-2 mb-3">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
                   <Ticket className="w-5 h-5 text-emerald-600" />
                   <h3 className="font-semibold text-emerald-800">輸入邀請碼</h3>
                 </div>
+                <button
+                  onClick={() => setShowCodeInput(!showCodeInput)}
+                  className="text-xs text-emerald-600 hover:text-emerald-800 transition-colors"
+                >
+                  {showCodeInput ? "隱藏邀請碼輸入" : "我有邀請碼"}
+                </button>
+              </div>
+              {showCodeInput && (
                 <div className="space-y-3">
                   <Input
                     placeholder="請輸入邀請碼"
@@ -73,37 +85,20 @@ export default function PendingActivation() {
                     onChange={(e) => setInvitationCode(e.target.value.toUpperCase())}
                     className="text-center font-mono text-lg tracking-wider"
                   />
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={handleApplyCode}
-                      disabled={applyCodeMutation.isPending || !invitationCode.trim()}
-                      className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-                    >
-                      {applyCodeMutation.isPending ? (
-                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />驗證中...</>
-                      ) : (
-                        <><CheckCircle className="w-4 h-4 mr-2" />確認開通</>
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowCodeInput(false)}
-                    >
-                      取消
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={handleApplyCode}
+                    disabled={applyCodeMutation.isPending || !invitationCode.trim()}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {applyCodeMutation.isPending ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" />驗證中...</>
+                    ) : (
+                      <><CheckCircle className="w-4 h-4 mr-2" />確認開通</>
+                    )}
+                  </Button>
                 </div>
-              </div>
-            ) : (
-              <Button
-                variant="outline"
-                onClick={() => setShowCodeInput(true)}
-                className="w-full mb-6 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-              >
-                <Ticket className="w-4 h-4 mr-2" />
-                我有邀請碼
-              </Button>
-            )}
+              )}
+            </div>
 
             {/* Info Box */}
             <div className="bg-[#F8F9FA] rounded-xl p-4 mb-6 text-left">
@@ -111,7 +106,7 @@ export default function PendingActivation() {
               <ul className="text-sm text-gray-600 space-y-2">
                 <li className="flex items-start gap-2">
                   <span className="text-[#FCC80E] font-bold">1.</span>
-                  如果您有邀請碼，點擊上方「我有邀請碼」按鈕輸入即可立即開通
+                  如果您有邀請碼，輸入上方欄位即可立即開通
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#FCC80E] font-bold">2.</span>
@@ -133,8 +128,10 @@ export default function PendingActivation() {
                 <Mail className="w-4 h-4" />
                 <span className="text-sm">support@movestrong.tw</span>
               </a>
-              <a 
-                href="#" 
+              <a
+                href="https://line.me/R/ti/p/@557wkrxb"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 text-[#0F345B] hover:text-[#2796B2] transition-colors"
               >
                 <MessageCircle className="w-4 h-4" />
@@ -159,6 +156,19 @@ export default function PendingActivation() {
               </Button>
             </div>
           </div>
+        </div>
+
+        {/* 等待時可以做的事 */}
+        <div className="bg-white/10 rounded-xl p-5 mt-4">
+          <p className="text-white/80 text-sm font-medium mb-3">等待開通的同時，你可以先：</p>
+          <ul className="space-y-2">
+            <li className="text-white/70 text-sm">
+              📖 了解我們的方法論（開通後系統內有完整說明）
+            </li>
+            <li className="text-white/70 text-sm">
+              📝 想想你的 IP 定位（職業、受眾、專長）
+            </li>
+          </ul>
         </div>
 
         {/* Footer */}

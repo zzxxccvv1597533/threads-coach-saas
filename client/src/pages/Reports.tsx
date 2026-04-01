@@ -118,6 +118,25 @@ export default function Reports() {
     },
   });
 
+  // AI 教練建議狀態
+  const [coachAdvice, setCoachAdvice] = useState<string | null>(null);
+  const [showCoachAdvice, setShowCoachAdvice] = useState(false);
+
+  const generateCoachAdvice = trpc.post.generateStrategySummary.useMutation({
+    onSuccess: (data) => {
+      if (data.success && data.summary) {
+        setCoachAdvice(data.summary);
+        setShowCoachAdvice(true);
+        toast.success("AI 教練建議已生成！");
+      } else {
+        toast.error(data.error || "生成失敗");
+      }
+    },
+    onError: (error) => {
+      toast.error(error.message || "生成失敗，請稍後再試");
+    },
+  });
+
   // 策略總結狀態
   const [strategySummary, setStrategySummary] = useState<{
     summary: string | null;
@@ -881,6 +900,64 @@ export default function Reports() {
                   <Plus className="w-4 h-4 mr-2" />
                   記錄第一篇貼文
                 </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* AI 教練建議 */}
+        <Card className="elegant-card bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/20 dark:to-purple-950/20 border-indigo-200/50 dark:border-indigo-800/50">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-indigo-800 dark:text-indigo-200">
+                <span className="text-xl">🧠</span>
+                AI 教練分析
+              </CardTitle>
+              <Button
+                onClick={() => generateCoachAdvice.mutate()}
+                disabled={generateCoachAdvice.isPending}
+                className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white border-0"
+                size="sm"
+              >
+                {generateCoachAdvice.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    分析中...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    生成 AI 教練建議
+                  </>
+                )}
+              </Button>
+            </div>
+            <CardDescription className="text-indigo-600/70 dark:text-indigo-400/70">
+              根據你的貼文表現，AI 教練提供個人化成長建議
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {generateCoachAdvice.isPending ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                <p className="text-sm text-indigo-600 dark:text-indigo-400">AI 教練正在分析你的數據...</p>
+              </div>
+            ) : showCoachAdvice && coachAdvice ? (
+              <div className="rounded-xl border border-indigo-200/60 dark:border-indigo-700/60 overflow-hidden">
+                <div className="bg-gradient-to-r from-indigo-500 to-purple-500 px-4 py-3 flex items-center gap-2">
+                  <span className="text-white text-base">🧠</span>
+                  <p className="text-sm font-semibold text-white">AI 教練分析</p>
+                </div>
+                <div className="p-5 bg-white/60 dark:bg-white/5">
+                  <div className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
+                    {coachAdvice}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 gap-3 text-indigo-400 dark:text-indigo-500">
+                <Sparkles className="w-10 h-10 opacity-50" />
+                <p className="text-sm">點擊「生成 AI 教練建議」，讓 AI 分析你的表現並給出專屬建議</p>
               </div>
             )}
           </CardContent>
