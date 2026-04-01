@@ -37,7 +37,7 @@ import { SimpleWritingFlow } from "@/components/SimpleWritingFlow";
 import { InspirationStudio } from "@/components/InspirationStudio";
 
 import { FLEXIBLE_INPUT_FIELDS, CONTENT_TYPES_WITH_VIRAL_ELEMENTS } from "@shared/knowledge-base";
-import { CONTENT_TYPES_V2, ALL_CONTENT_TYPES_V2, HOOK_STYLES_V2 } from "@shared/content-types-v2";
+import { CONTENT_TYPES_V2 } from "@shared/content-types-v2";
 
 // 導流內容類型定義 - 整合產品矩陣概念
 const monetizationContentTypes = [

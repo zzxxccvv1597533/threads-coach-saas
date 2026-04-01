@@ -23,7 +23,6 @@ import { buildStylePolishSystemPrompt, buildStylePolishUserPrompt, validateSeman
 import { checkOpenerHomogeneityV2, saveOpenerEmbedding, checkSemanticFidelity, rankCandidatesByDiversity } from "./embedding-service";
 import { findSimilarViralExamples, getSmartFewShotExamples, getClusteringSummary, getEmbeddingStats, getContentTypeRecommendation, getSimilarViralsByType, getHighPotentialTopics } from "./viral-embedding-service";
 import { getSpiritualSuccessFactors, getContentTypeRecommendations, getPresentationRecommendations, findSimilarViralPosts } from "./ip-data-service";
-import { BANNED_WORDS as SOUL_BANNED_WORDS } from "./knowledge/threads-soul";
 import { INTERVIEW_PRINCIPLES } from "./knowledge/threads-brain";
 import { OPTIMIZED_SYSTEM_PROMPT, POST_TYPE_STRUCTURES, CTA_TYPES, replaceAIWords, selectCTA, buildOptimizedPrompt, TOPIC_GENERATION_PROMPT, GUIDED_QUESTIONS } from "../shared/optimized-prompts";
 
