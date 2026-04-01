@@ -630,6 +630,13 @@ export function SimpleWritingFlow({
                 </div>
               )}
 
+              {/* Hook 多樣性提示 */}
+              {strategyUsed && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  💡 AI 已根據你的歷史數據自動選擇最佳策略和開頭風格
+                </div>
+              )}
+
               {/* Algorithm health + style score */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {diagnosis?.algorithmChecks?.length && (
@@ -684,6 +691,33 @@ export function SimpleWritingFlow({
                   </Card>
                 )}
               </div>
+
+              {/* 互動潛力預測 */}
+              {strategyUsed && draftContent && (
+                <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 border border-orange-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🔥</span>
+                      <span className="font-medium text-orange-800">互動潛力預測</span>
+                    </div>
+                    {/* Simple fire rating based on content type */}
+                    <span className="text-lg">
+                      {['question', 'poll'].includes(strategyUsed.contentType) ? '🔥🔥🔥' :
+                       ['story', 'contrast', 'viewpoint'].includes(strategyUsed.contentType) ? '🔥🔥' : '🔥'}
+                    </span>
+                  </div>
+                  <div className="space-y-1 text-xs text-orange-700">
+                    <p>✅ {strategyUsed.contentType === 'question' || strategyUsed.contentType === 'poll'
+                      ? '提問型 — 數據顯示互動最高的類型'
+                      : strategyUsed.contentType === 'story'
+                      ? '故事型 — 建立信任的核心類型'
+                      : `${strategyUsed.contentType}型 — ${strategyUsed.reasoning || 'AI 根據素材判斷'}`
+                    }</p>
+                    <p>✅ {strategyUsed.angleLabel} 切角</p>
+                    <p>💡 建議在平日 12:00-13:00 或 21:00-22:00 發文效果最好</p>
+                  </div>
+                </div>
+              )}
 
               {/* Draft card */}
               <Card className="elegant-card">
@@ -852,6 +886,44 @@ export function SimpleWritingFlow({
               </Button>
             </CardContent>
           </Card>
+
+          {/* 發文後行動協議 */}
+          <div className="bg-gradient-to-r from-sky-50 to-blue-50 rounded-lg p-4 border border-sky-200">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">🎯</span>
+              <span className="font-medium text-sky-800">發文後行動（提升 50% 觸及）</span>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-start gap-2">
+                <span className="text-sky-600 font-medium w-5">1.</span>
+                <div>
+                  <span className="font-medium">建議發文時間</span>
+                  <span className="text-muted-foreground ml-2">平日 12:00-13:00 / 21:00-22:00</span>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-sky-600 font-medium w-5">2.</span>
+                <div>
+                  <span className="font-medium">黃金 30 分鐘</span>
+                  <span className="text-muted-foreground ml-2">發文後 30 分鐘內回覆所有留言，回覆帶主題關鍵字</span>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-sky-600 font-medium w-5">3.</span>
+                <div>
+                  <span className="font-medium">海巡 3 則</span>
+                  <span className="text-muted-foreground ml-2">去同領域帳號留 3 則有觀點的留言</span>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-sky-600 font-medium w-5">4.</span>
+                <div>
+                  <span className="font-medium">明天追蹤</span>
+                  <span className="text-muted-foreground ml-2">回戰報記錄數據，讓 AI 越來越懂你</span>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* 降流防護 checklist */}
           <Card className="elegant-card">

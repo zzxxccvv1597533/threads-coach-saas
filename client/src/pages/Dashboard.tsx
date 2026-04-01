@@ -49,6 +49,7 @@ export default function Dashboard() {
     undefined,
     { enabled: true }
   );
+  const { data: performanceSummary, isLoading: perfLoading } = trpc.post.performanceSummary.useQuery();
   const utils = trpc.useUtils();
   const setManualStageMutation = trpc.growthMetrics.setManualStage.useMutation({
     onSuccess: (data) => {
@@ -696,6 +697,13 @@ export default function Dashboard() {
           </Card>
         )}
 
+        {/* Content Mix Dashboard */}
+        <ContentMixWidget
+          performanceSummary={performanceSummary}
+          isLoading={perfLoading}
+          onNavigate={() => setLocation('/writing-studio')}
+        />
+
         {/* Quick Actions */}
         <Card className="elegant-card">
           <CardHeader>
@@ -811,6 +819,152 @@ function ContentTypeChart({ stats }: { stats: { contentType: string; count: numb
         ))}
       </div>
     </div>
+  );
+}
+
+// Content Mix Dashboard Widget
+const CONTENT_MIX_FORMULA: Record<string, { target: number; label: string; types: string[] }> = {
+  question: { target: 30, label: "提問/問答/民調", types: ["question", "poll"] },
+  story:    { target: 20, label: "故事/雜感/對話", types: ["story", "casual", "dialogue"] },
+  knowledge:{ target: 20, label: "知識/整理",      types: ["knowledge", "summary"] },
+  viewpoint:{ target: 20, label: "觀點/反差",      types: ["viewpoint", "contrast", "quote"] },
+  other:    { target: 10, label: "其他",            types: ["diagnosis"] },
+};
+
+function ContentMixWidget({
+  performanceSummary,
+  isLoading,
+  onNavigate,
+}: {
+  performanceSummary?: { byType: Array<{ contentType: string; count: number; avgLikes: number; avgComments: number; avgReach: number }> } | null;
+  isLoading: boolean;
+  onNavigate: () => void;
+}) {
+  const byType = performanceSummary?.byType ?? [];
+  const hasData = byType.length > 0;
+
+  // Aggregate raw byType into the 5 formula categories
+  const totalPosts = byType.reduce((s, r) => s + r.count, 0);
+
+  type AggRow = {
+    label: string;
+    target: number;
+    count: number;
+    pct: number;
+    avgLikes: number;
+    status: "over" | "under" | "ok";
+  };
+
+  const rows: AggRow[] = Object.values(CONTENT_MIX_FORMULA).map(cfg => {
+      const matched = byType.filter(r => cfg.types.includes(r.contentType));
+      const count = matched.reduce((s, r) => s + r.count, 0);
+      const pct = totalPosts > 0 ? Math.round((count / totalPosts) * 100) : 0;
+      const avgLikes =
+        matched.length > 0
+          ? Math.round(matched.reduce((s, r) => s + r.avgLikes * r.count, 0) / matched.reduce((s, r) => s + r.count, 0) || 0)
+          : 0;
+      let status: AggRow["status"] = "ok";
+      if (pct > cfg.target * 1.5) status = "over";
+      else if (pct < cfg.target * 0.5) status = "under";
+      return { label: cfg.label, target: cfg.target, count, pct, avgLikes, status };
+    }
+  );
+
+  // Find best-performing under-served category for CTA
+  const underServedHighPerformer = [...rows]
+    .filter(r => r.status === "under" && r.avgLikes > 0)
+    .sort((a, b) => b.avgLikes - a.avgLikes)[0];
+
+  const highestEngagement = [...rows]
+    .filter(r => r.count > 0)
+    .sort((a, b) => b.avgLikes - a.avgLikes)[0];
+
+  const ctaMessage = (() => {
+    if (underServedHighPerformer) {
+      return `你的「${underServedHighPerformer.label}」互動最高但只佔 ${underServedHighPerformer.pct}%，試試多寫？`;
+    }
+    if (highestEngagement) {
+      return `「${highestEngagement.label}」是你目前互動最好的類型，繼續加油！`;
+    }
+    return "發更多文讓系統幫你找出最佳內容組合";
+  })();
+
+  return (
+    <Card className="elegant-card">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2">
+          <BarChart3 className="w-5 h-5 text-primary" />
+          內容組合分析
+        </CardTitle>
+        <CardDescription>對比建議比例，找出你的最強內容類型</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-full" />
+          </div>
+        ) : !hasData ? (
+          <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground text-sm">
+            <BarChart3 className="w-8 h-8 mb-2 opacity-30" />
+            發文後這裡會顯示你的內容表現分析
+          </div>
+        ) : (
+          <>
+            {/* Table */}
+            <div className="w-full text-sm">
+              {/* Header */}
+              <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 pb-1 text-xs text-muted-foreground font-medium border-b border-border/50 mb-1">
+                <span>類型</span>
+                <span className="text-right">篇數</span>
+                <span className="text-right">佔比</span>
+                <span className="text-right">均讚</span>
+                <span className="text-right">狀態</span>
+              </div>
+              {rows.map(row => (
+                <div
+                  key={row.label}
+                  className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 py-1.5 border-b border-border/30 last:border-0 items-center"
+                >
+                  <span className="truncate font-medium text-xs">{row.label}</span>
+                  <span className="text-right tabular-nums text-xs text-muted-foreground">{row.count}</span>
+                  <span className="text-right tabular-nums text-xs">
+                    <span className={row.count === 0 ? "text-muted-foreground" : ""}>
+                      {row.pct}%
+                    </span>
+                    <span className="text-muted-foreground">/{row.target}%</span>
+                  </span>
+                  <span className="text-right tabular-nums text-xs text-muted-foreground">
+                    {row.avgLikes > 0 ? row.avgLikes : "—"}
+                  </span>
+                  <span className="text-right text-xs">
+                    {row.count === 0 ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : row.status === "over" ? (
+                      <span className="text-red-500 font-medium">過多</span>
+                    ) : row.status === "under" ? (
+                      <span className="text-amber-500 font-medium">不足</span>
+                    ) : (
+                      <span className="text-emerald-500 font-medium">剛好</span>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA */}
+            <button
+              onClick={onNavigate}
+              className="mt-3 w-full flex items-center justify-between rounded-lg bg-primary/5 hover:bg-primary/10 border border-primary/20 px-3 py-2 text-sm text-primary transition-colors"
+            >
+              <span>{ctaMessage}</span>
+              <ArrowRight className="w-4 h-4 shrink-0 ml-2" />
+            </button>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

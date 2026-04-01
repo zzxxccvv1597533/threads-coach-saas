@@ -4451,3 +4451,90 @@ export async function getUserRecentWritingSessions(
     .orderBy(desc(writingSessionQuestions.createdAt))
     .limit(limit);
 }
+
+// 取得學員過去表現洞察（用於 AI 策略建議）
+export async function getPerformanceInsights(userId: number): Promise<{
+  byType: Array<{ contentType: string; count: number; avgLikes: number; avgComments: number; avgReach: number }>;
+  recentHookStyles: string[];
+}> {
+  const db = await getDb();
+  if (!db) return { byType: [], recentHookStyles: [] };
+
+  // 1. 取得用戶所有貼文
+  const userPosts = await db.select().from(posts).where(eq(posts.userId, userId));
+  if (userPosts.length === 0) return { byType: [], recentHookStyles: [] };
+
+  const postIds = userPosts.map(p => p.id);
+  const draftPostIds = userPosts.map(p => p.draftPostId).filter((id): id is number => id != null);
+
+  // 2. 取得所有貼文的最新 metrics（per postId）
+  const allMetrics = await db.select().from(postMetrics)
+    .where(sql`${postMetrics.postId} IN (${postIds.join(',')})`);
+
+  // 每篇貼文只取最新一筆 metrics
+  const latestMetricByPostId = new Map<number, typeof allMetrics[0]>();
+  for (const m of allMetrics) {
+    const existing = latestMetricByPostId.get(m.postId);
+    if (!existing || (m.capturedAt && existing.capturedAt && m.capturedAt > existing.capturedAt)) {
+      latestMetricByPostId.set(m.postId, m);
+    }
+  }
+
+  // 3. 取得關聯的 draftPosts 以得到 contentType
+  let draftPostMap = new Map<number, { contentType: string | null }>();
+  if (draftPostIds.length > 0) {
+    const drafts = await db.select().from(draftPosts)
+      .where(sql`${draftPosts.id} IN (${draftPostIds.join(',')})`);
+    for (const d of drafts) {
+      draftPostMap.set(d.id, { contentType: d.contentType ?? null });
+    }
+  }
+
+  // 4. 按 contentType 分組計算平均值
+  const typeStats = new Map<string, { count: number; totalLikes: number; totalComments: number; totalReach: number }>();
+  for (const post of userPosts) {
+    const draftInfo = post.draftPostId ? draftPostMap.get(post.draftPostId) : null;
+    const contentType = draftInfo?.contentType || 'unknown';
+    const metric = latestMetricByPostId.get(post.id);
+
+    if (!metric) continue; // 沒有 metrics 的貼文略過
+
+    const existing = typeStats.get(contentType) || { count: 0, totalLikes: 0, totalComments: 0, totalReach: 0 };
+    typeStats.set(contentType, {
+      count: existing.count + 1,
+      totalLikes: existing.totalLikes + (metric.likes || 0),
+      totalComments: existing.totalComments + (metric.comments || 0),
+      totalReach: existing.totalReach + (metric.reach || 0),
+    });
+  }
+
+  const byType = Array.from(typeStats.entries())
+    .filter(([type]) => type !== 'unknown')
+    .map(([contentType, stats]) => ({
+      contentType,
+      count: stats.count,
+      avgLikes: Math.round(stats.totalLikes / stats.count),
+      avgComments: Math.round(stats.totalComments / stats.count),
+      avgReach: Math.round(stats.totalReach / stats.count),
+    }))
+    .sort((a, b) => b.avgLikes - a.avgLikes); // 按平均讚數降序
+
+  // 5. 取得最近的 hook 風格（從 draftHooks 表）
+  let recentHookStyles: string[] = [];
+  try {
+    if (draftPostIds.length > 0) {
+      const recentDraftIds = draftPostIds.slice(0, 10);
+      const hooks = await db.select().from(draftHooks)
+        .where(sql`${draftHooks.draftPostId} IN (${recentDraftIds.join(',')}) AND ${draftHooks.isSelected} = 1`)
+        .orderBy(desc(draftHooks.createdAt))
+        .limit(10);
+      const hookStyleSet = new Set<string>();
+      hooks.map(h => h.hookStyle).forEach(s => { if (s != null) hookStyleSet.add(s); });
+      recentHookStyles = Array.from(hookStyleSet);
+    }
+  } catch {
+    // draftHooks 表可能不存在，安全忽略
+  }
+
+  return { byType, recentHookStyles };
+}

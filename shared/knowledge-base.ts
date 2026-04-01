@@ -1444,3 +1444,11 @@ export const KNOWLEDGE_BASE = {
   aiSoundingPhrases: AI_SOUNDING_PHRASES,
   contentStructures: CONTENT_STRUCTURES,
 };
+
+export const CONTENT_MIX_FORMULA: Record<string, { target: number; label: string; types: string[] }> = {
+  question: { target: 30, label: "提問/問答/民調", types: ["question", "poll"] },
+  story: { target: 20, label: "故事/雜感/對話", types: ["story", "casual", "dialogue"] },
+  knowledge: { target: 20, label: "知識/整理", types: ["knowledge", "summary"] },
+  viewpoint: { target: 20, label: "觀點/反差", types: ["viewpoint", "contrast", "quote"] },
+  other: { target: 10, label: "其他", types: ["diagnosis"] },
+};

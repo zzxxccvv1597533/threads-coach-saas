@@ -2623,7 +2623,15 @@ ${materialsList || '（用戶未提供額外素材）'}
         const audiences = await db.getAudienceSegmentsByUserId(ctx.user.id);
         const contentPillars = await db.getContentPillarsByUserId(ctx.user.id);
         const userStyle = await db.getUserWritingStyle(ctx.user.id);
-        
+
+        // 取得學員歷史表現數據（用於生成提示詞）
+        const performanceInsights = await db.getPerformanceInsights(ctx.user.id);
+        const performanceContext = performanceInsights.byType.length > 0
+          ? performanceInsights.byType.map(t =>
+              `- ${t.contentType}型：${t.count} 篇，平均 ${t.avgLikes} 讚 / ${t.avgComments} 留言`
+            ).join('\n')
+          : '';
+
         const contentTypeInfo = CONTENT_TYPES_WITH_VIRAL_ELEMENTS.find(t => t.id === input.contentType) as any;
         
         // === 爆文因子系統：根據內容查詢市場數據 ===
@@ -3357,6 +3365,9 @@ ${optimizedBasePrompt}
 === 創作者 IP 地基（必須在內容中展現） ===
 ${ipContext || '未設定 IP 地基，請用通用風格寫作。'}
 
+=== 你的過去表現（請參考但不要拘泥） ===
+${performanceContext || '新學員，無歷史數據'}
+
 ${audienceContext}
 
 ${contentPillarsContext}
@@ -3935,6 +3946,14 @@ ${generatedContent}
         const profile = await db.getIpProfileByUserId(ctx.user.id);
         const audiences = await db.getAudienceSegmentsByUserId(ctx.user.id);
 
+        // 取得學員歷史表現數據
+        const performanceData = await db.getPerformanceInsights(ctx.user.id);
+        const performanceContext = performanceData.byType.length > 0
+          ? performanceData.byType.map(t =>
+              `- ${t.contentType}型：${t.count} 篇，平均 ${t.avgLikes} 讚 / ${t.avgComments} 留言`
+            ).join('\n')
+          : '';
+
         // 建構 IP 地基摘要
         let ipSummary = '';
         if (profile?.occupation) ipSummary += `職業：${profile.occupation}\n`;
@@ -3977,6 +3996,8 @@ ${generatedContent}
 2. 素材中有方法論/判斷標準 → 優先 knowledge 或 viewpoint
 3. 素材簡短或情緒性 → 優先 casual 或 question
 4. 切角根據素材語氣：有具體場景→daily_scenario，指出錯誤→common_mistakes，有反直覺觀點→perspective_flip
+5. 如果有歷史表現數據，優先選擇該學員互動最高的內容類型
+6. 如果學員近期某類型使用過多（>50%），建議換一種高效類型
 
 只輸出 JSON，不要其他文字。` },
             { role: "user", content: `## 主題
@@ -3990,6 +4011,11 @@ ${ipSummary}
 
 ## 目標受眾
 ${audienceContext || '未設定'}
+
+## 你的過去表現數據
+${performanceContext || '（新學員，無歷史數據）'}
+
+如果有歷史數據，請優先選擇該學員表現最好的內容類型。
 
 請判斷最佳策略：` }
           ],
@@ -5936,6 +5962,10 @@ ${postsData.map((p, i) => `${i + 1}. 觸及:${p.reach} 愛心:${p.likes} 留言:
           };
         }
       }),
+
+    performanceSummary: protectedProcedure.query(async ({ ctx }) => {
+      return db.getPerformanceInsights(ctx.user.id);
+    }),
   }),
 
   // ==================== 商品管理 ====================
