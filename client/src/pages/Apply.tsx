@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
+
 import { toast } from "sonner";
 import { 
   Sparkles, 
@@ -116,7 +116,7 @@ export default function Apply() {
                 <Button 
                   className="w-full" 
                   size="lg"
-                  onClick={() => window.location.href = getLoginUrl()}
+                  onClick={() => window.location.href = '/login'}
                 >
                   <LogIn className="w-4 h-4 mr-2" />
                   登入 / 註冊
