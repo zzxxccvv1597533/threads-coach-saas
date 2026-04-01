@@ -159,6 +159,19 @@ export default function IpProfile() {
   const [showProductForm, setShowProductForm] = useState(false);
   const [showStoryForm, setShowStoryForm] = useState(false);
   const [activeTab, setActiveTab] = useState<"basic" | "pillars" | "audience" | "products" | "story" | "matrix" | "style">("basic");
+
+  // 新用戶引導精靈
+  const [showWizard, setShowWizard] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+  const [wizardData, setWizardData] = useState({
+    occupation: "",
+    voiceTone: "",
+    personaExpertise: "",
+    personaEmotion: "",
+    personaViewpoint: "",
+    segmentName: "",
+    painPoint: "",
+  });
   
   // 用戶風格分析
   const { data: writingStyle, isLoading: styleLoading } = trpc.writingStyle.get.useQuery();
@@ -230,6 +243,18 @@ export default function IpProfile() {
       }
     }
   }, [profile]);
+
+  // 新用戶引導精靈：profile 載入後判斷是否為空
+  useEffect(() => {
+    if (!isLoading) {
+      const isEmpty =
+        !profile ||
+        (!profile.occupation && !profile.personaExpertise && !(audiences && audiences.length > 0));
+      if (isEmpty) {
+        setShowWizard(true);
+      }
+    }
+  }, [isLoading, profile, audiences]);
 
   // 自動儲存功能：當 formData 變更時，3 秒後自動儲存
   // 使用 useRef 來追蹤初始狀態，避免無限迴圈
@@ -396,6 +421,37 @@ export default function IpProfile() {
     createStory.mutate(newStory);
   };
 
+  const handleWizardComplete = () => {
+    // 更新 formData 並儲存 IP profile
+    const updatedForm = {
+      ...formData,
+      occupation: wizardData.occupation || formData.occupation,
+      voiceTone: wizardData.voiceTone || formData.voiceTone,
+      personaExpertise: wizardData.personaExpertise || formData.personaExpertise,
+      personaEmotion: wizardData.personaEmotion || formData.personaEmotion,
+      personaViewpoint: wizardData.personaViewpoint || formData.personaViewpoint,
+    };
+    setFormData(updatedForm);
+    upsertProfile.mutate(
+      { ...updatedForm, ipAnalysisComplete: false },
+      {
+        onSuccess: () => {
+          initialFormDataRef.current = { ...updatedForm };
+        },
+      }
+    );
+    // 如果有填受眾，也新增一筆受眾記錄
+    if (wizardData.segmentName) {
+      createAudience.mutate({
+        segmentName: wizardData.segmentName,
+        painPoint: wizardData.painPoint,
+        desiredOutcome: "",
+      });
+    }
+    setShowWizard(false);
+    toast.success("太棒了！IP 地基初始設定完成 🎉");
+  };
+
   const progress = calculateProgress();
   const hasCoreProduct = userProducts?.some(p => p.productType === 'core');
 
@@ -412,6 +468,219 @@ export default function IpProfile() {
 
   return (
     <>
+    {/* 新用戶引導精靈 Overlay */}
+    {showWizard && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="bg-background rounded-2xl shadow-2xl w-full max-w-lg">
+          {/* 精靈標頭 */}
+          <div className="px-8 pt-8 pb-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold text-muted-foreground tracking-widest uppercase">
+                快速設定
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {wizardStep} / 3
+              </span>
+            </div>
+            {/* 步驟指示條 */}
+            <div className="flex gap-2 mt-3 mb-6">
+              {[1, 2, 3].map((s) => (
+                <div
+                  key={s}
+                  className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+                    s <= wizardStep ? "bg-primary" : "bg-muted"
+                  }`}
+                />
+              ))}
+            </div>
+
+            {/* Step 1：基本資料 */}
+            {wizardStep === 1 && (
+              <div className="space-y-5">
+                <div>
+                  <h2 className="text-xl font-bold mb-1">歡迎！先認識一下你</h2>
+                  <p className="text-sm text-muted-foreground">
+                    只需 2 分鐘，讓 AI 了解你的背景，才能幫你寫出最適合的貼文。
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="wiz-occupation" className="font-medium">
+                    你的職業／身份是什麼？
+                  </Label>
+                  <Input
+                    id="wiz-occupation"
+                    placeholder="例如：心理諮商師、塔羅老師、健身教練…"
+                    value={wizardData.occupation}
+                    onChange={(e) =>
+                      setWizardData((d) => ({ ...d, occupation: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="font-medium">你說話的風格？</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { value: "warm", label: "溫暖鼓勵" },
+                      { value: "sharp", label: "犀利直白" },
+                      { value: "humorous", label: "幽默輕鬆" },
+                      { value: "professional", label: "專業權威" },
+                    ].map((tone) => (
+                      <button
+                        key={tone.value}
+                        onClick={() =>
+                          setWizardData((d) => ({ ...d, voiceTone: tone.value }))
+                        }
+                        className={`rounded-lg border px-4 py-3 text-sm font-medium transition-all text-left ${
+                          wizardData.voiceTone === tone.value
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border hover:border-primary/50 hover:bg-muted"
+                        }`}
+                      >
+                        {tone.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2：三支柱 */}
+            {wizardStep === 2 && (
+              <div className="space-y-5">
+                <div>
+                  <h2 className="text-xl font-bold mb-1">你的人設三支柱</h2>
+                  <p className="text-sm text-muted-foreground">
+                    這三個問題決定了你貼文的靈魂。寫幾個關鍵字就好，之後可以再補充。
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="wiz-expertise" className="font-medium flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-primary" />
+                    你的專業領域是什麼？
+                  </Label>
+                  <Textarea
+                    id="wiz-expertise"
+                    placeholder="例如：10 年塔羅經驗，專精感情、事業牌陣…"
+                    rows={2}
+                    value={wizardData.personaExpertise}
+                    onChange={(e) =>
+                      setWizardData((d) => ({ ...d, personaExpertise: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="wiz-emotion" className="font-medium flex items-center gap-1.5">
+                    <Heart className="w-3.5 h-3.5 text-rose-500" />
+                    你最能引發共鳴的情感是？
+                  </Label>
+                  <Textarea
+                    id="wiz-emotion"
+                    placeholder="例如：迷茫感、自我懷疑、想被看見的渴望…"
+                    rows={2}
+                    value={wizardData.personaEmotion}
+                    onChange={(e) =>
+                      setWizardData((d) => ({ ...d, personaEmotion: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="wiz-viewpoint" className="font-medium flex items-center gap-1.5">
+                    <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
+                    你有什麼獨特觀點？
+                  </Label>
+                  <Textarea
+                    id="wiz-viewpoint"
+                    placeholder="例如：我相信每個人都有自我解讀的能力，不需要依賴算命…"
+                    rows={2}
+                    value={wizardData.personaViewpoint}
+                    onChange={(e) =>
+                      setWizardData((d) => ({ ...d, personaViewpoint: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Step 3：受眾 */}
+            {wizardStep === 3 && (
+              <div className="space-y-5">
+                <div>
+                  <h2 className="text-xl font-bold mb-1">你在跟誰說話？</h2>
+                  <p className="text-sm text-muted-foreground">
+                    描述一個最典型的目標受眾。知道他們的痛點，貼文才會打到心坎裡。
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="wiz-segment" className="font-medium flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-primary" />
+                    你的目標受眾是誰？
+                  </Label>
+                  <Input
+                    id="wiz-segment"
+                    placeholder="例如：30 歲職場女性、正在創業的斜槓青年…"
+                    value={wizardData.segmentName}
+                    onChange={(e) =>
+                      setWizardData((d) => ({ ...d, segmentName: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="wiz-pain" className="font-medium">
+                    他們最大的痛點是什麼？
+                  </Label>
+                  <Textarea
+                    id="wiz-pain"
+                    placeholder="例如：努力了很久卻沒有成就感，不知道自己的方向…"
+                    rows={3}
+                    value={wizardData.painPoint}
+                    onChange={(e) =>
+                      setWizardData((d) => ({ ...d, painPoint: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 精靈底部按鈕 */}
+          <div className="px-8 pb-8 pt-2 flex items-center justify-between">
+            <button
+              onClick={() => setShowWizard(false)}
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+            >
+              跳過引導，自行填寫
+            </button>
+            <div className="flex gap-2">
+              {wizardStep > 1 && (
+                <Button
+                  variant="outline"
+                  onClick={() => setWizardStep((s) => s - 1)}
+                >
+                  上一步
+                </Button>
+              )}
+              {wizardStep < 3 ? (
+                <Button
+                  onClick={() => setWizardStep((s) => s + 1)}
+                  disabled={wizardStep === 1 && !wizardData.occupation}
+                >
+                  下一步
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleWizardComplete}
+                  disabled={upsertProfile.isPending}
+                  className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+                >
+                  <CheckCircle className="w-4 h-4 mr-1.5" />
+                  完成！開始使用
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
     <DashboardLayout>
       <div className="space-y-6 max-w-4xl">
         {/* Header */}

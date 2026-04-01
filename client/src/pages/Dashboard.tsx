@@ -2,6 +2,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import React, { useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
@@ -40,6 +41,14 @@ export default function Dashboard() {
   const { data: contentTypeStats } = trpc.draft.contentTypeStats.useQuery();
   const { data: accountHealthData, isLoading: healthLoading } = trpc.accountHealth.getDashboardData.useQuery();
   const { data: growthMetrics, isLoading: metricsLoading } = trpc.growthMetrics.get.useQuery();
+  const { data: contentTypeRec } = trpc.accountHealth.getContentTypeRecommendation.useQuery(
+    { topic: '' },
+    { enabled: true }
+  );
+  const { data: highPotentialData } = trpc.accountHealth.getHighPotentialTopics.useQuery(
+    undefined,
+    { enabled: true }
+  );
   const utils = trpc.useUtils();
   const setManualStageMutation = trpc.growthMetrics.setManualStage.useMutation({
     onSuccess: (data) => {
@@ -605,6 +614,84 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <ContentTypeChart stats={contentTypeStats} />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 適合你的內容類型 */}
+        {contentTypeRec && contentTypeRec.recommendations && contentTypeRec.recommendations.length > 0 && (
+          <Card className="elegant-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-primary" />
+                適合你的內容類型
+              </CardTitle>
+              <CardDescription>
+                根據相似爆款分析，這些內容類型在你的領域最有潛力
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {contentTypeRec.recommendations.slice(0, 3).map((rec) => (
+                  <div
+                    key={rec.contentType}
+                    className="flex items-start justify-between p-3 rounded-lg border border-border/50 bg-muted/20"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium">{rec.contentTypeName}</span>
+                        {rec.isRecommended && (
+                          <Badge variant="secondary" className="text-xs">推薦</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">{rec.reason}</p>
+                    </div>
+                    <div className="ml-3 text-right shrink-0">
+                      <Badge variant="outline" className="text-xs">
+                        {rec.count} 篇爆款
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 高潛力選題 */}
+        {highPotentialData && highPotentialData.topics && highPotentialData.topics.length > 0 && (
+          <Card className="elegant-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-amber-500" />
+                高潛力選題
+              </CardTitle>
+              <CardDescription>
+                根據你的領域和近期爆款趨勢，精選出的高潛力主題
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {highPotentialData.topics.slice(0, 5).map((item, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all"
+                  >
+                    <div className="flex-1 min-w-0 mr-3">
+                      <p className="font-medium truncate">{item.topic}</p>
+                      <p className="text-sm text-muted-foreground mt-0.5">{item.reason}</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setLocation(`/writing-studio?topic=${encodeURIComponent(item.topic)}&type=${item.suggestedType}`)}
+                      className="shrink-0"
+                    >
+                      去寫 <ChevronRight className="w-3 h-3 ml-1" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}

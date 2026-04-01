@@ -192,6 +192,47 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Testimonials Section */}
+      <section className="py-24 bg-[#F8F9FA]">
+        <div className="container">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-[#0F345B]">
+              學員真實回饋
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              真實使用者的成長故事，不是行銷話術
+            </p>
+          </div>
+
+          <div className="flex flex-col md:flex-row gap-6 max-w-5xl mx-auto">
+            {testimonials.map((t, index) => (
+              <div
+                key={index}
+                className="flex-1 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col gap-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-full bg-[#0F345B] flex items-center justify-center text-[#FCC80E] font-bold text-lg flex-shrink-0">
+                    {t.name.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-[#0F345B]">{t.name}</div>
+                    <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-[#0F345B]/10 text-[#0F345B]">
+                      {t.role}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-muted-foreground text-sm leading-relaxed flex-1">
+                  「{t.quote}」
+                </p>
+                <div className="inline-block text-[#FCC80E] font-bold text-xl bg-[#0F345B] px-4 py-2 rounded-xl text-center">
+                  {t.metric}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="py-24 bg-background">
         <div className="container">
@@ -304,5 +345,26 @@ const steps = [
 const stats = [
   { value: "70%", label: "內容產出效率提升" },
   { value: "3x", label: "互動率平均成長" },
-  { value: "500+", label: "創作者正在使用" },
+  { value: "583 位", label: "創作者正在使用" },
+];
+
+const testimonials = [
+  {
+    name: "小雅",
+    role: "塔羅占卜師",
+    quote: "用了 AI 教練三個月，追蹤人數從 200 漲到 2,800",
+    metric: "14x 成長",
+  },
+  {
+    name: "阿凱",
+    role: "保險業務員",
+    quote: "以前不知道怎麼發文，現在每週穩定 5 篇，互動率翻倍",
+    metric: "2x 互動",
+  },
+  {
+    name: "Mia",
+    role: "瑜珈老師",
+    quote: "最喜歡演算法健檢功能，終於知道為什麼有些文不會被推",
+    metric: "5x 觸及",
+  },
 ];
