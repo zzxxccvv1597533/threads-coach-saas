@@ -100,19 +100,56 @@ const GOAL_OPTIONS = [
   },
 ];
 
-// 流程步驟定義（新增靈感狀態選擇步驟）
+// 流程步驟定義（v2.0: 對齊 SKILL 方法論 — 素材前移 + 切角 + 演算法教學）
 const FLOW_STEPS = [
   { id: 0, name: "靈感狀態", description: "你現在有靈感嗎？" },
   { id: 1, name: "創作意圖", description: "這篇貼文你想..." },
   { id: 2, name: "選目標", description: "你想達成什麼？" },
   { id: 3, name: "選題", description: "AI 根據你的人設推薦主題" },
-  { id: 4, name: "選受眾", description: "選擇這篇文章要對誰說" },
-  { id: 5, name: "選類型", description: "選擇貼文呈現方式" },
-  { id: 6, name: "填資料", description: "填寫關鍵資訊" },
-  { id: 7, name: "選開頭", description: "選擇最吸引人的開頭" },
-  { id: 8, name: "生成全文", description: "AI 生成完整貼文" },
-  { id: 9, name: "對話修改", description: "與 AI 對話調整" },
-  { id: 10, name: "人味潤飾", description: "加入個人風格" },
+  { id: 4, name: "素材收集", description: "填入你的真實經歷和觀點" },
+  { id: 5, name: "切角", description: "選擇切入角度" },
+  { id: 6, name: "選受眾", description: "選擇這篇文章要對誰說" },
+  { id: 7, name: "選類型", description: "選擇貼文呈現方式" },
+  { id: 8, name: "選開頭", description: "選擇最吸引人的開頭" },
+  { id: 9, name: "生成全文", description: "AI 生成完整貼文" },
+  { id: 10, name: "對話修改", description: "與 AI 對話調整" },
+  { id: 11, name: "人味潤飾", description: "加入個人風格" },
+];
+
+// 切角選項定義（對齊 SKILL.md Step 2）
+const ANGLE_OPTIONS = [
+  {
+    id: 'daily_scenario',
+    name: '日常場景',
+    description: '從生活中的具體場景切入，讓讀者一秒進入情境',
+    example: '「昨天跟一個老師聊到半夜...」',
+    icon: '🎬',
+    color: 'from-blue-500/10 to-cyan-500/10 border-blue-200',
+  },
+  {
+    id: 'common_mistakes',
+    name: '常見錯誤',
+    description: '指出受眾的盲區，讓他們驚覺自己也犯了同樣的錯',
+    example: '「大部分人花了萬把塊學技術，卻連一個下午都不花在...」',
+    icon: '⚠️',
+    color: 'from-red-500/10 to-orange-500/10 border-red-200',
+  },
+  {
+    id: 'perspective_flip',
+    name: '觀點翻轉',
+    description: '反轉常規思維，製造認知衝突讓人想繼續看',
+    example: '「賺最多的老師，通常不是技術最好的那個」',
+    icon: '🔄',
+    color: 'from-purple-500/10 to-pink-500/10 border-purple-200',
+  },
+  {
+    id: 'trending_leverage',
+    name: '時事借力',
+    description: '用你自己的視角解讀熱門話題，借力打力',
+    example: '「最近大家都在討論 X，但我看到的是...」',
+    icon: '🔥',
+    color: 'from-amber-500/10 to-yellow-500/10 border-amber-200',
+  },
 ];
 
 export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, onComplete, onNavigateToIp }: GuidedWritingFlowProps) {
@@ -139,7 +176,10 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
   // v4.0: 靈感工作室狀態
   const [useInspirationStudio, setUseInspirationStudio] = useState(false);
   
-  // Step 2: 選受眾
+  // Step 5: 切角選擇（對齊 SKILL.md Step 2）
+  const [selectedAngle, setSelectedAngle] = useState<string | null>(null);
+
+  // Step 6: 選受眾
   const [selectedAudienceId, setSelectedAudienceId] = useState<number | null>(null);
   
   // Step 3: 選類型
@@ -214,6 +254,18 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
     };
     details: string[];
     suggestions: string[];
+  } | null>(null);
+
+  // 數據驅動分析結果（演算法健檢用）
+  const [dataDriven, setDataDriven] = useState<{
+    usedOpenerPattern: string | null;
+    openerEffectiveness: string | null;
+    materialKeywords: string[];
+    analysis?: {
+      score: number;
+      openerAnalysis?: { firstLine: string; matchedHighEffect: string[]; matchedLowEffect: string[]; usedMaterialKeyword: boolean; suggestions: string[] };
+      structureAnalysis?: { hasBreathingSpace: boolean; hasCTA: boolean };
+    };
   } | null>(null);
 
   // 查詢用戶的受眾設定
@@ -291,7 +343,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       }));
       console.log('[generateOpeners] Transformed hooks:', transformedHooks);
       setHookOptions(transformedHooks);
-      setCurrentStep(7); // Step 7: 選開頭
+      setCurrentStep(8); // Step 8: 選開頭
       toast.success(`已生成 ${data.candidates.length} 個開頭選項！`);
     },
     onError: (error) => {
@@ -324,7 +376,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         candidateId: undefined,
         templateCategory: undefined,
       })) : []);
-      setCurrentStep(7); // Step 7: 選開頭
+      setCurrentStep(8); // Step 8: 選開頭
       toast.success("Hook 選項已生成！");
     },
     onError: () => {
@@ -344,11 +396,15 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
       if (data.styleMatch) {
         setStyleMatch(data.styleMatch);
       }
+      // 設定數據驅動分析（演算法健檢用）
+      if (data.dataDriven) {
+        setDataDriven(data.dataDriven as any);
+      }
       // 如果是「順便帶點專業」模式，顯示專業建議區塊
       if (creativeIntent === 'light_connection') {
         setShowProfessionalSuggestions(true);
       }
-      setCurrentStep(8); // Step 8: 生成結果
+      setCurrentStep(9); // Step 9: 生成結果（新流程）
       toast.success("草稿已生成！");
     },
     onError: (error) => {
@@ -417,7 +473,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         }
       }
     }
-    setCurrentStep(4); // 選題後進入選受眾
+    setCurrentStep(4); // 選題後進入素材收集
   };
 
   // 處理生成 Hook - 使用新的 Opener Generator
@@ -431,13 +487,15 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
     }
 
     // 使用新的 Opener Generator API
+    const angleInfo = selectedAngle ? `切角方式: ${ANGLE_OPTIONS.find(a => a.id === selectedAngle)?.name || ''}` : '';
     generateOpeners.mutate({
       topic: topicTitle,
       contentType: selectedContentType,
-      // hookStyle 已移除，讓 AI 自動生成多種風格
-      userContext: Object.entries(typeInputs)
-        .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : (v as string || '')}`)
-        .join('\n'),
+      userContext: [
+        angleInfo,
+        ...Object.entries(typeInputs)
+          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : (v as string || '')}`),
+      ].filter(Boolean).join('\n'),
       count: 5, // 生成 5 個候選
       // 傳遞目標受眾 ID
       targetAudienceId: selectedAudienceId || undefined,
@@ -458,8 +516,10 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
 
     // 組合素材 - 安全處理 typeInputs
     const safeTypeInputs = typeInputs || {};
+    const angleLabel = ANGLE_OPTIONS.find(a => a.id === selectedAngle)?.name || '';
     const materialParts = [
       `主題：${topicTitle}`,
+      angleLabel ? `切角方式：${angleLabel}` : '',
       `開頭 Hook：${selectedHook}`,
       ...Object.entries(safeTypeInputs).map(([key, value]) => {
         const field = ALL_CONTENT_TYPES_V2.find(t => t.id === selectedContentType)?.inputFields?.find(f => f.key === key);
@@ -489,7 +549,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
     console.log('[handleGenerateFullDraft] filledFlexibleInputs to send:', filledFlexibleInputs);
 
     generateDraft.mutate({
-      material: materialParts.join('\n'),
+      material: materialParts.filter(Boolean).join('\n'),
       contentType: selectedContentType,
       angle: selectedHook,
       flexibleInput: Object.keys(filledFlexibleInputs).length > 0 ? filledFlexibleInputs : undefined,
@@ -881,9 +941,9 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
             // 根據創作意圖和是否已選題決定下一步
             if (creativeIntent === 'pure_personal') {
               // 純粹分享：跳過選目標和選受眾，直接進入選類型
-              setCurrentStep(5);
+              setCurrentStep(7);
             } else if (selectedTopic) {
-              // 已經有選題了（從 Step 0 選的）：跳過 Step 3 選題，直接進入 Step 4 選受眾
+              // 已經有選題了（從 Step 0 選的）：進入素材收集
               setCurrentStep(4);
             } else {
               // 沒有選題：進入選目標步驟
@@ -1002,7 +1062,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                   hook: topic.text,
                 });
                 setUseInspirationStudio(false);
-                setCurrentStep(4); // 選題後進入選受眾
+                setCurrentStep(4); // 選題後進入素材收集
               }}
               onClose={() => setUseInspirationStudio(false)}
               initialIdea={partialIdea || topicHint || undefined} // 傳入用戶的想法
@@ -1125,13 +1185,106 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         </>
       )}
 
-      {/* Step 4: 選擇目標受眾 */}
-      {currentStep === 4 && (
+      {/* Step 5: 切角選擇（對齊 SKILL.md） */}
+      {currentStep === 5 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
-                3
+                4
+              </span>
+              選擇切入角度
+            </CardTitle>
+            <CardDescription>
+              同一個主題，不同切角會帶來完全不同的效果。選一個最適合今天心情的角度
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* 已選主題提示 */}
+            {(selectedTopic || topicHint) && (
+              <div className="bg-muted/30 rounded-lg p-3 mb-2">
+                <div className="text-sm text-muted-foreground">已選主題：</div>
+                <div className="font-medium">{selectedTopic?.title || topicHint}</div>
+              </div>
+            )}
+
+            {/* 教學提示 */}
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-purple-800">
+                  <span className="font-medium">切角 = 你講這件事的方式</span>
+                  <p className="text-xs text-purple-700 mt-1">
+                    用「醉漢翻譯測試」檢驗：如果在酒吧跟朋友說，他會說「蛤？」還是「喔！」
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 切角選項 */}
+            <div className="grid gap-3">
+              {ANGLE_OPTIONS.map((angle) => (
+                <div
+                  key={angle.id}
+                  className={`relative border rounded-xl p-4 cursor-pointer transition-all ${
+                    selectedAngle === angle.id
+                      ? `bg-gradient-to-r ${angle.color} border-2`
+                      : "hover:bg-muted/30 border-muted"
+                  }`}
+                  onClick={() => setSelectedAngle(angle.id)}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                      selectedAngle === angle.id
+                        ? "border-primary bg-primary"
+                        : "border-muted-foreground/30"
+                    }`}>
+                      {selectedAngle === angle.id && (
+                        <Check className="w-4 h-4 text-primary-foreground" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{angle.icon}</span>
+                        <span className="font-semibold text-lg">{angle.name}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {angle.description}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2 italic">
+                        {angle.example}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setCurrentStep(4)}>
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                上一步
+              </Button>
+              <Button
+                className="flex-1"
+                disabled={!selectedAngle}
+                onClick={() => setCurrentStep(6)}
+              >
+                確認切角
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Step 6: 選擇目標受眾 */}
+      {currentStep === 6 && (
+        <Card className="elegant-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
+                5
               </span>
               這篇文章要對誰說？
             </CardTitle>
@@ -1220,21 +1373,13 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
             )}
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => {
-                // 如果用戶是從 Step 0 選題後直接跳到這裡的，上一步應該回到 Step 1（創作意圖）
-                // 否則回到 Step 3（選題）
-                if (selectedTopic && hasInspiration !== true) {
-                  setCurrentStep(1);
-                } else {
-                  setCurrentStep(3);
-                }
-              }}>
+              <Button variant="outline" onClick={() => setCurrentStep(5)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 上一步
               </Button>
-              <Button 
+              <Button
                 className="flex-1"
-                onClick={() => setCurrentStep(5)}
+                onClick={() => setCurrentStep(7)}
               >
                 下一步
                 <ChevronRight className="w-4 h-4 ml-1" />
@@ -1244,13 +1389,13 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         </Card>
       )}
 
-      {/* Step 5: 選擇文章類型（根據目標篩選） */}
-      {currentStep === 5 && (
+      {/* Step 7: 選擇文章類型（根據目標篩選） */}
+      {currentStep === 7 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
-                4
+                6
               </span>
               選擇文章類型
             </CardTitle>
@@ -1354,32 +1499,44 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => {
                 // 如果是純粹分享模式，上一步回到 Step 1（創作意圖）
-                // 否則回到 Step 4（選受眾）
+                // 否則回到 Step 6（選受眾）
                 if (creativeIntent === 'pure_personal') {
                   setCurrentStep(1);
                 } else {
-                  setCurrentStep(4);
+                  setCurrentStep(6);
                 }
               }}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 上一步
               </Button>
-              <Button 
+              <Button
                 className="flex-1"
-                disabled={!selectedContentType}
-                onClick={() => setCurrentStep(6)}
+                disabled={!selectedContentType || generateOpeners.isPending}
+                onClick={() => {
+                  // 觸發 Hook 生成
+                  handleGenerateHooks();
+                }}
               >
-                下一步
-                <ChevronRight className="w-4 h-4 ml-1" />
+                {generateOpeners.isPending ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    AI 正在生成開頭選項...
+                  </>
+                ) : (
+                  <>
+                    生成開頭選項
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </>
+                )}
               </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Step 6: 填寫專屬欄位 - v4.0 整合問答引導 */}
+      {/* Step 4: 填寫專屬欄位（素材收集）- v4.0 整合問答引導 */}
       {/* 引導模式下預設進入 AI 教練問答，不顯示手動填寫表單 */}
-      {currentStep === 6 && (
+      {currentStep === 4 && (
         <>
           {/* v4.2: 一次性問答模式（引導模式下預設啟用） */}
           {useInteractiveQA ? (
@@ -1395,7 +1552,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                   .map(([k, v]) => `${k}: ${v}`)
                   .join('\n\n');
                 setTypeInputs(prev => ({ ...prev, material }));
-                
+
                 // 修復：「有靈感」流程中，selectedTopic 和 topicHint 可能都是空的
                 // 此時從用戶的回答中提取主題（取第一個非空答案的前 50 個字作為主題）
                 let topicTitle = selectedTopic?.title || topicHint;
@@ -1407,35 +1564,13 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                     setTopicHint(topicTitle);
                   }
                 }
-                
-                if (topicTitle && selectedContentType) {
-                  generateOpeners.mutate({
-                    topic: topicTitle,
-                    contentType: selectedContentType,
-                    userContext: `material: ${material}`,
-                    count: 5,
-                    targetAudienceId: selectedAudienceId || undefined,
-                  });
-                } else {
-                  // 如果還是沒有主題，顯示錯誤提示
-                  toast.error("請至少填寫一個問題的答案");
-                }
+
+                // 素材收集完成，前往切角步驟
+                setCurrentStep(5);
               }}
               onSkip={() => {
-                // Issue #3 修復：跳過問答時直接生成開頭
-                const topicTitle = selectedTopic?.title || topicHint;
-                if (topicTitle && selectedContentType) {
-                  generateOpeners.mutate({
-                    topic: topicTitle,
-                    contentType: selectedContentType,
-                    userContext: '',
-                    count: 5,
-                    targetAudienceId: selectedAudienceId || undefined,
-                  });
-                } else {
-                  // 「有靈感」流程中沒有主題時，不能跳過問答
-                  toast.error("請至少填寫一個問題的答案，讓 AI 了解你想寫什麼");
-                }
+                // 跳過問答時直接前往切角步驟
+                setCurrentStep(5);
               }}
             />
           ) : useGuidedQuestions ? (
@@ -1447,13 +1582,13 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                 setTypeInputs(prev => ({ ...prev, material }));
                 setWritingSessionId(sessionId);
                 setUseGuidedQuestions(false);
-                // 直接進入下一步生成 Hook
-                handleGenerateHooks();
+                // 素材收集完成，前往切角步驟
+                setCurrentStep(5);
               }}
               onSkip={() => {
-                // Issue #3 修復：跳過問答時直接生成開頭
                 setUseGuidedQuestions(false);
-                handleGenerateHooks();
+                // 跳過問答，前往切角步驟
+                setCurrentStep(5);
               }}
             />
           ) : (
@@ -1517,26 +1652,19 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                 ))}
 
                 <div className="flex gap-3 pt-4">
-                  <Button variant="outline" onClick={() => setCurrentStep(5)}>
+                  <Button variant="outline" onClick={() => setCurrentStep(3)}>
                     <ChevronLeft className="w-4 h-4 mr-1" />
                     上一步
                   </Button>
-                  <Button 
+                  <Button
                     className="flex-1"
                     disabled={generateOpeners.isPending}
-                    onClick={handleGenerateHooks}
+                    onClick={() => setCurrentStep(5)}
                   >
-                    {generateOpeners.isPending ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        AI 正在生成開頭選項...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        生成開頭選項
-                      </>
-                    )}
+                    <>
+                      下一步：選切角
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </>
                   </Button>
                 </div>
               </CardContent>
@@ -1545,13 +1673,13 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         </>
       )}
 
-      {/* Step 7: Hook 選項（已優化：直接生成多種風格供選擇） */}
-      {currentStep === 7 && (
+      {/* Step 8: Hook 選項（已優化：直接生成多種風格供選擇） */}
+      {currentStep === 8 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
-                6
+                7
               </span>
               選擇開頭
             </CardTitle>
@@ -1560,6 +1688,32 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* 演算法教學卡片（對齊 SKILL.md Step 5）*/}
+            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-lg p-4 text-sm border border-indigo-200 dark:border-indigo-800">
+              <div className="flex items-start gap-2 mb-3">
+                <span className="text-lg">📡</span>
+                <div>
+                  <span className="font-medium text-indigo-700 dark:text-indigo-300">演算法小教室</span>
+                  <p className="text-xs text-indigo-600/80 dark:text-indigo-400/80 mt-1">
+                    Threads 演算法怎麼決定推給誰？記住這個公式：
+                  </p>
+                </div>
+              </div>
+              <div className="bg-white/60 dark:bg-white/5 rounded-md p-3 mb-3">
+                <p className="text-sm font-mono text-center text-indigo-800 dark:text-indigo-200">
+                  [主題實體詞] + [核心屬性] + [使用者情境]
+                </p>
+                <p className="text-xs text-muted-foreground text-center mt-1">
+                  例如：「紫微斗數 + 七殺 + 不是你想的那樣」→ 系統推給對紫微有興趣的人
+                </p>
+              </div>
+              <div className="space-y-1.5 text-xs text-indigo-700 dark:text-indigo-400">
+                <p>🎯 <b>開頭前 2 行</b>一定要包含主題相關的關鍵字（實體詞）</p>
+                <p>💬 <b>互動訊號強度</b>：留言回覆 &gt; 分享 &gt; 停留時間 &gt; 按讚</p>
+                <p>⚠️ <b>降流防護</b>：不說「按讚追蹤分享」、零外部連結、貼文間隔 ≥ 3 小時</p>
+              </div>
+            </div>
+
             {/* 多樣性提示 */}
             <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg p-3 text-sm border border-purple-100 dark:border-purple-800">
               <div className="flex items-start gap-2">
@@ -1572,7 +1726,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
                 </div>
               </div>
             </div>
-            
+
             {/* AI 痕跡分數說明 */}
             <div className="bg-muted/30 rounded-lg p-3 text-sm">
               <div className="flex items-center gap-2 mb-2">
@@ -1745,11 +1899,11 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
             })}
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(6)}>
+              <Button variant="outline" onClick={() => setCurrentStep(7)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 上一步
               </Button>
-              <Button 
+              <Button
                 className="flex-1"
                 disabled={!selectedHook || generateDraft.isPending}
                 onClick={handleGenerateFullDraft}
@@ -1771,18 +1925,18 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         </Card>
       )}
 
-      {/* Step 8 & 9: 生成結果與對話修改 */}
-      {(currentStep === 8 || currentStep === 9) && draftContent && (
+      {/* Step 9 & 10: 生成結果與對話修改 */}
+      {(currentStep === 9 || currentStep === 10) && draftContent && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
                 {currentStep}
               </span>
-              {currentStep === 8 ? "生成結果" : "對話修改"}
+              {currentStep === 9 ? "生成結果" : "對話修改"}
             </CardTitle>
             <CardDescription>
-              {currentStep === 8 ? "這是 AI 生成的草稿，你可以進行對話修改" : "告訴 AI 你想怎麼調整"}
+              {currentStep === 9 ? "這是 AI 生成的草稿，你可以進行對話修改" : "告訴 AI 你想怎麼調整"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -1905,6 +2059,223 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
               </div>
             )}
             
+            {/* 演算法健檢卡片 */}
+            {(() => {
+              // 組裝三個檢查項目
+              const algorithmItems: Array<{
+                level: 'red' | 'yellow' | 'green';
+                label: string;
+                passed: boolean;
+                detail?: string;
+                suggestion?: string;
+                chatAction?: string;
+              }> = [];
+
+              // 1. 禁止詞檢查（來自 server diagnosis.algorithmChecks）
+              if (diagnosis && (diagnosis as any).algorithmChecks) {
+                const serverChecks = (diagnosis as any).algorithmChecks.checks as Array<{
+                  level: 'red' | 'yellow' | 'green';
+                  label: string;
+                  passed: boolean;
+                  detail?: string;
+                  suggestion?: string;
+                  chatAction?: string;
+                }>;
+                algorithmItems.push(...serverChecks);
+              }
+
+              // 2. 互動結尾設計（來自 dataDriven.analysis.structureAnalysis.hasCTA）
+              if (dataDriven?.analysis?.structureAnalysis) {
+                const hasCTA = dataDriven.analysis.structureAnalysis.hasCTA;
+                algorithmItems.push(hasCTA
+                  ? { level: 'green', label: '互動結尾設計', passed: true }
+                  : {
+                      level: 'yellow',
+                      label: '互動結尾設計',
+                      passed: false,
+                      detail: '未偵測到互動結尾',
+                      suggestion: '建議加「你也是這樣嗎？」或「你們覺得呢？」',
+                      chatAction: '請幫我在結尾加入互動引導，例如「你也是這樣嗎？」或「你們覺得呢？」',
+                    }
+                );
+              }
+
+              // 3. 開頭效果（來自 dataDriven.analysis.openerAnalysis.matchedHighEffect）
+              if (dataDriven?.analysis?.openerAnalysis) {
+                const matched = dataDriven.analysis.openerAnalysis.matchedHighEffect;
+                algorithmItems.push(matched && matched.length > 0
+                  ? { level: 'green', label: '開頭效果', passed: true, detail: matched.join('、') }
+                  : {
+                      level: 'yellow',
+                      label: '開頭效果',
+                      passed: false,
+                      detail: '未偵測到高效開頭模式',
+                      suggestion: '建議使用「你是不是也...」或數字開頭',
+                      chatAction: '請幫我優化開頭，使用「你是不是也...」或數字開頭來增加停留時間',
+                    }
+                );
+              }
+
+              // 4. 開頭實體詞檢查（Red flag — 前2行無主題實體詞 = 演算法無法分類）
+              if (dataDriven?.analysis?.openerAnalysis) {
+                const usedKeyword = dataDriven.analysis.openerAnalysis.usedMaterialKeyword;
+                algorithmItems.push(usedKeyword
+                  ? { level: 'green', label: '開頭實體詞', passed: true, detail: '前 2 行包含主題關鍵字' }
+                  : {
+                      level: 'red',
+                      label: '開頭實體詞',
+                      passed: false,
+                      detail: '前 2 行缺少主題關鍵字，演算法無法分類',
+                      suggestion: '在開頭 1-2 句加入「受眾身分詞」或「主題實體詞」',
+                      chatAction: '請在開頭前 2 行加入主題相關的實體詞或受眾身分詞，讓演算法能正確分類這篇文章',
+                    }
+                );
+              }
+
+              // 5. 呼吸感檢查（結構層）
+              if (dataDriven?.analysis?.structureAnalysis) {
+                const hasBreathing = dataDriven.analysis.structureAnalysis.hasBreathingSpace;
+                if (!hasBreathing) {
+                  algorithmItems.push({
+                    level: 'yellow',
+                    label: '呼吸感',
+                    passed: false,
+                    detail: '段落太密集，建議每 2-3 行空一行',
+                    suggestion: '一句一行、每 2-3 行空一行，讓手機閱讀更舒適',
+                    chatAction: '請幫我調整排版，每 2-3 行之間加入空行，增加呼吸感',
+                  });
+                }
+              }
+
+              // 如果沒有任何檢查項目，不顯示卡片
+              if (algorithmItems.length === 0) return null;
+
+              const hasRed = algorithmItems.some(i => i.level === 'red');
+              const hasYellow = algorithmItems.some(i => !i.passed && i.level === 'yellow');
+              const allPassed = algorithmItems.every(i => i.passed);
+
+              const cardColor = hasRed
+                ? 'from-red-500/5 to-red-500/10 border-red-500/20'
+                : hasYellow
+                  ? 'from-sky-500/5 to-sky-500/10 border-sky-500/20'
+                  : 'from-emerald-500/5 to-emerald-500/10 border-emerald-500/20';
+
+              const badgeClass = allPassed
+                ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                : 'bg-amber-500/10 text-amber-700 dark:text-amber-400';
+
+              const passedCount = algorithmItems.filter(i => i.passed).length;
+
+              return (
+                <div className={`bg-gradient-to-r ${cardColor} rounded-lg p-4 border`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">📡</span>
+                      <span className="font-medium">演算法健檢</span>
+                    </div>
+                    <Badge variant="outline" className={badgeClass}>
+                      {allPassed ? '全部通過' : `${passedCount}/${algorithmItems.length} 通過`}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1.5">
+                    {algorithmItems.map((item, idx) => (
+                      <div key={idx} className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-1.5 min-w-0">
+                          <span className="text-sm flex-shrink-0 mt-0.5">
+                            {item.passed ? '✅' : item.level === 'red' ? '❌' : '⚠️'}
+                          </span>
+                          <div className="min-w-0">
+                            <span className="text-sm">
+                              {item.label}
+                              {item.passed && item.detail && (
+                                <span className="text-xs text-muted-foreground ml-1">（{item.detail}）</span>
+                              )}
+                            </span>
+                            {!item.passed && item.detail && (
+                              <div className="text-xs text-muted-foreground mt-0.5">{item.detail}</div>
+                            )}
+                            {!item.passed && item.suggestion && (
+                              <div className="text-xs text-muted-foreground">{item.suggestion}</div>
+                            )}
+                          </div>
+                        </div>
+                        {!item.passed && item.chatAction && (
+                          <Badge
+                            variant="outline"
+                            className="cursor-pointer hover:bg-primary/10 text-xs flex-shrink-0"
+                            onClick={() => setChatInput(item.chatAction!)}
+                          >
+                            修 →
+                          </Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 演算法設計區塊（對齊 SKILL.md Step 8 輸出格式） */}
+            {dataDriven?.analysis && (
+              <div className="bg-gradient-to-r from-indigo-500/5 to-violet-500/10 rounded-lg p-4 border border-indigo-500/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-base">🧬</span>
+                  <span className="font-medium">演算法設計</span>
+                </div>
+                <div className="space-y-2 text-sm">
+                  {/* 主題實體詞 */}
+                  {dataDriven.materialKeywords && dataDriven.materialKeywords.length > 0 && (
+                    <div className="flex items-start gap-2">
+                      <span className="text-muted-foreground flex-shrink-0">主題實體詞：</span>
+                      <div className="flex flex-wrap gap-1">
+                        {dataDriven.materialKeywords.map((kw, i) => (
+                          <Badge key={i} variant="secondary" className="bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-xs">
+                            {kw}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* 開頭模式 */}
+                  {dataDriven.usedOpenerPattern && (
+                    <div className="flex items-start gap-2">
+                      <span className="text-muted-foreground flex-shrink-0">開頭模式：</span>
+                      <span>{dataDriven.usedOpenerPattern}</span>
+                    </div>
+                  )}
+                  {/* 開頭效果 */}
+                  {dataDriven.openerEffectiveness && (
+                    <div className="flex items-start gap-2">
+                      <span className="text-muted-foreground flex-shrink-0">效果預測：</span>
+                      <span>{dataDriven.openerEffectiveness}</span>
+                    </div>
+                  )}
+                  {/* 選用切角 */}
+                  {selectedAngle && (
+                    <div className="flex items-start gap-2">
+                      <span className="text-muted-foreground flex-shrink-0">選用切角：</span>
+                      <span>{ANGLE_OPTIONS.find(a => a.id === selectedAngle)?.name}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 降流防護提醒 */}
+            <div className="bg-gradient-to-r from-rose-500/5 to-orange-500/5 rounded-lg p-4 border border-rose-500/20">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-base">🛡️</span>
+                <span className="font-medium text-rose-700 dark:text-rose-400">發文前降流防護清單</span>
+              </div>
+              <div className="text-xs text-muted-foreground space-y-1.5">
+                <p>☐ 距離上一篇貼文間隔 ≥ 3 小時</p>
+                <p>☐ 不說「按讚＋追蹤＋分享」</p>
+                <p>☐ 貼文內零外部連結</p>
+                <p>☐ 跟上一篇換不同切角或受眾（避免語意重複）</p>
+                <p>☐ 發文後 30 分鐘內回覆前幾則留言</p>
+              </div>
+            </div>
+
             {/* 多樣性提示 - 避免內容同質化 */}
             <div className="bg-gradient-to-r from-amber-500/5 to-amber-500/10 rounded-lg p-4 border border-amber-500/20">
               <div className="flex items-center gap-2 mb-2">
@@ -2005,13 +2376,13 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(7)}>
+              <Button variant="outline" onClick={() => setCurrentStep(8)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 重新選開頭
               </Button>
-              <Button 
+              <Button
                 className="flex-1"
-                onClick={() => setCurrentStep(10)}
+                onClick={() => setCurrentStep(11)}
               >
                 下一步：人味潤飾
                 <ChevronRight className="w-4 h-4 ml-1" />
@@ -2021,13 +2392,13 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
         </Card>
       )}
 
-      {/* Step 10: 人味潤飾 */}
-      {currentStep === 10 && (
+      {/* Step 11: 人味潤飾 */}
+      {currentStep === 11 && (
         <Card className="elegant-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
-                9
+                10
               </span>
               人味潤飾
             </CardTitle>
@@ -2067,7 +2438,7 @@ export function GuidedWritingFlow({ ipProfile, initialTopic, initialMaterial, on
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(9)}>
+              <Button variant="outline" onClick={() => setCurrentStep(10)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 繼續修改
               </Button>

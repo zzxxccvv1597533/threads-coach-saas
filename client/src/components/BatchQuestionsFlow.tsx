@@ -15,10 +15,10 @@ import { trpc } from "@/lib/trpc";
 
 interface BatchQuestionsFlowProps {
   topic: string;
-  contentType: string;
+  contentType?: string;
   creativeIntent?: 'pure_personal' | 'light_connection' | 'full_professional';
   onComplete: (answers: Record<string, string>) => void;
-  onSkip: () => void;
+  onSkip?: () => void;
   isSubmitting?: boolean; // 新增：提交中狀態
 }
 
@@ -45,7 +45,7 @@ export function BatchQuestionsFlow({ topic, contentType, creativeIntent = 'light
     },
     onError: () => {
       // 如果 API 失敗，使用預設問題
-      setQuestions(getDefaultQuestions(contentType));
+      setQuestions(contentType ? getDefaultQuestions(contentType) : getGenericDefaultQuestions());
       setCoachIntro("讓我幫你整理一下寫這篇文章需要的素材：");
       setIsLoading(false);
     },
@@ -53,7 +53,7 @@ export function BatchQuestionsFlow({ topic, contentType, creativeIntent = 'light
 
   // 初始化時生成問題
   useEffect(() => {
-    generateQuestions.mutate({ topic, contentType, creativeIntent });
+    generateQuestions.mutate({ topic, contentType: contentType ?? 'auto', creativeIntent });
   }, [topic, contentType, creativeIntent]);
 
   // 預設問題（根據貼文類型）
@@ -82,6 +82,13 @@ export function BatchQuestionsFlow({ topic, contentType, creativeIntent = 'light
     };
     return defaultQuestions[type] || defaultQuestions.story;
   };
+
+  // 通用預設問題（當 contentType 未提供且 API 失敗時使用）
+  const getGenericDefaultQuestions = (): Question[] => [
+    { id: "experience", question: "你遇過最印象深刻的案例或經歷是什麼？", hint: "具體描述當時發生了什麼", importance: "required" as const, example: "上個月有個客戶來找我..." },
+    { id: "detail", question: "有什麼具體的數字或細節？", hint: "數字讓故事更真實可信", importance: "required" as const, example: "花了3個月、成本50萬、服務了10個人..." },
+    { id: "insight", question: "你從這件事學到什麼？或最常跟人說的一句話是？", hint: "這會成為文章的核心觀點", importance: "recommended" as const, example: "我才發現原來..." },
+  ];
 
   // 處理答案變更
   const handleAnswerChange = (id: string, value: string) => {
@@ -180,14 +187,16 @@ export function BatchQuestionsFlow({ topic, contentType, creativeIntent = 'light
 
         {/* 操作按鈕 */}
         <div className="flex gap-3 pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={onSkip}
-            className="flex-1"
-            disabled={isSubmitting}
-          >
-            跳過，直接生成
-          </Button>
+          {onSkip && (
+            <Button
+              variant="outline"
+              onClick={onSkip}
+              className="flex-1"
+              disabled={isSubmitting}
+            >
+              跳過，直接生成
+            </Button>
+          )}
           <Button
             onClick={handleSubmit}
             disabled={!allRequiredFilled || isSubmitting}

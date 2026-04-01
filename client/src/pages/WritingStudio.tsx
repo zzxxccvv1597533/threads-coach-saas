@@ -33,7 +33,7 @@ import {
   Check,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { GuidedWritingFlow } from "@/components/GuidedWritingFlow";
+import { SimpleWritingFlow } from "@/components/SimpleWritingFlow";
 import { InspirationStudio } from "@/components/InspirationStudio";
 
 import { FLEXIBLE_INPUT_FIELDS, CONTENT_TYPES_WITH_VIRAL_ELEMENTS } from "@shared/knowledge-base";
@@ -760,7 +760,7 @@ export default function WritingStudio() {
           {/* Brainstorm Mode */}
           {/* Brainstorm Mode - 完整引導流程 */}
           {mode === "brainstorm" && (
-            <GuidedWritingFlow
+            <SimpleWritingFlow
               ipProfile={ipProfile ? {
                 occupation: ipProfile.occupation || undefined,
                 personaExpertise: ipProfile.personaExpertise || undefined,
