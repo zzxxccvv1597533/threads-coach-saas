@@ -361,10 +361,10 @@ export function SimpleWritingFlow({
       setDraftId(draft.draftId ?? null);
 
       if (draft.diagnosis) {
-        setDiagnosis(draft.diagnosis as typeof diagnosis);
+        setDiagnosis(draft.diagnosis as unknown as typeof diagnosis);
       }
       if (draft.styleMatch) {
-        setStyleMatch(draft.styleMatch as typeof styleMatch);
+        setStyleMatch(draft.styleMatch as unknown as typeof styleMatch);
       }
       if (draft.dataDriven) {
         setDataDriven(draft.dataDriven);

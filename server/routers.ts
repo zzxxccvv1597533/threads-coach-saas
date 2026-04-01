@@ -7642,11 +7642,11 @@ ${intentContext[creativeIntent] || intentContext.light_connection}
         } catch (error) {
           console.error('generateBatchQuestions error:', error);
           // 如果 AI 失敗，回傳預設問題
-          const fallbackQuestions = GUIDED_QUESTIONS[contentType] || GUIDED_QUESTIONS.story;
+          const fallbackQuestions = GUIDED_QUESTIONS[contentType || 'story'] || GUIDED_QUESTIONS.story;
           
           return {
             coachIntro: '讓我幫你整理一下寫這篇文章需要的素材：',
-            questions: fallbackQuestions.map((q, i) => ({
+            questions: fallbackQuestions.map((q: string, i: number) => ({
               id: `q${i + 1}`,
               question: q,
               hint: '請盡量具體描述',

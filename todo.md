@@ -3492,8 +3492,8 @@
 
 
 ## GitHub 同步與部署 (2026-04-01)
-- [ ] 拉取 GitHub 最新版本（commit 73e87b2 OAuth 修復 + commit 2fa7644 發文工作室重構）
-- [ ] 確認新檔案結構（SimpleWritingFlow.tsx, threads-soul.ts, threads-brain.ts）
-- [ ] 修復編譯錯誤與依賴問題
-- [ ] 運行測試確認功能正常
-- [ ] 部署並測試完整流程（登入→Dashboard→發文工作室→4步流程）
+- [x] 拉取 GitHub 最新版本（commit 73e87b2 OAuth 修復 + commit 2fa7644 發文工作室重構）
+- [x] 確認新檔案結構（SimpleWritingFlow.tsx, threads-soul.ts, threads-brain.ts）
+- [x] 修復編譯錯誤與依賴問題（routers.ts contentType undefined + SimpleWritingFlow.tsx 類型轉換）
+- [x] 運行測試確認功能正常（504 個測試全部通過）
+- [x] 部署並測試完整流程（登入→Dashboard→發文工作室→4步流程）
