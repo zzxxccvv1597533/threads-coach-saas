@@ -101,6 +101,59 @@ export default function Dashboard() {
   const pendingTasks = tasks?.filter(t => t.status === 'todo').length || 0;
   const draftCount = drafts?.filter(d => d.status === 'draft').length || 0;
 
+  // 今日行動引導卡：判斷學員當前階段
+  const todayAction = useMemo(() => {
+    if (!ipProfile && !drafts && !tasks) return null; // 還在載入
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (ipProgress < 100) {
+      return {
+        icon: <Target className="w-5 h-5" />,
+        label: '今日行動',
+        action: '完成你的 IP 地基',
+        desc: `IP 完整度 ${ipProgress}%，補完剩下欄位讓 AI 更懂你`,
+        path: '/ip-profile',
+      };
+    }
+
+    if (!drafts || drafts.length === 0) {
+      return {
+        icon: <PenTool className="w-5 h-5" />,
+        label: '今日行動',
+        action: '寫你的第一篇文',
+        desc: '還沒有任何草稿，去寫作工作室建立第一篇',
+        path: '/writing-studio',
+      };
+    }
+
+    const publishedToday = drafts.some(d => {
+      if (!d.publishedAt) return false;
+      const pub = new Date(d.publishedAt);
+      pub.setHours(0, 0, 0, 0);
+      return pub.getTime() === today.getTime();
+    });
+
+    if (!publishedToday) {
+      return {
+        icon: <FileText className="w-5 h-5" />,
+        label: '今日行動',
+        action: '去草稿庫挑一篇發文',
+        desc: `草稿庫有 ${draftCount} 篇待發，今天發一篇累積聲量`,
+        path: '/draft-library',
+      };
+    }
+
+    return {
+      icon: <MessageSquare className="w-5 h-5" />,
+      label: '今日行動',
+      action: '去完成今日互動任務',
+      desc: `還有 ${pendingTasks} 項互動任務等你`,
+      path: '/tasks',
+    };
+  }, [ipProgress, ipProfile, drafts, draftCount, tasks, pendingTasks]);
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -117,6 +170,28 @@ export default function Dashboard() {
             開始寫作
           </Button>
         </div>
+
+        {/* Today's Action Guidance Card */}
+        {todayAction && (
+          <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-[#0F345B] to-[#0a2540] px-5 py-4 text-white shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15">
+                {todayAction.icon}
+              </div>
+              <div>
+                <p className="text-xs font-medium text-white/60 leading-none mb-1">{todayAction.label}</p>
+                <p className="text-base font-semibold leading-tight">{todayAction.action}</p>
+                <p className="text-xs text-white/70 mt-0.5">{todayAction.desc}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setLocation(todayAction.path)}
+              className="ml-4 flex shrink-0 items-center gap-1 rounded-lg bg-white/15 px-3 py-1.5 text-sm font-medium hover:bg-white/25 transition-colors"
+            >
+              前往 <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Quick Stats */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

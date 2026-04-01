@@ -4,12 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
 import { zhTW } from "date-fns/locale";
-import { 
-  FileText, 
+import {
+  FileText,
   PenTool,
   Trash2,
   Clock,
@@ -19,6 +20,8 @@ import {
   FolderInput,
   Sparkles,
   AlertTriangle,
+  Search,
+  Copy,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -48,6 +51,8 @@ export default function Drafts() {
   
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
 
   // 多選功能
   const {
@@ -147,6 +152,26 @@ export default function Drafts() {
   const draftCount = drafts?.filter(d => d.status === 'draft').length || 0;
   const publishedCount = drafts?.filter(d => d.status === 'published').length || 0;
 
+  // Derive unique content types from loaded drafts for the filter dropdown
+  const uniqueContentTypes = Array.from(
+    new Set((drafts || []).map(d => d.contentType).filter(Boolean))
+  ) as string[];
+
+  // Chained client-side filters
+  const filteredDrafts = (drafts || [])
+    .filter(draft => {
+      if (!searchTerm) return true;
+      const term = searchTerm.toLowerCase();
+      return (
+        (draft.body || '').toLowerCase().includes(term) ||
+        (draft.title || '').toLowerCase().includes(term)
+      );
+    })
+    .filter(draft => {
+      if (!typeFilter) return true;
+      return draft.contentType === typeFilter;
+    });
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -228,6 +253,32 @@ export default function Drafts() {
                 </div>
               )}
             </div>
+            {/* Search and type filter */}
+            {drafts && drafts.length > 0 && (
+              <div className="flex gap-2 pt-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    placeholder="搜尋草稿內容..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                >
+                  <option value="">全部類型</option>
+                  {uniqueContentTypes.map((typeId) => (
+                    <option key={typeId} value={typeId}>
+                      {getContentTypeName(typeId)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -238,7 +289,10 @@ export default function Drafts() {
               </div>
             ) : drafts && drafts.length > 0 ? (
               <div className="space-y-4">
-                {drafts.map((draft) => (
+                {filteredDrafts.length === 0 && (
+                  <p className="text-center text-sm text-muted-foreground py-8">沒有符合條件的草稿</p>
+                )}
+                {filteredDrafts.map((draft) => (
                   <div 
                     key={draft.id}
                     className={`group flex items-start gap-4 p-4 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-muted/30 transition-all ${isSelected(draft.id) ? 'ring-2 ring-primary/30 bg-primary/5' : ''}`}
@@ -307,7 +361,19 @@ export default function Drafts() {
                       <Button
                         size="icon"
                         variant="ghost"
-                        onClick={(e) => {
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(draft.body || draft.title || '');
+                          toast.success("已複製到剪貼簿");
+                        }}
+                        title="複製內容"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={(e: React.MouseEvent) => {
                           e.stopPropagation();
                           deleteDraft.mutate({ id: draft.id });
                         }}

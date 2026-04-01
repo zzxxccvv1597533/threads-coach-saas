@@ -263,11 +263,12 @@ const FourLensSubCard = ({
 
 export default function Optimize() {
   const { data: fourLens } = trpc.knowledge.fourLens.useQuery();
-  
+
   const [inputText, setInputText] = useState("");
   const [healthCheckResult, setHealthCheckResult] = useState<HealthCheckResult | null>(null);
   const [clarityResult, setClarityResult] = useState("");
   const [autoFixResult, setAutoFixResult] = useState("");
+  const [autoFixOriginal, setAutoFixOriginal] = useState("");
   
   // 新版健檢 API
   const contentHealthCheck = trpc.ai.contentHealthCheck.useMutation({
@@ -292,6 +293,7 @@ export default function Optimize() {
 
   const autoFix = trpc.ai.autoFix.useMutation({
     onSuccess: (data) => {
+      setAutoFixOriginal(inputText);
       setAutoFixResult(typeof data.content === 'string' ? data.content : '');
       toast.success("AI 已幫你優化文案！");
     },
@@ -459,6 +461,24 @@ export default function Optimize() {
               rows={8}
               className="resize-none"
             />
+            {/* Empty state guidance */}
+            {!inputText.trim() && (
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-lg leading-none mt-0.5">📝</span>
+                  <div className="space-y-2">
+                    <div className="font-medium text-amber-800">使用方式</div>
+                    <ol className="text-sm text-amber-700 space-y-1 list-decimal list-inside">
+                      <li>貼上你的 Threads 草稿或已發文案</li>
+                      <li>點「開始健檢」</li>
+                      <li>AI 會從四個角度分析你的文案品質</li>
+                      <li>針對扣分項目，點「AI 幫我改」讓 AI 幫你改</li>
+                    </ol>
+                    <p className="text-xs text-amber-600 mt-1">💡 也可以從草稿庫直接點「健檢」按鈕</p>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="flex gap-3">
               <Button 
                 onClick={handleHealthCheck}
@@ -473,7 +493,7 @@ export default function Optimize() {
                 ) : (
                   <>
                     <TrendingUp className="w-4 h-4 mr-2" />
-                    五維度健檢
+                    開始健檢
                   </>
                 )}
               </Button>
@@ -530,9 +550,29 @@ export default function Optimize() {
                     根據 Threads 演算法偏好 + 四透鏡框架進行審計式評分
                   </CardDescription>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => setHealthCheckResult(null)}>
-                  收起
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handleAutoFix}
+                    disabled={autoFix.isPending}
+                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                  >
+                    {autoFix.isPending ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                        修改中...
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="w-3.5 h-3.5 mr-1.5" />
+                        AI 幫我改
+                      </>
+                    )}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setHealthCheckResult(null)}>
+                    收起
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -822,45 +862,71 @@ export default function Optimize() {
           </Card>
         )}
 
-        {/* Auto Fix Result */}
+        {/* Auto Fix Result — Before / After */}
         {autoFixResult && (
           <Card className="elegant-card border-purple-500/20 bg-gradient-to-br from-purple-50/50 to-indigo-50/50">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Wand2 className="w-5 h-5 text-purple-500" />
-                  AI 優化版本
+                  AI 優化結果
                 </CardTitle>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      setInputText(autoFixResult);
-                      setAutoFixResult("");
-                      toast.success("已套用優化版本");
-                    }}
-                    className="border-purple-300 text-purple-700 hover:bg-purple-50"
-                  >
-                    套用這版
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => handleCopy(autoFixResult)}
-                  >
-                    <Copy className="w-4 h-4 mr-2" />
-                    複製
-                  </Button>
-                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleCopy(autoFixResult)}
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  複製修改版
+                </Button>
               </div>
               <CardDescription>
-                AI 已根據爆款元素優化你的文案，點擊「套用這版」可以繼續調整
+                AI 已根據健檢扣分項目針對性優化，對比修改前後的差異
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="prose prose-sm max-w-none dark:prose-invert bg-white/60 p-4 rounded-lg">
-                <pre className="whitespace-pre-wrap font-sans text-sm">{autoFixResult}</pre>
+            <CardContent className="space-y-4">
+              {/* Before */}
+              <div className="space-y-1.5">
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">修改前</div>
+                <div className="bg-muted/40 border border-border/60 rounded-lg p-4">
+                  <pre className="whitespace-pre-wrap font-sans text-sm text-muted-foreground">{autoFixOriginal}</pre>
+                </div>
+              </div>
+
+              {/* After */}
+              <div className="space-y-1.5">
+                <div className="text-xs font-medium text-emerald-700 uppercase tracking-wide">修改後</div>
+                <div className="bg-emerald-50/60 border border-emerald-200/60 rounded-lg p-4">
+                  <pre className="whitespace-pre-wrap font-sans text-sm text-emerald-900">{autoFixResult}</pre>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-3 pt-1">
+                <Button
+                  onClick={() => {
+                    setInputText(autoFixResult);
+                    setAutoFixResult("");
+                    setAutoFixOriginal("");
+                    setHealthCheckResult(null);
+                    toast.success("已採用修改版，可繼續調整");
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <Check className="w-4 h-4 mr-2" />
+                  採用修改
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setAutoFixResult("");
+                    setAutoFixOriginal("");
+                    toast.info("已保留原版");
+                  }}
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  保留原版
+                </Button>
               </div>
             </CardContent>
           </Card>
