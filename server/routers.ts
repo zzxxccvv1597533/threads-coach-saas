@@ -2624,6 +2624,9 @@ ${materialsList || '（用戶未提供額外素材）'}
         const contentPillars = await db.getContentPillarsByUserId(ctx.user.id);
         const userStyle = await db.getUserWritingStyle(ctx.user.id);
 
+        // 取得最近草稿（寫作記憶 - 避免重複）
+        const recentDrafts = await db.getRecentDrafts(ctx.user.id, 3);
+
         // 取得學員歷史表現數據（用於生成提示詞）
         const performanceInsights = await db.getPerformanceInsights(ctx.user.id);
         const performanceContext = performanceInsights.byType.length > 0
@@ -2699,92 +2702,52 @@ ${materialsList || '（用戶未提供額外素材）'}
             return parts.join('\n');
           }
           
-          // 完整導入模式（full_professional）：完整注入 IP 地基
-          // 職業/身份
-          if (profile?.occupation) {
-            parts.push(`【你的身份】你是一位${profile.occupation}，請用這個身份的視角來寫內容。`);
-          }
-          
-          // 語氣風格
-          if (profile?.voiceTone) {
-            parts.push(`【說話風格】你的說話風格是「${profile.voiceTone}」，請確保文案符合這個語氣。`);
-          }
-          
-          // 人設三支柱
-          if (profile?.personaExpertise || profile?.personaEmotion || profile?.personaViewpoint) {
-            parts.push(`【人設三支柱 - 必須在內容中展現】`);
-            if (profile?.personaExpertise) {
-              parts.push(`  • 專業權威：${profile.personaExpertise}`);
-            }
-            if (profile?.personaEmotion) {
-              parts.push(`  • 情感共鳴：${profile.personaEmotion}`);
-            }
-            if (profile?.personaViewpoint) {
-              parts.push(`  • 獨特觀點：${profile.personaViewpoint}`);
-            }
-          }
-          
-          // 信念價值觀
+          // 完整導入模式（full_professional）：以第二人稱身份注入 IP 地基
+          parts.push(`=== 你是誰（每一句都要像你說的話）===`);
+          parts.push('');
+          parts.push(`你是一個${profile?.occupation || '創作者'}。`);
+          parts.push(`你說話的方式是${profile?.voiceTone || '自然口語'}。`);
           if (profile?.viewpointStatement) {
-            parts.push(`【核心信念】${profile.viewpointStatement}`);
+            parts.push(`你的核心信念是：「${profile.viewpointStatement}」`);
           }
-          
-          // 英雄旅程故事（動態綁定版 - 根據內容類型選擇性注入）
+          parts.push('');
+          parts.push(`你寫文章的時候，永遠帶著這三個角度：`);
+          if (profile?.personaExpertise) {
+            parts.push(`1. 你的專業底氣：${profile.personaExpertise}`);
+          }
+          if (profile?.personaEmotion) {
+            parts.push(`2. 你走過的路：${profile.personaEmotion}`);
+          }
+          if (profile?.personaViewpoint) {
+            parts.push(`3. 你跟別人不一樣的地方：${profile.personaViewpoint}`);
+          }
+          parts.push('');
+
+          // 英雄旅程故事（永遠注入，不再隨機）
           if (profile?.heroJourneyOrigin || profile?.heroJourneyProcess || profile?.heroJourneyHero || profile?.heroJourneyMission) {
-            // 根據內容類型決定是否注入英雄旅程
-            const contentType = input.contentType || '';
-            const shouldInjectStory = Math.random() < 0.7; // 70% 機率注入
-            
-            // 完整注入的類型：故事型、自介型
-            const fullInjectionTypes = ['story', 'profile_intro'];
-            // 部分注入的類型：觀點型、知識型、引用型
-            const partialInjectionTypes = ['viewpoint', 'knowledge', 'quote', 'contrast'];
-            // 不注入的類型：提問型、投票型、閃聊型
-            const noInjectionTypes = ['question', 'poll', 'casual', 'dialogue'];
-            
-            if (fullInjectionTypes.includes(contentType)) {
-              // 完整注入英雄旅程
-              parts.push(`【你的英雄旅程故事 - 可在內容中展現】`);
-              parts.push(`這是你的真實故事，可以完整引用或片段引用：`);
-              if (profile?.heroJourneyOrigin) {
-                parts.push(`  • 緣起：${profile.heroJourneyOrigin}`);
-              }
-              if (profile?.heroJourneyProcess) {
-                parts.push(`  • 過程：${profile.heroJourneyProcess}`);
-              }
-              if (profile?.heroJourneyHero) {
-                parts.push(`  • 轉折：${profile.heroJourneyHero}`);
-              }
-              if (profile?.heroJourneyMission) {
-                parts.push(`  • 使命：${profile.heroJourneyMission}`);
-              }
-            } else if (partialInjectionTypes.includes(contentType) && shouldInjectStory) {
-              // 部分注入：根據類型選擇適合的段落
-              parts.push(`【你的真實經歷 - 可選擇性引用】`);
-              
-              if (contentType === 'viewpoint' && profile?.heroJourneyHero) {
-                // 觀點型：用「轉折」佐證觀點
-                parts.push(`你可以用這個經歷支撐你的觀點：`);
-                parts.push(`  • 轉折點：${profile.heroJourneyHero}`);
-                parts.push(`  → 可用「因為我經歷過...」來支撐觀點`);
-              } else if (contentType === 'knowledge' && profile?.heroJourneyProcess) {
-                // 知識型：用「過程/失敗」增加親切感
-                parts.push(`你可以用這個經歷讓內容更有溫度：`);
-                parts.push(`  • 曾經的困難：${profile.heroJourneyProcess}`);
-                parts.push(`  → 可用「我以前也...」帶入個人經驗`);
-              } else if ((contentType === 'quote' || contentType === 'contrast') && profile?.heroJourneyOrigin) {
-                // 引用型/反差型：用「緣起」建立共鳴
-                parts.push(`你可以用這個經歷建立共鳴：`);
-                parts.push(`  • 緣起：${profile.heroJourneyOrigin}`);
-              }
+            parts.push(`你的故事：`);
+            if (profile?.heroJourneyOrigin) {
+              parts.push(`起點：${profile.heroJourneyOrigin}`);
             }
-            // noInjectionTypes 不注入任何英雄旅程內容
+            if (profile?.heroJourneyProcess) {
+              parts.push(`過程：${profile.heroJourneyProcess}`);
+            }
+            if (profile?.heroJourneyHero) {
+              parts.push(`轉折：${profile.heroJourneyHero}`);
+            }
+            if (profile?.heroJourneyMission) {
+              parts.push(`現在的使命：${profile.heroJourneyMission}`);
+            }
+            parts.push('');
           }
-          
+
           // 身份標籤
           if (profile?.identityTags && profile.identityTags.length > 0) {
-            parts.push(`【身份標籤】${profile.identityTags.join('、')}`);
+            parts.push(`你的身份標籤：${profile.identityTags.join('、')}`);
+            parts.push('');
           }
+
+          parts.push(`⚠️ 個人化測試：如果這篇文章把你的名字換成別人，讀起來還一樣成立 → 代表不夠像你，請重寫。`);
           
           return parts.join('\n');
         };
@@ -3357,14 +3320,22 @@ ${audienceLines.join('\n\n')}`;
 
         // ✅ v4.0 優化：使用精簡版提示詞系統
         const optimizedBasePrompt = buildOptimizedPrompt(input.contentType, ipContext, audienceContext);
-        
+
+        // 寫作記憶：最近草稿（避免重複）
+        let recentDraftsContext = '';
+        if (recentDrafts.length > 0) {
+          recentDraftsContext = `\n=== 你最近的貼文（避免重複）===\n${recentDrafts.map((d, i) =>
+            `${i + 1}. ${d.contentType}型：「${d.preview}...」`
+          ).join('\n')}\n\n⚠️ 這篇必須跟上面的貼文用不同的開頭方式和切入角度。不要重複相似的主題或結構。\n`;
+        }
+
         const systemPrompt = `${hardWordLimitPrompt}
 
 ${optimizedBasePrompt}
 
 === 創作者 IP 地基（必須在內容中展現） ===
 ${ipContext || '未設定 IP 地基，請用通用風格寫作。'}
-
+${recentDraftsContext}
 === 你的過去表現（請參考但不要拘泥） ===
 ${performanceContext || '新學員，無歷史數據'}
 
@@ -3961,6 +3932,14 @@ ${generatedContent}
         if (profile?.personaEmotion) ipSummary += `情感共鳴：${profile.personaEmotion}\n`;
         if (profile?.personaViewpoint) ipSummary += `獨特觀點：${profile.personaViewpoint}\n`;
         if (profile?.voiceTone) ipSummary += `語氣風格：${profile.voiceTone}\n`;
+        if (profile?.heroJourneyOrigin) ipSummary += `故事起點：${profile.heroJourneyOrigin}\n`;
+        if (profile?.heroJourneyMission) ipSummary += `使命：${profile.heroJourneyMission}\n`;
+        if (profile?.identityTags) {
+          try {
+            const tags = Array.isArray(profile.identityTags) ? profile.identityTags : JSON.parse(profile.identityTags as string);
+            if (tags.length > 0) ipSummary += `身分標籤：${tags.join('、')}\n`;
+          } catch {}
+        }
 
         let audienceContext = '';
         if (audiences && audiences.length > 0) {
@@ -3998,6 +3977,8 @@ ${generatedContent}
 4. 切角根據素材語氣：有具體場景→daily_scenario，指出錯誤→common_mistakes，有反直覺觀點→perspective_flip
 5. 如果有歷史表現數據，優先選擇該學員互動最高的內容類型
 6. 如果學員近期某類型使用過多（>50%），建議換一種高效類型
+7. 選題和切角必須能回扣到作者的三支柱（專業/情感/觀點）之一
+8. 如果作者有英雄旅程故事，故事型和反差型貼文應該自然融入作者的經歷
 
 只輸出 JSON，不要其他文字。` },
             { role: "user", content: `## 主題

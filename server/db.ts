@@ -4538,3 +4538,24 @@ export async function getPerformanceInsights(userId: number): Promise<{
 
   return { byType, recentHookStyles };
 }
+
+export async function getRecentDrafts(userId: number, limit = 3) {
+  const database = await getDb();
+  if (!database) return [];
+  const drafts = await database
+    .select({
+      contentType: draftPosts.contentType,
+      body: draftPosts.body,
+      createdAt: draftPosts.createdAt,
+    })
+    .from(draftPosts)
+    .where(eq(draftPosts.userId, userId))
+    .orderBy(desc(draftPosts.createdAt))
+    .limit(limit);
+
+  return drafts.map(d => ({
+    contentType: d.contentType || 'story',
+    preview: (d.body || '').slice(0, 80),
+    createdAt: d.createdAt,
+  }));
+}
